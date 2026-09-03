@@ -15,12 +15,19 @@ import type {
   ResearchDraft,
   ResearchQuote,
 } from "../types.ts";
+import { emptyPack, type ResearchPack } from "./pack.ts";
 
 function evId(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export function heuristicDraft(quote: ResearchQuote): ResearchDraft {
+const GROWING =
+  /quantum|semiconductor|robot|aerospace|space\b|artificial intelligence|\bai\b|cyber|biotech|electric vehicle|\bev\b|data center|foundry|photonic|networking|defense/i;
+
+export function heuristicDraft(
+  quote: ResearchQuote,
+  pack: ResearchPack = emptyPack(),
+): ResearchDraft {
   const { marketCap, financials, currency } = quote;
   const rev = financials.revenueTtm;
   const prior = financials.revenuePrior;
@@ -28,6 +35,7 @@ export function heuristicDraft(quote: ResearchQuote): ResearchDraft {
   const debt = financials.totalDebt ?? 0;
   const op = financials.operatingIncomeTtm;
   const fcf = financials.fcf;
+  const gm = financials.grossMargin;
   const growth =
     rev != null && prior && prior > 0 ? rev / prior - 1 : null;
   const salesMultiple =
@@ -38,6 +46,9 @@ export function heuristicDraft(quote: ResearchQuote): ResearchDraft {
     op != null && op < 0 ? -op : 0,
   );
   const runwayYears = burn > 0 && cash > 0 ? cash / burn : null;
+  const blob = `${pack.profile}\n${pack.wiki}\n${quote.sector}\n${quote.industry}`;
+  const growingTheme = GROWING.test(blob);
+  const requiredRev = requiredRevenueFor10x(marketCap, "EV_SALES", 8, 0.12);
 
   let f2 = 1;
   let f2s = "매출 숫자 없음. 2점 조건: 최근 연간 매출이 전년 대비 +40% 이상.";
@@ -53,8 +64,75 @@ export function heuristicDraft(quote: ResearchQuote): ResearchDraft {
       f2s = `매출 감소 ${formatPct(growth)}.`;
     } else {
       f2 = 1;
-      f2s = `매출 성장 ${formatPct(growth)}로 완만. 2점 조건: 가속 확인.`;
+      f2s = `매출 성장 ${formatPct(growth)}로 완만.`;
     }
+  }
+
+  let f1 = 1;
+  let f1s = `${FACTOR_META.F1.nameKo} — 구조 성장 근거 부족. 2점 조건: TAM CAGR ≥15% 공시/리서치.`;
+  const cagr = blob.match(/CAGR[^0-9]{0,12}(\d{1,2}(?:\.\d+)?)\s*%/i);
+  const cagrN = cagr ? Number(cagr[1]) / 100 : null;
+  if (cagrN != null && cagrN >= 0.15) {
+    f1 = 2;
+    f1s = `언급된 TAM CAGR ${formatPct(cagrN)}. 구조 성장 근거.`;
+  } else if (growingTheme && (growth == null || growth >= 0.15)) {
+    f1 = 1;
+    f1s = `성장 테마(${quote.sector || quote.industry || "profile"})와 사업 설명이 맞음. 2점은 TAM 숫자.`;
+  } else if (!growingTheme && growth != null && growth < 0) {
+    f1 = 0;
+    f1s = "시장·매출이 동시에 약함.";
+  }
+
+  let f3 = 1;
+  let f3s = `${FACTOR_META.F3.nameKo} — 마진 데이터 부족.`;
+  if (gm != null && gm >= 0.55 && op != null && op > 0) {
+    f3 = 2;
+    f3s = `매출총이익률 ${formatPct(gm)} · 영업흑자. 레버리지 확인.`;
+  } else if (gm != null && gm >= 0.3) {
+    f3 = 1;
+    f3s =
+      op != null && op < 0
+        ? `매출총이익률 ${formatPct(gm)}이나 영업적자. 확장성은 미완성.`
+        : `매출총이익률 ${formatPct(gm)}. 영업 레버리지 추가 확인.`;
+  } else if (gm != null && gm < 0.15) {
+    f3 = 0;
+    f3s = `매출총이익률 ${formatPct(gm)}. 한계이익이 약함.`;
+  }
+
+  let f4 = 1;
+  let f4s = `${FACTOR_META.F4.nameKo} — 해자 문서 없음. 2점 조건: 특허·qualification.`;
+  if (pack.techClaims.length) {
+    f4 = 1;
+    f4s = pack.techClaims[0]!;
+    if (/world record|patent/i.test(pack.techClaims.join(" ")) && pack.customers.length >= 2) {
+      f4 = 2;
+      f4s = `${pack.techClaims[0]} 고객 ${pack.customers.slice(0, 3).join(", ")}가 사용.`;
+    }
+  }
+
+  let f5 = 1;
+  let f5s = `${FACTOR_META.F5.nameKo} — 점유율 숫자 없음.`;
+  if (/world'?s leading|leader|first commercially/i.test(blob)) {
+    f5 = 1;
+    f5s = "사업 설명이 리더를 주장. 2점은 점유율·bottleneck 숫자.";
+  }
+  if (pack.customers.length >= 3) {
+    f5 = 1;
+    f5s = `공개 고객 ${pack.customers.slice(0, 3).join(", ")}. 점유율은 미확인.`;
+  }
+
+  let f6 = 1;
+  let f6s = `${FACTOR_META.F6.nameKo} — 고객명 없음. 2점 조건: Repeat PO / 양산.`;
+  if (pack.customers.length >= 2) {
+    f6 = 1;
+    f6s = `공개 고객: ${pack.customers.join(", ")}. Repeat PO는 미확인.`;
+  }
+  const poHit = pack.news.find((n) =>
+    /purchase order|\brepeat\b|production contract|양산|수주/i.test(n.title),
+  );
+  if (poHit && pack.customers.length) {
+    f6 = 2;
+    f6s = `${poHit.title} + 고객 ${pack.customers.slice(0, 3).join(", ")}.`;
   }
 
   let f7 = 1;
@@ -118,7 +196,7 @@ export function heuristicDraft(quote: ResearchQuote): ResearchDraft {
     tenx = makeFlag(
       "TENX",
       "YELLOW",
-      `고멀티플 상태. 10배는 매출 ${formatMoney(requiredRevenueFor10x(marketCap, "EV_SALES", 8, 0.12), currency)} 경로가 필요.`,
+      `고멀티플 상태. 10배는 매출 ${formatMoney(requiredRev, currency)} 경로가 필요.`,
     );
   } else if (salesMultiple != null && salesMultiple < 8 && marketCap < 1e10) {
     f8 = 2;
@@ -158,6 +236,21 @@ export function heuristicDraft(quote: ResearchQuote): ResearchDraft {
     );
   }
 
+  let f9 = 1;
+  let f9s = `${FACTOR_META.F9.nameKo} — 6–24개월 촉매 미확인.`;
+  const catNews = pack.news.find((n) =>
+    /earnings|guidance|launch|contract|FDA|수주|실적|investor day|partnership|world record/i.test(
+      n.title,
+    ),
+  );
+  if (catNews) {
+    f9 = 1;
+    f9s = `촉매 후보: ${catNews.title}`;
+  } else if (pack.news.length) {
+    f9 = 1;
+    f9s = `최근 뉴스: ${pack.news[0]!.title}`;
+  }
+
   const { base, bull } = defaultScenarios(marketCap || 1, financials);
   const flags = [
     makeFlag(
@@ -170,26 +263,78 @@ export function heuristicDraft(quote: ResearchQuote): ResearchDraft {
   ];
   const feasibility = feasibilityFromMath([base, bull], f10, tenx.hardStop);
 
-  const locked = (code: FactorCode, need: string) =>
-    `${FACTOR_META[code].nameKo} — 공시 숫자만으로 2점 없음. 2점 조건: ${need}`;
-
-  const summary: Record<FactorCode, { score: number; summary: string }> = {
-    F1: { score: 1, summary: locked("F1", "구조적 TAM 성장의 3rd-party 또는 공시 근거") },
-    F2: { score: f2, summary: f2s },
-    F3: { score: 1, summary: locked("F3", "반복매출·영업레버리지가 숫자로 확인") },
-    F4: { score: 1, summary: locked("F4", "특허·qualification barrier 문서") },
-    F5: { score: 1, summary: locked("F5", "점유율 또는 bottleneck supplier 근거") },
-    F6: { score: 1, summary: locked("F6", "대형 고객 Repeat PO / 양산 (10-Q·IR)") },
-    F7: { score: f7, summary: survival.reason },
-    F8: { score: f8, summary: f8s },
-    F9: { score: 1, summary: locked("F9", "6–24개월 내 인식 전환 이벤트") },
-    F10: { score: f10, summary: tenx.reason },
+  const summary: Record<
+    FactorCode,
+    { score: number; summary: string; found: string; benchmark: string }
+  > = {
+    F1: {
+      score: f1,
+      summary: f1s,
+      found: cagrN != null ? `TAM CAGR ${formatPct(cagrN)}` : growingTheme ? `성장 테마 · ${quote.sector || quote.industry || "profile"}` : "구조 성장 근거 없음",
+      benchmark: "2점: TAM CAGR ≥15%",
+    },
+    F2: {
+      score: f2,
+      summary: f2s,
+      found: growth != null ? formatPct(growth) : "매출 없음",
+      benchmark: "2점: YoY ≥+40%",
+    },
+    F3: {
+      score: f3,
+      summary: f3s,
+      found: gm != null ? `GPM ${formatPct(gm)}` : "마진 없음",
+      benchmark: "2점: GPM ≥55% + 영업흑자",
+    },
+    F4: {
+      score: f4,
+      summary: f4s,
+      found: pack.techClaims[0] || "해자 문서 없음",
+      benchmark: "2점: 특허/기록 + 고객 2곳+",
+    },
+    F5: {
+      score: f5,
+      summary: f5s,
+      found: pack.customers.length ? `고객 ${pack.customers.length}곳` : "점유율 없음",
+      benchmark: "2점: 점유율 또는 bottleneck 숫자",
+    },
+    F6: {
+      score: f6,
+      summary: f6s,
+      found: pack.customers.length ? pack.customers.slice(0, 3).join(", ") : "고객명 없음",
+      benchmark: "2점: Repeat PO / 양산 공시",
+    },
+    F7: {
+      score: f7,
+      summary: survival.reason,
+      found: runwayYears != null ? `런웨이 ${runwayYears.toFixed(1)}년` : op != null ? formatMoney(op, currency) : "현금/손익 없음",
+      benchmark: "2점: 영업흑자 + 순현금",
+    },
+    F8: {
+      score: f8,
+      summary: f8s,
+      found: salesMultiple != null ? `${salesMultiple.toFixed(0)}x 시총/매출` : formatMoney(marketCap, currency),
+      benchmark: "2점: 시총/매출 <8x 이고 시총 작음",
+    },
+    F9: {
+      score: f9,
+      summary: f9s,
+      found: catNews?.title || pack.news[0]?.title || "촉매 없음",
+      benchmark: "2점: 6–24개월 인식 전환 이벤트",
+    },
+    F10: {
+      score: f10,
+      summary: tenx.reason,
+      found: requiredRev ? `10x 필요 매출 ${formatMoney(requiredRev, currency)}` : "수학 불가",
+      benchmark: "2점: 보수 가정으로 10x 설명",
+    },
   };
 
   const factors = FACTOR_ORDER.map((code) => ({
     code,
     score: summary[code].score,
     summary: summary[code].summary,
+    found: summary[code].found,
+    benchmark: summary[code].benchmark,
   }));
 
   const today = new Date().toISOString().slice(0, 10);
@@ -236,28 +381,88 @@ export function heuristicDraft(quote: ResearchQuote): ResearchDraft {
       createdAt: new Date().toISOString(),
     });
   }
+  if (pack.profile) {
+    evidences.push({
+      id: evId("e"),
+      factorCode: "F4",
+      evidence: pack.profile.slice(0, 360),
+      evidenceType: "REPORTED",
+      sourceName: "Nasdaq Company Profile",
+      sourceUrl: `https://www.nasdaq.com/market-activity/stocks/${encodeURIComponent(quote.ticker)}/company-profile`,
+      sourceDate: today,
+      confidence: 0.7,
+      createdAt: new Date().toISOString(),
+    });
+  }
+  if (pack.customers.length) {
+    evidences.push({
+      id: evId("e"),
+      factorCode: "F6",
+      evidence: `공개 고객: ${pack.customers.join(", ")}`,
+      evidenceType: "REPORTED",
+      sourceName: "Company profile",
+      sourceUrl: pack.website || filingUrl,
+      sourceDate: today,
+      confidence: 0.65,
+      createdAt: new Date().toISOString(),
+    });
+  }
+  for (const n of pack.news.slice(0, 3)) {
+    evidences.push({
+      id: evId("e"),
+      factorCode: "F9",
+      evidence: n.title,
+      evidenceType: "REPORTED",
+      sourceName: "News",
+      sourceUrl: n.url,
+      sourceDate: n.date || today,
+      confidence: 0.55,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  const findings = [
+    growth != null ? { label: "매출 성장", value: formatPct(growth) } : null,
+    gm != null ? { label: "매출총이익률", value: formatPct(gm) } : null,
+    salesMultiple != null
+      ? { label: "시총/매출", value: `${salesMultiple.toFixed(0)}x` }
+      : null,
+    runwayYears != null
+      ? { label: "현금 런웨이", value: `${runwayYears.toFixed(1)}년` }
+      : null,
+    pack.customers.length
+      ? { label: "공개 고객", value: pack.customers.slice(0, 3).join(", ") }
+      : null,
+    requiredRev
+      ? { label: "10x 필요 매출", value: formatMoney(requiredRev, currency) }
+      : null,
+  ].filter((x): x is { label: string; value: string } => x != null);
 
   return {
     quote,
     factors,
     redFlags: flags,
     tenxScenarios: [base, bull],
-    requiredRevenue: requiredRevenueFor10x(marketCap, "EV_SALES", 8, 0.12),
+    requiredRevenue: requiredRev,
     requiredNetIncome: requiredNetIncomeFor10x(marketCap, 25),
     requiredPe: requiredPeFor10x(marketCap, bull.netIncome),
     requiredEvSales: requiredEvSalesFor10x(marketCap, bull.revenue),
     tenxFeasibility: feasibility,
-    catalysts: ["실적 발표", "고객/제품 공시", "가이던스 변화"],
+    catalysts: pack.news.slice(0, 5).map((n) => n.title).concat(
+      pack.news.length ? [] : ["실적 발표", "고객/제품 공시", "가이던스 변화"],
+    ).slice(0, 5),
     risks: [
-      "시장·기술·고객 팩터는 스토리만으로 2점 금지 — 공시 증거 필요",
+      pack.customers.length
+        ? "고객은 공개됐지만 Repeat PO·양산은 별도 확인"
+        : "시장·기술·고객 팩터는 스토리만으로 2점 금지",
       "자동 모드 거버넌스 미확인",
       salesMultiple != null && salesMultiple >= 40
         ? "고멀티플: 기대가 이미 가격에 반영"
         : "10x 수학은 가정에 민감",
     ],
     nextProof: [
-      f2 < 2 ? "매출 성장 가속 확인" : "대형 고객 Qualification / Repeat PO",
-      "10-Q/IR에서 Repeat PO 또는 양산 확인",
+      f6 < 2 ? "10-Q/IR에서 Repeat PO 또는 양산 확인" : "매출 성장 지속 확인",
+      "TAM CAGR 3rd-party 숫자",
       "10x에 필요한 매출 경로를 숫자로 설명",
     ],
     killCriteria: [
@@ -267,6 +472,7 @@ export function heuristicDraft(quote: ResearchQuote): ResearchDraft {
     ],
     thesis: "",
     evidences,
-    researchProvider: rev != null ? "filings+heuristic" : "quote+heuristic",
+    findings,
+    researchProvider: pack.profile || rev != null ? "filings+profile" : "quote+heuristic",
   };
 }

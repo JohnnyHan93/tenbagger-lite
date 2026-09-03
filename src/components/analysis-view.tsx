@@ -31,13 +31,26 @@ export function AnalysisView({
     <div className="space-y-6">
       <ScoreHero company={company} analysis={analysis} />
 
-      {analysis.researchProvider.includes("heuristic") ? (
-        <p className="rounded-[var(--radius-md)] bg-elevated px-3 py-2 text-xs leading-relaxed text-muted">
-          자동 모드는 공시 숫자(매출·현금·시총)가 확인된 팩터만 2점을 줍니다.
-          나머지 항목은 요약의 <span className="text-fg">2점 조건</span>을
-          채운 뒤 팩터를 눌러 Override 하세요. 원래 점수는 보존됩니다.
-        </p>
+      {(analysis.findings ?? []).length ? (
+        <dl className="grid grid-cols-2 gap-2 md:grid-cols-3">
+          {analysis.findings!.map((f) => (
+            <div
+              key={f.label}
+              className="rounded-[var(--radius-md)] bg-elevated px-3 py-2"
+            >
+              <dt className="font-mono text-[0.625rem] tracking-widest text-subtle uppercase">
+                {f.label}
+              </dt>
+              <dd className="mt-1 text-sm text-fg">{f.value}</dd>
+            </div>
+          ))}
+        </dl>
       ) : null}
+
+      <p className="text-xs leading-relaxed text-muted">
+        각 팩터는 발견한 값과 2점 기준을 비교합니다. 2점은 FACT/REPORTED 증거가 있을 때만.
+        팩터를 눌러 Override 할 수 있습니다.
+      </p>
 
       <section>
         <h3 className="mb-2 font-mono text-xs tracking-widest text-muted uppercase">

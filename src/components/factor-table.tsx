@@ -28,7 +28,8 @@ export function FactorTable({
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm text-fg">{FACTOR_META[code].nameKo}</span>
                   <span className="block truncate text-xs text-muted">
-                    {s?.evidenceSummary}
+                    {s?.found ? `발견 ${s.found}` : s?.evidenceSummary}
+                    {s?.benchmark ? ` · ${s.benchmark}` : ""}
                     {overridden ? " · override" : ""}
                   </span>
                 </span>

@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { heuristicDraft } from "./heuristic.ts";
 import { emptyFinancials } from "./quote-parse.ts";
+import { extractNamedCustomers } from "./pack.ts";
 import type { ResearchQuote } from "../types.ts";
+import type { ResearchPack as Pack } from "./pack.ts";
 
 function ionqQuote(): ResearchQuote {
   return {
@@ -31,22 +33,47 @@ function ionqQuote(): ResearchQuote {
   };
 }
 
-describe("heuristicDraft IONQ-like filings", () => {
-  it("gives F2=2 from accelerating revenue, not a blanket 1-cap", () => {
-    const d = heuristicDraft(ionqQuote());
-    const by = Object.fromEntries(d.factors.map((f) => [f.code, f]));
-    assert.equal(by.F2?.score, 2);
-    assert.match(by.F2?.summary ?? "", /202|%|성장/);
-    assert.equal(by.F8?.score, 0);
-    assert.equal(by.F7?.score, 1);
-    assert.ok(!d.factors.every((f) => f.summary.includes("자동 수집만으로는 2점")));
-    assert.ok(d.evidences.some((e) => e.factorCode === "F2" && e.evidenceType === "FACT"));
-  });
+const ionqPack: Pack = {
+  profile:
+    "IonQ is the world's leading quantum platform. customers and partners including Amazon Web Services, AstraZeneca, and NVIDIA achieve a 20x performance. In 2025, the company achieved 99.99% two-qubit gate fidelity, setting a world record in quantum computing performance.",
+  website: "https://ionq.com",
+  wiki: "American quantum computing company.",
+  customers: ["Amazon Web Services", "AstraZeneca", "NVIDIA"],
+  techClaims: [
+    "In 2025, the company achieved 99.99% two-qubit gate fidelity, setting a world record in quantum computing performance.",
+  ],
+  news: [
+    {
+      title: "IonQ’s Investor Day Is Approaching",
+      date: "2026-09-02",
+      url: "https://example.com",
+    },
+  ],
+};
 
-  it("keeps story factors at 1 with an unlock condition", () => {
-    const d = heuristicDraft(ionqQuote());
-    const f6 = d.factors.find((f) => f.code === "F6");
-    assert.equal(f6?.score, 1);
-    assert.match(f6?.summary ?? "", /2점 조건/);
+describe("extractNamedCustomers", () => {
+  it("keeps proper names and drops use-case nouns", () => {
+    const names = extractNamedCustomers(ionqPack.profile);
+    assert.ok(names.includes("Amazon Web Services"));
+    assert.ok(names.includes("AstraZeneca"));
+    assert.ok(names.includes("NVIDIA"));
+    assert.ok(!names.includes("materials science"));
+  });
+});
+
+describe("heuristicDraft IONQ-like filings", () => {
+  it("scores all 10 factors from filings + profile", () => {
+    const d = heuristicDraft(ionqQuote(), ionqPack);
+    const by = Object.fromEntries(d.factors.map((f) => [f.code, f]));
+    assert.equal(d.factors.length, 10);
+    assert.equal(by.F2?.score, 2);
+    assert.equal(by.F4?.score, 2);
+    assert.equal(by.F6?.score, 1);
+    assert.equal(by.F7?.score, 1);
+    assert.equal(by.F8?.score, 0);
+    assert.equal(by.F10?.score, 0);
+    assert.match(by.F6?.summary ?? "", /NVIDIA|AstraZeneca|Amazon/);
+    assert.ok(by.F2?.found);
+    assert.ok(by.F2?.benchmark);
   });
 });

@@ -28,6 +28,8 @@ export interface FactorScore {
   factorCode: FactorCode;
   score: number;
   evidenceSummary: string;
+  found?: string;
+  benchmark?: string;
   originalScore: number;
   overrideScore: number | null;
   overrideReason: string | null;
@@ -110,6 +112,7 @@ export interface Analysis {
   nextProof: string[];
   killCriteria: string[];
   evidences: Evidence[];
+  findings?: Array<{ label: string; value: string }>;
   scoringVersion: string;
   researchProvider: string;
   createdAt: string;
@@ -147,6 +150,8 @@ export interface DraftFactor {
   code: FactorCode;
   score: number;
   summary: string;
+  found?: string;
+  benchmark?: string;
 }
 
 export interface ResearchDraft {
@@ -165,5 +170,6 @@ export interface ResearchDraft {
   killCriteria: string[];
   thesis: string;
   evidences: Evidence[];
+  findings?: Array<{ label: string; value: string }>;
   researchProvider: string;
 }
