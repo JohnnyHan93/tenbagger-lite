@@ -12,6 +12,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { APP_KICKER, APP_SHORT } from "@/lib/brand";
 
 const NAV = [
   { to: "/", label: "대시보드", icon: LayoutDashboard },
@@ -59,9 +60,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-dvh bg-bg text-fg">
       <aside className="fixed inset-y-0 left-0 hidden w-56 flex-col border-r border-border bg-surface px-3 py-5 md:flex">
         <Link to="/" className="mb-8 px-3">
-          <div className="masthead text-xl leading-tight text-fg">Discovery Terminal</div>
+          <div className="masthead text-xl leading-tight text-fg">{APP_SHORT}</div>
           <div className="mt-1 font-mono text-[0.625rem] tracking-widest text-sage uppercase">
-            Tenbagger Lite v2
+            {APP_KICKER}
           </div>
         </Link>
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
@@ -76,9 +77,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-bg/90 px-4 py-3 backdrop-blur-sm md:hidden">
         <Link to="/">
-          <div className="masthead text-lg leading-none">Discovery Terminal</div>
+          <div className="masthead text-lg leading-none">{APP_SHORT}</div>
           <div className="mt-0.5 font-mono text-[0.6rem] tracking-widest text-sage uppercase">
-            Lite v2
+            투자발견
           </div>
         </Link>
         <Link

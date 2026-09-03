@@ -3,20 +3,19 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { HydrateGate } from "@/components/hydrate";
 import { AppShell } from "@/components/shell";
+import { APP_DESCRIPTION, APP_NAME } from "@/lib/brand";
 import appCss from "../styles.css?url";
-
-const APP_NAME = "Investment Discovery Terminal";
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Investment Discovery Terminal" },
+      { title: APP_NAME },
       { name: "theme-color", content: "#0c0d0b" },
       {
         name: "description",
-        content: "Tenbagger Lite v2 — X-Bagger, Oversold, Quality 70. Scores are not buy signals.",
+        content: APP_DESCRIPTION,
       },
     ],
     links: [

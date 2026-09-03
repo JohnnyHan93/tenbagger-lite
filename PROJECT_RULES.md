@@ -1,4 +1,4 @@
-# Project: Investment Discovery Terminal / Tenbagger Lite v2
+# Project: IDT 투자발견
 
 Non-negotiable rules:
 

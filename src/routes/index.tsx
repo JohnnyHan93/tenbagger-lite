@@ -5,6 +5,7 @@ import { TagRow } from "@/components/snapshot-view";
 import { Button } from "@/components/ui/button";
 import { dashboardStats, rankCompanies } from "@/lib/selectors";
 import { useAppStore } from "@/lib/store";
+import { APP_NAME } from "@/lib/brand";
 import { displayTicker, ENGINE_TAB, formatOppScore, formatQualityScore, formatXScore } from "@/lib/format";
 
 export const Route = createFileRoute("/")({ component: Dashboard });
@@ -18,7 +19,7 @@ function Dashboard() {
   return (
     <>
       <PageTitle
-        kicker="Investment Discovery Terminal"
+        kicker={APP_NAME}
         title="대시보드"
         action={
           <Link to="/discover">

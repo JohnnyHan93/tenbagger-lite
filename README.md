@@ -1,6 +1,6 @@
-# Investment Discovery Terminal
+# IDT 투자발견
 
-Tenbagger Lite v2 — multi-strategy stock discovery for a single private investor.
+IDT 투자발견 — X-Bagger, Oversold, Quality 70. Tenbagger Lite와는 별도 앱입니다.
 
 This system is a research and ranking tool. Scores are not automatic BUY/SELL signals.
 
