@@ -39,6 +39,38 @@ export function formatScore(n: number): string {
   return Math.round(n).toString();
 }
 
+export function formatOutOf(
+  n: number | null | undefined,
+  max: number,
+  digits: number,
+): string {
+  if (n == null || !Number.isFinite(n)) return "N/A";
+  return `${n.toFixed(digits)} / ${max}`;
+}
+
+export function formatXScore(n: number | null | undefined): string {
+  return formatOutOf(n, 100, 1);
+}
+
+export function formatOppScore(n: number | null | undefined): string {
+  return formatOutOf(n, 10, 2);
+}
+
+export function formatQualityScore(n: number | null | undefined): string {
+  return formatOutOf(n, 100, 1);
+}
+
+export function formatFactor10(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return "N/A";
+  return Number.isInteger(n) ? `${n} / 10` : `${n.toFixed(1)} / 10`;
+}
+
+export const ENGINE_TAB = {
+  xbagger: { id: "x" as const, name: "X-Bagger", version: "XBG-v2.0" },
+  oversold: { id: "o" as const, name: "Oversold", version: "OSM-v1.0" },
+  quality: { id: "q" as const, name: "Quality 70", version: "MFC70-v1.1" },
+};
+
 export function formatDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso.slice(0, 10);

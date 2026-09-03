@@ -11,11 +11,18 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnalyzeRouteImport } from './routes/analyze'
+import { Route as CrossRouteImport } from './routes/cross'
+import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as EvidenceRouteImport } from './routes/evidence'
 import { Route as HandoffRouteImport } from './routes/handoff'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as OversoldRouteImport } from './routes/oversold'
+import { Route as QualityRouteImport } from './routes/quality'
+import { Route as QueueRouteImport } from './routes/queue'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as UniverseRouteImport } from './routes/universe'
 import { Route as WatchlistRouteImport } from './routes/watchlist'
+import { Route as XbaggerRouteImport } from './routes/xbagger'
 import { Route as CompanyTickerRouteImport } from './routes/company.$ticker'
 
 const IndexRoute = IndexRouteImport.update({
@@ -26,6 +33,16 @@ const IndexRoute = IndexRouteImport.update({
 const AnalyzeRoute = AnalyzeRouteImport.update({
   id: '/analyze',
   path: '/analyze',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrossRoute = CrossRouteImport.update({
+  id: '/cross',
+  path: '/cross',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiscoverRoute = DiscoverRouteImport.update({
+  id: '/discover',
+  path: '/discover',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EvidenceRoute = EvidenceRouteImport.update({
@@ -43,14 +60,39 @@ const HistoryRoute = HistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OversoldRoute = OversoldRouteImport.update({
+  id: '/oversold',
+  path: '/oversold',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QualityRoute = QualityRouteImport.update({
+  id: '/quality',
+  path: '/quality',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QueueRoute = QueueRouteImport.update({
+  id: '/queue',
+  path: '/queue',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UniverseRoute = UniverseRouteImport.update({
+  id: '/universe',
+  path: '/universe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WatchlistRoute = WatchlistRouteImport.update({
   id: '/watchlist',
   path: '/watchlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const XbaggerRoute = XbaggerRouteImport.update({
+  id: '/xbagger',
+  path: '/xbagger',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompanyTickerRoute = CompanyTickerRouteImport.update({
@@ -62,32 +104,53 @@ const CompanyTickerRoute = CompanyTickerRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analyze': typeof AnalyzeRoute
+  '/cross': typeof CrossRoute
+  '/discover': typeof DiscoverRoute
   '/evidence': typeof EvidenceRoute
   '/handoff': typeof HandoffRoute
   '/history': typeof HistoryRoute
+  '/oversold': typeof OversoldRoute
+  '/quality': typeof QualityRoute
+  '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
+  '/universe': typeof UniverseRoute
   '/watchlist': typeof WatchlistRoute
+  '/xbagger': typeof XbaggerRoute
   '/company/$ticker': typeof CompanyTickerRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analyze': typeof AnalyzeRoute
+  '/cross': typeof CrossRoute
+  '/discover': typeof DiscoverRoute
   '/evidence': typeof EvidenceRoute
   '/handoff': typeof HandoffRoute
   '/history': typeof HistoryRoute
+  '/oversold': typeof OversoldRoute
+  '/quality': typeof QualityRoute
+  '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
+  '/universe': typeof UniverseRoute
   '/watchlist': typeof WatchlistRoute
+  '/xbagger': typeof XbaggerRoute
   '/company/$ticker': typeof CompanyTickerRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/analyze': typeof AnalyzeRoute
+  '/cross': typeof CrossRoute
+  '/discover': typeof DiscoverRoute
   '/evidence': typeof EvidenceRoute
   '/handoff': typeof HandoffRoute
   '/history': typeof HistoryRoute
+  '/oversold': typeof OversoldRoute
+  '/quality': typeof QualityRoute
+  '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
+  '/universe': typeof UniverseRoute
   '/watchlist': typeof WatchlistRoute
+  '/xbagger': typeof XbaggerRoute
   '/company/$ticker': typeof CompanyTickerRoute
 }
 export interface FileRouteTypes {
@@ -95,42 +158,70 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/analyze'
+    | '/cross'
+    | '/discover'
     | '/evidence'
     | '/handoff'
     | '/history'
+    | '/oversold'
+    | '/quality'
+    | '/queue'
     | '/settings'
+    | '/universe'
     | '/watchlist'
+    | '/xbagger'
     | '/company/$ticker'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/analyze'
+    | '/cross'
+    | '/discover'
     | '/evidence'
     | '/handoff'
     | '/history'
+    | '/oversold'
+    | '/quality'
+    | '/queue'
     | '/settings'
+    | '/universe'
     | '/watchlist'
+    | '/xbagger'
     | '/company/$ticker'
   id:
     | '__root__'
     | '/'
     | '/analyze'
+    | '/cross'
+    | '/discover'
     | '/evidence'
     | '/handoff'
     | '/history'
+    | '/oversold'
+    | '/quality'
+    | '/queue'
     | '/settings'
+    | '/universe'
     | '/watchlist'
+    | '/xbagger'
     | '/company/$ticker'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyzeRoute: typeof AnalyzeRoute
+  CrossRoute: typeof CrossRoute
+  DiscoverRoute: typeof DiscoverRoute
   EvidenceRoute: typeof EvidenceRoute
   HandoffRoute: typeof HandoffRoute
   HistoryRoute: typeof HistoryRoute
+  OversoldRoute: typeof OversoldRoute
+  QualityRoute: typeof QualityRoute
+  QueueRoute: typeof QueueRoute
   SettingsRoute: typeof SettingsRoute
+  UniverseRoute: typeof UniverseRoute
   WatchlistRoute: typeof WatchlistRoute
+  XbaggerRoute: typeof XbaggerRoute
   CompanyTickerRoute: typeof CompanyTickerRoute
 }
 
@@ -148,6 +239,20 @@ declare module '@tanstack/react-router' {
       path: '/analyze'
       fullPath: '/analyze'
       preLoaderRoute: typeof AnalyzeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cross': {
+      id: '/cross'
+      path: '/cross'
+      fullPath: '/cross'
+      preLoaderRoute: typeof CrossRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/discover': {
+      id: '/discover'
+      path: '/discover'
+      fullPath: '/discover'
+      preLoaderRoute: typeof DiscoverRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/evidence': {
@@ -171,6 +276,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/oversold': {
+      id: '/oversold'
+      path: '/oversold'
+      fullPath: '/oversold'
+      preLoaderRoute: typeof OversoldRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quality': {
+      id: '/quality'
+      path: '/quality'
+      fullPath: '/quality'
+      preLoaderRoute: typeof QualityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/queue': {
+      id: '/queue'
+      path: '/queue'
+      fullPath: '/queue'
+      preLoaderRoute: typeof QueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -178,11 +304,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/universe': {
+      id: '/universe'
+      path: '/universe'
+      fullPath: '/universe'
+      preLoaderRoute: typeof UniverseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/watchlist': {
       id: '/watchlist'
       path: '/watchlist'
       fullPath: '/watchlist'
       preLoaderRoute: typeof WatchlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/xbagger': {
+      id: '/xbagger'
+      path: '/xbagger'
+      fullPath: '/xbagger'
+      preLoaderRoute: typeof XbaggerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/company/$ticker': {
@@ -198,11 +338,18 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyzeRoute: AnalyzeRoute,
+  CrossRoute: CrossRoute,
+  DiscoverRoute: DiscoverRoute,
   EvidenceRoute: EvidenceRoute,
   HandoffRoute: HandoffRoute,
   HistoryRoute: HistoryRoute,
+  OversoldRoute: OversoldRoute,
+  QualityRoute: QualityRoute,
+  QueueRoute: QueueRoute,
   SettingsRoute: SettingsRoute,
+  UniverseRoute: UniverseRoute,
   WatchlistRoute: WatchlistRoute,
+  XbaggerRoute: XbaggerRoute,
   CompanyTickerRoute: CompanyTickerRoute,
 }
 export const routeTree = rootRouteImport

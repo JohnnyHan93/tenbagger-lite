@@ -1,68 +1,70 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { buildSampleWorld } from "./samples";
-import { buildLibraryWorld } from "./library";
-import { materializeAnalysis, applyFactorOverride } from "./scoring/pipeline";
-import { uid } from "./utils";
-import type { FactorCode } from "./scoring/config";
-import type {
-  Analysis,
-  AppSettings,
-  Company,
-  MasterHandoff,
-  ResearchDraft,
-} from "./types";
+import { buildSampleWorld } from "./samples.ts";
+import { runSnapshot } from "./engines/run.ts";
+import { parseTickerList, type UniverseTicker } from "./universe/parse.ts";
+import { uid } from "./utils.ts";
+import type { AppSettings, AuditLog, Snapshot, Universe } from "./domain/snapshot.ts";
+import type { Company, ResearchDraft, ResearchQuote } from "./types.ts";
+import type { ResearchPack } from "./research/pack.ts";
+import type { FactorCode } from "./scoring/config.ts";
+import { emptyPack } from "./research/pack.ts";
+import { scoreXBagger } from "./engines/xbagger.ts";
+import { strategyTags, researchPriority } from "./engines/matrix.ts";
+import { scoreLenses } from "./engines/lenses.ts";
 
 export interface AppState {
   hydrated: boolean;
   companies: Company[];
-  analyses: Analysis[];
-  handoffs: MasterHandoff[];
+  snapshots: Snapshot[];
+  universes: Universe[];
   watchlist: string[];
+  audit: AuditLog[];
   settings: AppSettings;
   setHydrated: (v: boolean) => void;
   seedIfEmpty: () => void;
   resetSamples: () => void;
   clearAll: () => void;
   upsertCompany: (c: Company) => Company;
-  saveAnalysis: (company: Company, draft: ResearchDraft) => Analysis;
-  overrideFactor: (
-    analysisId: string,
-    code: FactorCode,
-    score: number,
-    reason: string,
-  ) => void;
+  saveFromQuote: (company: Company, quote: ResearchQuote, pack?: ResearchPack) => Snapshot;
+  saveFromDraft: (company: Company, draft: ResearchDraft, pack?: ResearchPack) => Snapshot;
+  overrideXFactor: (snapshotId: string, code: FactorCode, score: number, reason: string) => void;
   toggleWatch: (companyId: string) => void;
-  setHandoff: (companyId: string, analysisId: string, status: MasterHandoff["status"]) => void;
-  importState: (data: {
-    companies: Company[];
-    analyses: Analysis[];
-    handoffs: MasterHandoff[];
-    watchlist: string[];
-    settings?: AppSettings;
-  }) => void;
+  importJson: (data: Partial<Pick<AppState, "companies" | "snapshots" | "universes" | "watchlist" | "settings">>) => void;
   updateSettings: (s: Partial<AppSettings>) => void;
+  createUniverse: (name: string, market: Universe["market"], tickers: UniverseTicker[]) => Universe;
+  importUniverseText: (name: string, market: Universe["market"], text: string) => Universe;
+  lockUniverse: (id: string) => void;
+  unlockUniverse: (id: string) => void;
+  archiveUniverse: (id: string) => void;
 }
 
 const emptySettings: AppSettings = {
   defaultResearchMode: "auto",
   useAi: true,
+  researchPriorityOn: true,
+  qualityModel: "MFC70-v1.1",
 };
 
 function sampleState() {
   const world = buildSampleWorld();
-  const lib = buildLibraryWorld();
-  const companies = [...world.companies, ...lib.companies];
-  const analyses = [...world.analyses, ...lib.analyses];
-  const watchlist = [
-    ...world.companies.map((c) => c.id),
-    ...lib.companies.filter((c) => c.cohort === "priority").map((c) => c.id),
-  ];
   return {
-    companies,
-    analyses,
-    handoffs: world.handoffs,
-    watchlist,
+    companies: world.companies,
+    snapshots: world.snapshots,
+    universes: [
+      {
+        id: "u_sample",
+        name: "Sample Six (fixtures)",
+        version: 1,
+        market: "GLOBAL" as const,
+        status: "open" as const,
+        createdAt: "2026-09-03T00:00:00.000Z",
+        lockedAt: null,
+        tickers: world.companies.map((c) => ({ ticker: c.ticker, name: c.companyName })),
+      },
+    ],
+    watchlist: world.companies.map((c) => c.id),
+    audit: [] as AuditLog[],
     settings: emptySettings,
   };
 }
@@ -80,9 +82,10 @@ export const useAppStore = create<AppState>()(
       clearAll: () =>
         set({
           companies: [],
-          analyses: [],
-          handoffs: [],
+          snapshots: [],
+          universes: [],
           watchlist: [],
+          audit: [],
         }),
       upsertCompany: (incoming) => {
         const existing = get().companies.find(
@@ -96,127 +99,163 @@ export const useAppStore = create<AppState>()(
             createdAt: existing.createdAt,
             updatedAt: new Date().toISOString(),
           };
-          set({
-            companies: get().companies.map((c) => (c.id === existing.id ? merged : c)),
-          });
+          set({ companies: get().companies.map((c) => (c.id === existing.id ? merged : c)) });
           return merged;
         }
-        const created: Company = {
-          ...incoming,
-          id: incoming.id || uid("c"),
-        };
+        const created = { ...incoming, id: incoming.id || uid("c") };
         set({ companies: [...get().companies, created] });
         return created;
       },
-      saveAnalysis: (company, draft) => {
-        const saved = get().upsertCompany(company);
-        const analysis = materializeAnalysis(saved.id, draft);
-        const watch = get().watchlist.includes(saved.id)
-          ? get().watchlist
-          : [...get().watchlist, saved.id];
-        set({
-          analyses: [...get().analyses, analysis],
-          watchlist: watch,
-          companies: get().companies.map((c) =>
-            c.id === saved.id ? { ...c, updatedAt: analysis.createdAt } : c,
-          ),
+      saveFromQuote: (company, quote, pack) => {
+        const snap = runSnapshot({
+          company,
+          quote,
+          pack: pack ?? emptyPack(),
+          researchPriorityOn: get().settings.researchPriorityOn,
         });
-        return analysis;
+        set({ snapshots: [...get().snapshots, snap] });
+        return snap;
       },
-      overrideFactor: (analysisId, code, score, reason) => {
+      saveFromDraft: (company, draft, pack) => {
+        return get().saveFromQuote(company, draft.quote, pack);
+      },
+      overrideXFactor: (snapshotId, code, score, reason) => {
+        const snap = get().snapshots.find((s) => s.id === snapshotId);
+        if (!snap) return;
+        const factors = snap.xbagger.factors.map((f) =>
+          f.code === code
+            ? { ...f, score, reason: `Override: ${reason}`, status: "OVERRIDE" as const, confidence: "High" as const }
+            : { code: f.code, score: f.score, reason: f.reason, confidence: f.confidence, evidenceIds: f.evidenceIds, override: f.status === "OVERRIDE" },
+        );
+        const x = scoreXBagger({
+          factors: snap.xbagger.factors.map((f) => ({
+            code: f.code,
+            score: f.code === code ? score : f.score,
+            reason: f.code === code ? `Override: ${reason}` : f.reason,
+            confidence: f.confidence,
+            evidenceIds: f.evidenceIds,
+            override: f.code === code || f.status === "OVERRIDE",
+          })),
+          tenxMath: snap.xbagger.tenxMath,
+          tenxScenarios: snap.xbagger.tenxScenarios,
+          tenxFeasibility: snap.xbagger.tenxFeasibility,
+        });
+        const lenses = scoreLenses({ m: snap.derived, x, o: snap.oversold, q: snap.quality });
+        const tags = strategyTags(x, snap.oversold, snap.quality);
+        const rp = researchPriority({
+          x,
+          o: snap.oversold,
+          q: snap.quality,
+          lenses,
+          enabled: get().settings.researchPriorityOn,
+        });
+        const next: Snapshot = {
+          ...snap,
+          id: uid("snap"),
+          createdAt: new Date().toISOString(),
+          xbagger: x,
+          lenses,
+          tags,
+          researchPriority: rp?.score ?? null,
+          researchPriorityParts: rp?.parts ?? null,
+        };
+        const log: AuditLog = {
+          id: uid("aud"),
+          engine: "xbagger",
+          modelVersion: x.version,
+          factorId: code,
+          snapshotId: next.id,
+          oldValue: snap.xbagger.factors.find((f) => f.code === code)?.score ?? null,
+          newValue: score,
+          reason,
+          userOverride: true,
+          timestamp: next.createdAt,
+        };
+        void factors;
         set({
-          analyses: get().analyses.map((a) =>
-            a.id === analysisId ? applyFactorOverride(a, code, score, reason) : a,
-          ),
+          snapshots: [...get().snapshots, next],
+          audit: [...get().audit, log],
         });
       },
       toggleWatch: (companyId) => {
         const w = get().watchlist;
         set({
-          watchlist: w.includes(companyId)
-            ? w.filter((id) => id !== companyId)
-            : [...w, companyId],
+          watchlist: w.includes(companyId) ? w.filter((id) => id !== companyId) : [...w, companyId],
         });
       },
-      setHandoff: (companyId, analysisId, status) => {
-        const existing = get().handoffs.find((h) => h.companyId === companyId);
-        const now = new Date().toISOString();
-        if (existing) {
-          set({
-            handoffs: get().handoffs.map((h) =>
-              h.id === existing.id
-                ? { ...h, analysisId, status, updatedAt: now }
-                : h,
-            ),
-          });
-        } else {
-          set({
-            handoffs: [
-              ...get().handoffs,
-              {
-                id: uid("h"),
-                analysisId,
-                companyId,
-                status,
-                createdAt: now,
-                updatedAt: now,
-              },
-            ],
-          });
-        }
-      },
-      importState: (data) => {
+      importJson: (data) => {
         set({
-          companies: data.companies,
-          analyses: data.analyses,
-          handoffs: data.handoffs,
-          watchlist: data.watchlist,
-          settings: data.settings ?? get().settings,
+          companies: data.companies ?? get().companies,
+          snapshots: data.snapshots ?? get().snapshots,
+          universes: data.universes ?? get().universes,
+          watchlist: data.watchlist ?? get().watchlist,
+          settings: { ...get().settings, ...data.settings },
         });
       },
       updateSettings: (s) => set({ settings: { ...get().settings, ...s } }),
+      createUniverse: (name, market, tickers) => {
+        const u: Universe = {
+          id: uid("u"),
+          name,
+          version: 1,
+          market,
+          status: "open",
+          createdAt: new Date().toISOString(),
+          lockedAt: null,
+          tickers,
+        };
+        set({ universes: [...get().universes, u] });
+        return u;
+      },
+      importUniverseText: (name, market, text) => {
+        const parsed = parseTickerList(text);
+        return get().createUniverse(name, market, parsed.tickers);
+      },
+      lockUniverse: (id) => {
+        set({
+          universes: get().universes.map((u) =>
+            u.id === id && u.status === "open"
+              ? { ...u, status: "locked", lockedAt: new Date().toISOString() }
+              : u,
+          ),
+        });
+      },
+      unlockUniverse: (id) => {
+        set({
+          universes: get().universes.map((u) =>
+            u.id === id ? { ...u, status: "open", lockedAt: null, version: u.version + 1 } : u,
+          ),
+        });
+      },
+      archiveUniverse: (id) => {
+        set({
+          universes: get().universes.map((u) => (u.id === id ? { ...u, status: "archived" } : u)),
+        });
+      },
     }),
     {
-      name: "tenbagger-lite-v3",
+      name: "idt-v2",
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         companies: s.companies,
-        analyses: s.analyses,
-        handoffs: s.handoffs,
+        snapshots: s.snapshots,
+        universes: s.universes,
         watchlist: s.watchlist,
+        audit: s.audit,
         settings: s.settings,
       }),
-      skipHydration: true,
     },
   ),
 );
 
-export function latestAnalysis(analyses: Analysis[], companyId: string): Analysis | undefined {
-  return analyses
-    .filter((a) => a.companyId === companyId)
-    .sort((a, b) => b.analysisDate.localeCompare(a.analysisDate))[0];
+export function latestSnapshot(snapshots: Snapshot[], companyId: string): Snapshot | undefined {
+  return snapshots
+    .filter((s) => s.companyId === companyId)
+    .sort((a, b) => b.asOf.localeCompare(a.asOf) || b.createdAt.localeCompare(a.createdAt))[0];
 }
 
-export function previousAnalysis(
-  analyses: Analysis[],
-  companyId: string,
-  currentId: string,
-): Analysis | undefined {
-  return analyses
-    .filter((a) => a.companyId === companyId && a.id !== currentId)
-    .sort((a, b) => b.analysisDate.localeCompare(a.analysisDate))[0];
-}
-
-export function scoreChange(analyses: Analysis[], companyId: string): number | null {
-  const list = analyses
-    .filter((a) => a.companyId === companyId)
-    .sort((a, b) => b.analysisDate.localeCompare(a.analysisDate));
-  if (list.length < 2) return null;
-  return list[0].adjustedScore - list[1].adjustedScore;
-}
-
-export function needsRefresh(analysis: Analysis | undefined, days = 90): boolean {
-  if (!analysis) return true;
-  const t = new Date(analysis.analysisDate).getTime();
-  return Date.now() - t > days * 86400000;
+export function snapshotsFor(snapshots: Snapshot[], companyId: string): Snapshot[] {
+  return snapshots
+    .filter((s) => s.companyId === companyId)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }

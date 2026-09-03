@@ -5,18 +5,18 @@ import { HydrateGate } from "@/components/hydrate";
 import { AppShell } from "@/components/shell";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "Tenbagger Lite";
+const APP_NAME = "Investment Discovery Terminal";
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: APP_NAME },
+      { title: "Investment Discovery Terminal" },
       { name: "theme-color", content: "#0c0d0b" },
       {
         name: "description",
-        content: "Wildcard 5% personal tenbagger discovery terminal",
+        content: "Tenbagger Lite v2 — X-Bagger, Oversold, Quality 70. Scores are not buy signals.",
       },
     ],
     links: [

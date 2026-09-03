@@ -1,22 +1,28 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
-  FolderInput,
+  Crosshair,
   History,
-  Radar,
+  LayoutDashboard,
+  ListChecks,
   Search,
   Settings,
-  Star,
+  SlidersHorizontal,
+  TrendingDown,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/", label: "레이더", icon: Radar },
-  { to: "/analyze", label: "분석", icon: Search },
-  { to: "/watchlist", label: "워치", icon: Star },
+  { to: "/", label: "대시보드", icon: LayoutDashboard },
+  { to: "/discover", label: "발굴", icon: Search },
+  { to: "/xbagger", label: "X-Bagger", icon: Activity },
+  { to: "/oversold", label: "Oversold", icon: TrendingDown },
+  { to: "/quality", label: "Quality 70", icon: Wallet },
+  { to: "/cross", label: "매트릭스", icon: Crosshair },
+  { to: "/universe", label: "유니버스", icon: ListChecks },
+  { to: "/queue", label: "큐", icon: SlidersHorizontal },
   { to: "/history", label: "이력", icon: History },
-  { to: "/evidence", label: "증거", icon: Activity },
-  { to: "/handoff", label: "마스터", icon: FolderInput },
   { to: "/settings", label: "설정", icon: Settings },
 ] as const;
 
@@ -28,7 +34,7 @@ function NavLink({
 }: {
   to: string;
   label: string;
-  icon: typeof Radar;
+  icon: typeof Search;
   compact?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -38,9 +44,7 @@ function NavLink({
       to={to}
       className={cn(
         "flex items-center gap-3 rounded-[var(--radius-md)] text-sm transition-colors duration-150",
-        compact
-          ? "h-12 min-w-12 flex-col justify-center gap-0.5 px-2"
-          : "h-11 px-3",
+        compact ? "h-12 min-w-12 flex-col justify-center gap-0.5 px-2" : "h-11 px-3",
         active ? "bg-elevated text-fg" : "text-muted hover:text-fg",
       )}
     >
@@ -55,26 +59,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-dvh bg-bg text-fg">
       <aside className="fixed inset-y-0 left-0 hidden w-56 flex-col border-r border-border bg-surface px-3 py-5 md:flex">
         <Link to="/" className="mb-8 px-3">
-          <div className="masthead text-xl leading-tight text-fg">Tenbagger Lite</div>
+          <div className="masthead text-xl leading-tight text-fg">Discovery Terminal</div>
           <div className="mt-1 font-mono text-[0.625rem] tracking-widest text-sage uppercase">
-            Wildcard 5%
+            Tenbagger Lite v2
           </div>
         </Link>
-        <nav className="flex flex-1 flex-col gap-1">
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
           {NAV.map((item) => (
             <NavLink key={item.to} {...item} />
           ))}
         </nav>
         <p className="px-3 pt-4 font-mono text-[0.625rem] leading-relaxed text-subtle">
-          점수는 매수 신호가 아니다. Deep Dive 가치만 측정한다.
+          세 엔진 점수는 합치지 않는다. Research Priority는 매수 신호가 아니다.
         </p>
       </aside>
 
       <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-bg/90 px-4 py-3 backdrop-blur-sm md:hidden">
         <Link to="/">
-          <div className="masthead text-lg leading-none">Tenbagger Lite</div>
+          <div className="masthead text-lg leading-none">Discovery Terminal</div>
           <div className="mt-0.5 font-mono text-[0.6rem] tracking-widest text-sage uppercase">
-            Wildcard 5%
+            Lite v2
           </div>
         </Link>
         <Link
@@ -112,9 +116,7 @@ export function PageTitle({
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
         {kicker ? (
-          <p className="mb-1 font-mono text-[0.6875rem] tracking-widest text-sage uppercase">
-            {kicker}
-          </p>
+          <p className="mb-1 font-mono text-[0.6875rem] tracking-widest text-sage uppercase">{kicker}</p>
         ) : null}
         <h1 className="masthead text-3xl text-fg md:text-4xl">{title}</h1>
       </div>
@@ -126,9 +128,8 @@ export function PageTitle({
 export function SafetyNote() {
   return (
     <p className="mt-10 max-w-2xl border-t border-border pt-4 text-xs leading-relaxed text-subtle">
-      Tenbagger Lite Score는 자동 매수 신호가 아니다. Wildcard 후보로서 추가 Deep Dive할
-      가치가 있는지를 측정한다. Final Verdict는 DEEP DIVE NOW / WATCH / WAIT FOR PROOF /
-      PASS 만 사용한다.
+      This system is a research and ranking tool. Scores are not automatic BUY/SELL signals.
+      X-Bagger, Oversold, Quality는 서로 다른 질문이며 하나의 투자 총점으로 합치지 않는다.
     </p>
   );
 }

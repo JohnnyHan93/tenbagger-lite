@@ -24,6 +24,7 @@ export interface Company {
   sector: string;
   industry: string;
   cohort?: "priority" | "conditional" | "sample";
+  sample?: boolean;
   createdAt: string;
   updatedAt: string;
 }
