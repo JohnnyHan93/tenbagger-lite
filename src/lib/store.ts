@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { buildSampleWorld } from "./samples";
+import { buildLibraryWorld } from "./library";
 import { materializeAnalysis, applyFactorOverride } from "./scoring/pipeline";
 import { uid } from "./utils";
 import type { FactorCode } from "./scoring/config";
@@ -50,11 +51,18 @@ const emptySettings: AppSettings = {
 
 function sampleState() {
   const world = buildSampleWorld();
+  const lib = buildLibraryWorld();
+  const companies = [...world.companies, ...lib.companies];
+  const analyses = [...world.analyses, ...lib.analyses];
+  const watchlist = [
+    ...world.companies.map((c) => c.id),
+    ...lib.companies.filter((c) => c.cohort === "priority").map((c) => c.id),
+  ];
   return {
-    companies: world.companies,
-    analyses: world.analyses,
+    companies,
+    analyses,
     handoffs: world.handoffs,
-    watchlist: world.companies.map((c) => c.id),
+    watchlist,
     settings: emptySettings,
   };
 }
@@ -169,7 +177,7 @@ export const useAppStore = create<AppState>()(
       updateSettings: (s) => set({ settings: { ...get().settings, ...s } }),
     }),
     {
-      name: "tenbagger-lite-v2",
+      name: "tenbagger-lite-v3",
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         companies: s.companies,

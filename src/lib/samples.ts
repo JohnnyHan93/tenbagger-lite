@@ -61,6 +61,7 @@ const C_RB: Company = {
   country: "KR",
   sector: "Industrials",
   industry: "Humanoid / Cobot Robotics",
+  cohort: "sample",
   createdAt: "2026-06-01T00:00:00.000Z",
   updatedAt: "2026-09-03T00:00:00.000Z",
 };
@@ -73,6 +74,7 @@ const C_ALAB: Company = {
   country: "US",
   sector: "Information Technology",
   industry: "AI Connectivity Semiconductors",
+  cohort: "sample",
   createdAt: "2026-06-01T00:00:00.000Z",
   updatedAt: "2026-09-03T00:00:00.000Z",
 };
@@ -85,6 +87,7 @@ const C_SMSN: Company = {
   country: "KR",
   sector: "Information Technology",
   industry: "Memory / Foundry / Devices",
+  cohort: "sample",
   createdAt: "2026-09-03T00:00:00.000Z",
   updatedAt: "2026-09-03T00:00:00.000Z",
 };

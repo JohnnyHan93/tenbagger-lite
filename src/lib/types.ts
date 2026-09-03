@@ -23,6 +23,7 @@ export interface Company {
   country: string;
   sector: string;
   industry: string;
+  cohort?: "priority" | "conditional" | "sample";
   createdAt: string;
   updatedAt: string;
 }

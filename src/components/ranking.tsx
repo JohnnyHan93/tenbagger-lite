@@ -48,6 +48,11 @@ export function RankingList({ rows }: { rows: RankRow[] }) {
                   >
                     {displayTicker(r.company.ticker)}
                   </Link>
+                  {r.company.cohort && r.company.cohort !== "sample" ? (
+                    <span className="ml-2 font-mono text-[0.625rem] tracking-wide text-subtle">
+                      {r.company.cohort === "priority" ? "P1" : "P2"}
+                    </span>
+                  ) : null}
                 </td>
                 <td className="px-4 py-3 text-muted">{r.company.companyName}</td>
                 <td className="px-4 py-3 text-right font-mono tabular-nums">
@@ -89,7 +94,14 @@ export function RankingList({ rows }: { rows: RankRow[] }) {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-mono text-xs text-subtle">#{r.rank}</p>
-                <p className="font-mono text-sm text-sage">{displayTicker(r.company.ticker)}</p>
+                <p className="font-mono text-sm text-sage">
+                  {displayTicker(r.company.ticker)}
+                  {r.company.cohort === "priority"
+                    ? " · P1"
+                    : r.company.cohort === "conditional"
+                      ? " · P2"
+                      : ""}
+                </p>
                 <p className="mt-0.5 text-base text-fg">{r.company.companyName}</p>
               </div>
               <div className="text-right">
