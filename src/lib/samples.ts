@@ -1,6 +1,7 @@
-import { SCORING_VERSION } from "./scoring/config";
-import { scoreAnalysis } from "./scoring/wildcard-score";
+import { FACTOR_WEIGHT, SCORING_VERSION } from "./scoring/config";
+import { decorateFactor, scoreAnalysis } from "./scoring/wildcard-score";
 import { makeFlag } from "./risk/flags";
+import { buildTenxMath } from "./tenx/calculator";
 import type {
   Analysis,
   Company,
@@ -15,15 +16,18 @@ function fs(
   score: number,
   summary: string,
 ): FactorScore {
-  return {
+  return decorateFactor({
     factorCode: code,
     score,
+    weight: FACTOR_WEIGHT[code],
+    weightedScore: null,
     evidenceSummary: summary,
+    confidence: "Medium",
     originalScore: score,
     overrideScore: null,
     overrideReason: null,
     overrideDate: null,
-  };
+  });
 }
 
 function ev(
@@ -94,36 +98,45 @@ function finish(
     | "grade"
     | "verdict"
     | "hardStop"
+    | "hardGates"
+    | "overallConfidence"
+    | "tenxMath"
+    | "quarterlyKpis"
   >,
 ): Analysis {
   const scored = scoreAnalysis(partial.factorScores, partial.redFlags);
-  return { ...partial, ...scored };
+  return {
+    ...partial,
+    ...scored,
+    tenxMath: buildTenxMath(partial.marketCap, partial.financials, partial.tenxScenarios),
+    quarterlyKpis: partial.nextProof.slice(0, 4),
+  };
 }
 
 const rbJuneScores = [
-  fs("F1", 2, "휴머노이드·협동로봇 TAM이 구조적으로 확대 중."),
-  fs("F2", 1, "매출은 성장하나 아직 절대 규모가 작음."),
-  fs("F3", 1, "하드웨어 비중이 높아 매출 확대 시 생산·인력 동반."),
-  fs("F4", 2, "KAIST 기원 제어 IP, 특허, 삼성 품질 기준."),
-  fs("F5", 2, "국내 휴머노이드 선도, 삼성 계열 협력."),
-  fs("F6", 1, "삼성 협력·초기 상용. 대량 Repeat PO는 제한적."),
-  fs("F7", 2, "상장사, 삼성 백킹, 단기 생존 위험 낮음."),
-  fs("F8", 2, "시총 약 8.4조. 10배는 글로벌 플랫폼화 수준."),
-  fs("F9", 1, "제품 사이클은 있으나 양산 시점 불확실."),
-  fs("F10", 1, "10배 ≈ 84조. 강한 성공이 필요하나 범위 안."),
+  fs("F1", 8, "휴머노이드·협동로봇 TAM이 구조적으로 확대 중."),
+  fs("F2", 6, "매출은 성장하나 아직 절대 규모가 작음."),
+  fs("F3", 4, "하드웨어 비중이 높아 매출 확대 시 생산·인력 동반."),
+  fs("F4", 8, "KAIST 기원 제어 IP, 특허, 삼성 품질 기준."),
+  fs("F5", 8, "국내 휴머노이드 선도, 삼성 계열 협력."),
+  fs("F6", 4, "삼성 협력·초기 상용. 대량 Repeat PO는 제한적."),
+  fs("F7", 8, "상장사, 삼성 백킹, 단기 생존 위험 낮음."),
+  fs("F8", 8, "시총 약 8.4조. 10배는 글로벌 플랫폼화 수준."),
+  fs("F9", 4, "제품 사이클은 있으나 양산 시점 불확실."),
+  fs("F10", 6, "10배 ≈ 84조. 강한 성공이 필요하나 범위 안."),
 ];
 
 const rbSeptScores = [
-  fs("F1", 2, "휴머노이드 산업 CAPEX·응용처가 확대되는 초기 침투 구간."),
-  fs("F2", 1, "성장 중이나 아직 초기. 절대 매출은 작음."),
-  fs("F3", 1, "플랫폼 소프트웨어 잠재력은 있으나 생산 캐파 동반 필요."),
-  fs("F4", 2, "고정밀 제어·액추에이터 IP, qualification barrier."),
-  fs("F5", 2, "국내 휴머노이드 핵심 공급 후보, 삼성 협력 축."),
-  fs("F6", 2, "삼성 휴머노이드 협력·평가가 양산 파이프라인으로 이동."),
-  fs("F7", 2, "현금·상장 지위·전략 주주. 희석 위험 제한적."),
-  fs("F8", 2, "시총 8.35조 대비 휴머노이드 TAM 포획 여지 큼."),
-  fs("F9", 2, "삼성 휴머노이드, 신제품, 공장/양산 이벤트가 6–24개월 내."),
-  fs("F10", 1, "10배 시총 ≈ 83.5조. 매출 수조 원 + 적정 멀티플로 설명 가능."),
+  fs("F1", 8, "휴머노이드 산업 CAPEX·응용처가 확대되는 초기 침투 구간."),
+  fs("F2", 6, "성장 중이나 아직 초기. 절대 매출은 작음."),
+  fs("F3", 4, "플랫폼 소프트웨어 잠재력은 있으나 생산 캐파 동반 필요."),
+  fs("F4", 8, "고정밀 제어·액추에이터 IP, qualification barrier."),
+  fs("F5", 8, "국내 휴머노이드 핵심 공급 후보, 삼성 협력 축."),
+  fs("F6", 8, "삼성 휴머노이드 협력·평가가 양산 파이프라인으로 이동."),
+  fs("F7", 8, "현금·상장 지위·전략 주주. 희석 위험 제한적."),
+  fs("F8", 8, "시총 8.35조 대비 휴머노이드 TAM 포획 여지 큼."),
+  fs("F9", 8, "삼성 휴머노이드, 신제품, 공장/양산 이벤트가 12–24개월 내."),
+  fs("F10", 8, "10배 시총 ≈ 83.5조. 매출 수조 원 + 적정 멀티플로 설명 가능."),
 ];
 
 export function buildSampleWorld(): {
@@ -295,16 +308,16 @@ export function buildSampleWorld(): {
   });
 
   const alabScores = [
-    fs("F1", 2, "AI 클러스터 연결(PCIe/CXL/이더넷)은 구조적 장기 성장."),
-    fs("F2", 2, "2026 매출 고성장. Scorpio X 램프가 선행지표."),
-    fs("F3", 2, "실리콘 IP, 높은 한계이익, 반복 설계 승."),
-    fs("F4", 2, "Aries/Scorpio 자격 장벽, 성능 우위."),
-    fs("F5", 2, "AI 랙 연결의 핵심 공급사."),
-    fs("F6", 2, "하이퍼스케일러 양산·리피트 설계 승."),
-    fs("F7", 2, "흑자, 현금, 희석 압력 낮음."),
-    fs("F8", 0, "시총 약 $47.6B. 성공이 상당 부분 반영."),
-    fs("F9", 1, "광학·커스텀 실리콘은 촉매이나 시점 불확실."),
-    fs("F10", 1, "10배 = $476B. AI TAM 확대 + 멀티플 유지가 필요. 가능하나 강성공 가정."),
+    fs("F1", 8, "AI 클러스터 연결(PCIe/CXL/이더넷)은 구조적 장기 성장."),
+    fs("F2", 8, "2026 매출 고성장. Scorpio X 램프가 선행지표."),
+    fs("F3", 8, "실리콘 IP, 높은 한계이익, 반복 설계 승."),
+    fs("F4", 8, "Aries/Scorpio 자격 장벽, 성능 우위."),
+    fs("F5", 8, "AI 랙 연결의 핵심 공급사."),
+    fs("F6", 8, "하이퍼스케일러 양산·리피트 설계 승."),
+    fs("F7", 8, "흑자, 현금, 희석 압력 낮음."),
+    fs("F8", 2, "시총 약 $47.6B. 성공이 상당 부분 반영."),
+    fs("F9", 6, "광학·커스텀 실리콘은 촉매이나 시점 불확실."),
+    fs("F10", 6, "10배 = $476B. AI TAM 확대 + 멀티플 유지가 필요. 가능하나 강성공 가정."),
   ];
 
   const aAlab = finish({
@@ -381,16 +394,16 @@ export function buildSampleWorld(): {
   });
 
   const smsnScores = [
-    fs("F1", 1, "메모리/파운드리는 성장하나 사이클. 구조적 초기 침투가 아님."),
-    fs("F2", 1, "대형 베이스. 성장은 있으나 평범-사이클."),
-    fs("F3", 1, "규모 경제는 있으나 막대한 캡엑스."),
-    fs("F4", 1, "HBM·공정 리더십은 있으나 경쟁 치열 (SK, TSMC, 마이크론)."),
-    fs("F5", 2, "글로벌 메모리 탑티어, 파운드리 의미 있는 위치."),
-    fs("F6", 2, "전 세계 대형 고객, 장기 공급 계약."),
-    fs("F7", 2, "순현금 기조의 초우량 재무."),
+    fs("F1", 4, "메모리/파운드리는 성장하나 사이클. 구조적 초기 침투가 아님."),
+    fs("F2", 4, "대형 베이스. 성장은 있으나 평범-사이클."),
+    fs("F3", 4, "규모 경제는 있으나 막대한 캡엑스."),
+    fs("F4", 6, "HBM·공정 리더십은 있으나 경쟁 치열 (SK, TSMC, 마이크론)."),
+    fs("F5", 8, "글로벌 메모리 탑티어, 파운드리 의미 있는 위치."),
+    fs("F6", 8, "전 세계 대형 고객, 장기 공급 계약."),
+    fs("F7", 10, "순현금 기조의 초우량 재무."),
     fs("F8", 0, "시총 약 450조. 10배는 4,500조."),
-    fs("F9", 1, "HBM·파운드리 점유 확대는 촉매이나 이미 알려진 스토리."),
-    fs("F10", 0, "4,500조는 현실 매출·멀티플로 설명 불가."),
+    fs("F9", 4, "HBM·파운드리 점유 확대는 촉매이나 이미 알려진 스토리."),
+    fs("F10", 2, "4,500조는 현실 매출·멀티플로 설명 불가. Bull도 ~4배."),
   ];
 
   const aSmsn = finish({

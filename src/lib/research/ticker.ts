@@ -1,8 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { FACTOR_ORDER, FACTOR_META, type FactorCode } from "../scoring/config";
+import { FACTOR_ORDER, FACTOR_META, snapEvenScore, type FactorCode } from "../scoring/config";
 import { makeFlag, defaultFlags } from "../risk/flags";
 import {
   buildScenario,
+  buildTenxMath,
   feasibilityFromMath,
   requiredEvSalesFor10x,
   requiredNetIncomeFor10x,
@@ -18,37 +19,41 @@ import type {
 import { heuristicDraft } from "./heuristic";
 import { packText, type ResearchPack } from "./pack";
 
-const GROK_PROMPT = `You are the research engine for Tenbagger Lite, a private wildcard 5% tenbagger discovery terminal.
-Score ALL 10 factors for 5–10 year 10x feasibility from TODAY's market cap. Be conservative. Evidence > story.
-The user message includes a research pack (Nasdaq financials, company profile, wiki, news). Treat those as FACT or REPORTED.
-You MAY use the pack numbers as FACT. Do not call tools.
-You MAY score 2 only with FACT or REPORTED evidence that has sourceName and sourceUrl.
-Do NOT invent filings, POs, or customers. If unknown, score 0 or 1 and state the unlock condition.
+const GROK_PROMPT = `You are the Tenbagger / Wildcard research agent.
+Goal: score whether THIS market cap can become 5–10x in 5–7 years. Not "is this a good company".
+Score ALL 10 factors using ONLY 0 / 2 / 4 / 6 / 8 / 10. No other numbers. No guessing mid-points.
+The user message is the research pack (filings, profile, wiki, news). Treat those as FACT or REPORTED.
+Do NOT invent TAM, POs, customers, or filings. If unknown, use null score (N/A) and Low confidence — never fake a 0.
+You MAY score 8 or 10 only with FACT or REPORTED evidence that has sourceName and sourceUrl.
+MOU / pilot / sample ≠ customer validation ≥ 6.
+Do not double-count the same fact across factors.
 Korean summaries. Return ONLY JSON:
 {
-  "factors": [{"code":"F1","score":0|1|2,"summary":"...","evidence":[{"text":"...","type":"FACT|REPORTED|MANAGEMENT_TARGET|INFERENCE","sourceName":"...","sourceUrl":"...","sourceDate":"YYYY-MM-DD","confidence":0.0}]}],
+  "factors": [{"code":"F1","score":0|2|4|6|8|10|null,"confidence":"High|Medium|Low","summary":"...","evidence":[{"text":"...","type":"FACT|REPORTED|MANAGEMENT_TARGET|INFERENCE","sourceName":"...","sourceUrl":"...","sourceDate":"YYYY-MM-DD","confidence":0.0}]}],
   "redFlags": [{"type":"MANAGEMENT|SURVIVAL|TENX","status":"GREEN|YELLOW|RED","reason":"..."}],
   "catalysts": ["..."],
   "risks": ["..."],
   "nextProof": ["...","...","..."],
   "killCriteria": ["...","...","..."],
-  "thesis": "one Korean sentence with concrete numbers answering why this can be 10x",
-  "base": {"revenue":0,"operatingMargin":0.2,"netMargin":0.12,"multipleType":"EV_SALES","multipleValue":8},
+  "quarterlyKpis": ["...","...","...","..."],
+  "thesis": "one Korean sentence with current market cap and a numeric 10x path",
+  "bear": {"revenue":0,"operatingMargin":0.08,"netMargin":0.05,"multipleType":"EV_SALES","multipleValue":4},
+  "base": {"revenue":0,"operatingMargin":0.18,"netMargin":0.12,"multipleType":"EV_SALES","multipleValue":8},
   "bull": {"revenue":0,"operatingMargin":0.28,"netMargin":0.18,"multipleType":"EV_SALES","multipleValue":12}
 }
 
-Factors:
-${FACTOR_ORDER.map((c) => `${c} ${FACTOR_META[c].name}: ${FACTOR_META[c].question}`).join("\n")}
+Anchors:
+${FACTOR_ORDER.map((c) => `${c} w${FACTOR_META[c].weight} ${FACTOR_META[c].name}: ${FACTOR_META[c].question}`).join("\n")}
 
-Red flags: MANAGEMENT YELLOW=-5 RED=-15; SURVIVAL YELLOW=-10 RED=HARD STOP; TENX YELLOW=-10 RED=HARD STOP
-TENX RED means 10x requires industry boom AND perfect execution AND share AND margin AND multiple all at once.
-Every factor F1–F10 MUST appear. Thesis must include current market cap and a numeric future revenue path.`;
+Hard gates (do not hide): 10x Math < 6 FAIL; Financial Survival < 4 FAIL; Customer Validation < 4 WATCHLIST ONLY.
+Every factor F1–F10 MUST appear. 10x Math must not rely on extreme multiple expansion.`;
 
 type GrokJson = {
   factors?: Array<{
     code?: string;
-    score?: number;
+    score?: number | null;
     summary?: string;
+    confidence?: string;
     evidence?: Array<{
       text?: string;
       type?: string;
@@ -64,6 +69,14 @@ type GrokJson = {
   nextProof?: string[];
   killCriteria?: string[];
   thesis?: string;
+  quarterlyKpis?: string[];
+  bear?: {
+    revenue?: number;
+    operatingMargin?: number;
+    netMargin?: number;
+    multipleType?: string;
+    multipleValue?: number;
+  };
   base?: {
     revenue?: number;
     operatingMargin?: number;
@@ -157,19 +170,24 @@ function mergeGrok(
     for (const f of grok.factors) {
       const code = f.code as FactorCode;
       if (!FACTOR_ORDER.includes(code)) continue;
-      let score = Math.min(2, Math.max(0, Math.round(Number(f.score) || 0)));
+      let score = snapEvenScore(f.score);
       const evs = f.evidence ?? [];
       const hard = evs.filter(
         (e) => e.type === "FACT" || e.type === "REPORTED",
       );
-      if (score === 2 && hard.length === 0) score = 1;
+      if (score != null && score >= 8 && hard.length === 0) score = 6;
       const prev = factorMap.get(code);
+      const conf =
+        f.confidence === "High" || f.confidence === "Medium" || f.confidence === "Low"
+          ? f.confidence
+          : prev?.confidence;
       factorMap.set(code, {
         code,
         score,
-        summary: f.summary || prev?.summary || "UNKNOWN",
+        summary: f.summary || prev?.summary || "N/A",
         found: prev?.found,
         benchmark: prev?.benchmark,
+        confidence: conf,
       });
       for (const e of evs) {
         if (!e.text) continue;
@@ -214,46 +232,62 @@ function mergeGrok(
 
   const mt = (v: string | undefined): "PE" | "EV_SALES" =>
     v === "PE" ? "PE" : "EV_SALES";
+  const byName = (n: "BEAR" | "BASE" | "BULL") =>
+    baseH.tenxScenarios.find((s) => s.scenario === n);
+  const bear = grok.bear
+    ? buildScenario({
+        scenario: "BEAR",
+        revenue: Number(grok.bear.revenue) || byName("BEAR")?.revenue || 0,
+        operatingMargin: Number(grok.bear.operatingMargin) || 0.08,
+        netMargin: Number(grok.bear.netMargin) || 0.05,
+        multipleType: mt(grok.bear.multipleType),
+        multipleValue: Number(grok.bear.multipleValue) || 4,
+        currentMarketCap: quote.marketCap,
+      })
+    : byName("BEAR") ?? baseH.tenxScenarios[0]!;
   const base = grok.base
     ? buildScenario({
         scenario: "BASE",
-        revenue: Number(grok.base.revenue) || baseH.tenxScenarios[0].revenue,
+        revenue: Number(grok.base.revenue) || byName("BASE")?.revenue || 0,
         operatingMargin: Number(grok.base.operatingMargin) || 0.18,
         netMargin: Number(grok.base.netMargin) || 0.12,
         multipleType: mt(grok.base.multipleType),
         multipleValue: Number(grok.base.multipleValue) || 8,
         currentMarketCap: quote.marketCap,
       })
-    : baseH.tenxScenarios[0];
+    : byName("BASE") ?? baseH.tenxScenarios[1]!;
   const bull = grok.bull
     ? buildScenario({
         scenario: "BULL",
-        revenue: Number(grok.bull.revenue) || baseH.tenxScenarios[1].revenue,
+        revenue: Number(grok.bull.revenue) || byName("BULL")?.revenue || 0,
         operatingMargin: Number(grok.bull.operatingMargin) || 0.28,
         netMargin: Number(grok.bull.netMargin) || 0.2,
         multipleType: mt(grok.bull.multipleType),
         multipleValue: Number(grok.bull.multipleValue) || 12,
         currentMarketCap: quote.marketCap,
       })
-    : baseH.tenxScenarios[1];
+    : byName("BULL") ?? baseH.tenxScenarios[2]!;
 
-  const f10 = factorMap.get("F10")?.score ?? 1;
+  const f10 = factorMap.get("F10")?.score ?? 4;
   const tenxRed = flags.some((f) => f.flagType === "TENX" && f.hardStop);
+  const scenarios = [bear, base, bull];
 
   return {
     quote,
     factors: FACTOR_ORDER.map((c) => factorMap.get(c)!),
     redFlags: flags,
-    tenxScenarios: [base, bull],
+    tenxScenarios: scenarios,
+    tenxMath: buildTenxMath(quote.marketCap, quote.financials, scenarios),
     requiredRevenue: requiredRevenueFor10x(quote.marketCap, "EV_SALES", 8, 0.12),
     requiredNetIncome: requiredNetIncomeFor10x(quote.marketCap, 25),
     requiredPe: requiredPeFor10x(quote.marketCap, bull.netIncome),
     requiredEvSales: requiredEvSalesFor10x(quote.marketCap, bull.revenue),
-    tenxFeasibility: feasibilityFromMath([base, bull], f10, tenxRed),
+    tenxFeasibility: feasibilityFromMath(scenarios, f10, tenxRed),
     catalysts: (grok.catalysts ?? baseH.catalysts).slice(0, 5),
     risks: (grok.risks ?? baseH.risks).slice(0, 5),
     nextProof: (grok.nextProof ?? baseH.nextProof).slice(0, 3),
     killCriteria: (grok.killCriteria ?? baseH.killCriteria).slice(0, 3),
+    quarterlyKpis: (grok.quarterlyKpis ?? baseH.quarterlyKpis ?? []).slice(0, 4),
     thesis: grok.thesis ?? "",
     evidences,
     findings: baseH.findings,

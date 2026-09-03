@@ -4,10 +4,12 @@ import type { FlagStatus, TenxFeasibility } from "@/lib/scoring/config";
 
 export function GradeBadge({ grade, className }: { grade: Grade; className?: string }) {
   const tone = {
+    S: "bg-grade-s/15 text-grade-s",
     A: "bg-grade-a/15 text-grade-a",
     B: "bg-grade-b/15 text-grade-b",
     C: "bg-grade-c/15 text-grade-c",
     D: "bg-grade-d/15 text-grade-d",
+    F: "bg-grade-d/20 text-grade-d",
   }[grade];
   return (
     <span

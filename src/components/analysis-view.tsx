@@ -4,6 +4,7 @@ import { FactorTable } from "@/components/factor-table";
 import {
   BulletList,
   EvidenceTable,
+  HardGatePanel,
   RedFlagPanel,
   TenxMathPanel,
   ThesisCard,
@@ -25,7 +26,7 @@ export function AnalysisView({
   const overrideFactor = useAppStore((s) => s.overrideFactor);
   const [open, setOpen] = useState<FactorCode | null>(null);
   const [reason, setReason] = useState("");
-  const [next, setNext] = useState(1);
+  const [next, setNext] = useState(6);
 
   return (
     <div className="space-y-6">
@@ -48,8 +49,8 @@ export function AnalysisView({
       ) : null}
 
       <p className="text-xs leading-relaxed text-muted">
-        각 팩터는 발견한 값과 2점 기준을 비교합니다. 2점은 FACT/REPORTED 증거가 있을 때만.
-        팩터를 눌러 Override 할 수 있습니다.
+        각 팩터는 0/2/4/6/8/10점. 가중 합이 100점. Hard Gate가 등급보다 우선합니다.
+        팩터를 눌러 Override 할 수 있습니다. Confidence {analysis.overallConfidence}.
       </p>
 
       <section>
@@ -66,7 +67,7 @@ export function AnalysisView({
           </p>
           <p className="mt-1 text-xs text-muted">원래 점수는 보존됩니다. 덮어쓰지 않습니다.</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {[0, 1, 2].map((n) => (
+            {[0, 2, 4, 6, 8, 10].map((n) => (
               <Button
                 key={n}
                 type="button"
@@ -104,6 +105,7 @@ export function AnalysisView({
         </div>
       ) : null}
 
+      <HardGatePanel gates={analysis.hardGates} />
       <RedFlagPanel flags={analysis.redFlags} />
       <TenxMathPanel analysis={analysis} />
       <ThesisCard text={analysis.oneSentenceThesis} gate={analysis.thesisGate} />
@@ -111,8 +113,9 @@ export function AnalysisView({
       <div className="grid gap-6 md:grid-cols-2">
         <BulletList title="Top Catalysts" items={analysis.catalysts} />
         <BulletList title="Top Risks" items={analysis.risks} />
-        <BulletList title="Next Proof" items={analysis.nextProof} />
+        <BulletList title="What Must Be True" items={analysis.nextProof} />
         <BulletList title="Kill Criteria" items={analysis.killCriteria} />
+        <BulletList title="Next 4 Quarterly KPIs" items={analysis.quarterlyKpis ?? []} />
       </div>
 
       <section>

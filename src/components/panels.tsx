@@ -1,7 +1,42 @@
 import { FlagBadge } from "@/components/ui/badge";
 import { formatMoney, formatMultiple, formatPct } from "@/lib/format";
-import type { Analysis, Evidence, RedFlag, TenxScenario } from "@/lib/types";
+import type { Analysis, Evidence, HardGates, RedFlag, TenxScenario } from "@/lib/types";
 import type { Currency } from "@/lib/types";
+import type { GateResult } from "@/lib/scoring/config";
+import { cn } from "@/lib/utils";
+
+export function HardGatePanel({ gates }: { gates: HardGates }) {
+  const rows: Array<{ key: string; label: string; value: GateResult }> = [
+    { key: "tenx", label: "10x Math ≥ 6", value: gates.tenx },
+    { key: "survival", label: "Survival ≥ 4", value: gates.survival },
+    { key: "customer", label: "Customer ≥ 4", value: gates.customer },
+    { key: "evidence", label: "Evidence quality", value: gates.evidence },
+  ];
+  return (
+    <div className="grid gap-3 md:grid-cols-4">
+      {rows.map((r) => (
+        <article
+          key={r.key}
+          className="rounded-[var(--radius-lg)] bg-surface p-4 shadow-[var(--shadow-border)]"
+        >
+          <h3 className="font-mono text-[0.625rem] tracking-widest text-muted uppercase">
+            {r.label}
+          </h3>
+          <p
+            className={cn(
+              "mt-2 font-mono text-sm",
+              r.value === "PASS" && "text-grade-a",
+              r.value === "FAIL" && "text-grade-d",
+              (r.value === "WATCHLIST" || r.value === "RESEARCH REQUIRED") && "text-grade-c",
+            )}
+          >
+            {r.value}
+          </p>
+        </article>
+      ))}
+    </div>
+  );
+}
 
 export function RedFlagPanel({ flags }: { flags: RedFlag[] }) {
   return (
@@ -16,9 +51,6 @@ export function RedFlagPanel({ flags }: { flags: RedFlag[] }) {
             <FlagBadge status={f.status} />
           </div>
           <p className="mt-2 text-sm leading-relaxed text-fg">{f.reason}</p>
-          <p className="mt-2 font-mono text-[0.6875rem] text-subtle">
-            {f.hardStop ? "HARD STOP" : `penalty −${f.penalty}`}
-          </p>
         </article>
       ))}
     </div>
@@ -30,15 +62,28 @@ export function TenxMathPanel({
 }: {
   analysis: Analysis;
 }) {
+  const m = analysis.tenxMath;
   return (
     <div className="rounded-[var(--radius-lg)] bg-surface p-4 shadow-[var(--shadow-border)] md:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="masthead text-xl">10x Math</h3>
         <p className="font-mono text-xs text-muted">
-          Target {formatMoney(analysis.marketCap * 10, analysis.currency)}
+          Path {m?.path ?? "—"} · Target {formatMoney(analysis.marketCap * 10, analysis.currency)}
         </p>
       </div>
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
+      <dl className="mt-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
+        <KV k="Current mcap" v={formatMoney(m?.currentMarketCap ?? analysis.marketCap, analysis.currency)} />
+        <KV k="10x target" v={formatMoney(m?.targetMarketCap ?? analysis.marketCap * 10, analysis.currency)} />
+        <KV k="Current rev" v={formatMoney(m?.currentRevenue, analysis.currency)} />
+        <KV k="Assumed CAGR" v={formatPct(m?.assumedCagr)} />
+        <KV k="5Y revenue" v={formatMoney(m?.revenue5y, analysis.currency)} />
+        <KV k="7Y revenue" v={formatMoney(m?.revenue7y, analysis.currency)} />
+        <KV k="Mature margin" v={formatPct(m?.matureMargin)} />
+        <KV k="Exit multiple" v={formatMultiple(m?.exitMultiple)} />
+        <KV k="Implied future" v={formatMoney(m?.impliedFutureMarketCap, analysis.currency)} />
+        <KV k="vs today" v={formatMultiple(m?.impliedMultipleVsToday)} />
+      </dl>
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
         {analysis.tenxScenarios.map((s) => (
           <ScenarioCard key={s.scenario} s={s} currency={analysis.currency} />
         ))}

@@ -28,7 +28,7 @@ function Dashboard() {
 
       <SummaryChips
         items={[
-          { label: "A Candidates", value: stats.aCount },
+          { label: "S/A Candidates", value: stats.aCount },
           { label: "B Watchlist", value: stats.bCount },
           { label: "New Evidence", value: stats.newEvidence },
           { label: "Need Refresh", value: stats.refresh },

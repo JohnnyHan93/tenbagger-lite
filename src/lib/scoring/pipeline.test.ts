@@ -34,8 +34,9 @@ function dummyDraft(over: Partial<ResearchDraft> = {}): ResearchDraft {
     },
     factors: FACTOR_ORDER.map((code) => ({
       code,
-      score: 2,
+      score: 10,
       summary: "test",
+      confidence: "High" as const,
     })),
     redFlags: [
       makeFlag("MANAGEMENT", "GREEN", "ok"),
@@ -60,17 +61,18 @@ function dummyDraft(over: Partial<ResearchDraft> = {}): ResearchDraft {
 }
 
 describe("analysis pipeline", () => {
-  it("persists a full analysis with 100 raw and grade A", () => {
+  it("persists a full analysis with weighted 100 and grade S", () => {
     const a = materializeAnalysis("c1", dummyDraft());
-    assert.equal(a.factorTotal, 20);
+    assert.equal(a.factorTotal, 100);
     assert.equal(a.rawScore, 100);
     assert.equal(a.adjustedScore, 100);
-    assert.equal(a.grade, "A");
-    assert.equal(a.verdict, "DEEP DIVE NOW");
+    assert.equal(a.grade, "S");
+    assert.equal(a.verdict, "Prime Wildcard");
     assert.equal(a.hardStop, false);
-    assert.equal(a.tenxScenarios.length, 2);
+    assert.ok(a.tenxScenarios.length >= 2);
     assert.ok(a.oneSentenceThesis.length > 10);
-    assert.equal(a.scoringVersion, "TenbaggerLite-v1.0");
+    assert.equal(a.scoringVersion, "TenbaggerWildcard-v1.0");
+    assert.equal(a.hardGates.tenx, "PASS");
   });
 
   it("does not mutate previous analyses — new id each time", () => {

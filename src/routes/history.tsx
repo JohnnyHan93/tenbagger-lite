@@ -37,8 +37,8 @@ function HistoryPage() {
       ? FACTOR_ORDER.map((code) => {
           const a = latest.factorScores.find((f) => f.factorCode === code);
           const b = prev.factorScores.find((f) => f.factorCode === code);
-          const av = a ? (a.overrideScore ?? a.score) : 0;
-          const bv = b ? (b.overrideScore ?? b.score) : 0;
+          const av = a ? (a.overrideScore ?? a.score ?? 0) : 0;
+          const bv = b ? (b.overrideScore ?? b.score ?? 0) : 0;
           return av !== bv ? { code, from: bv, to: av } : null;
         }).filter(Boolean)
       : [];

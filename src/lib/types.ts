@@ -1,11 +1,14 @@
 import type {
+  Confidence,
   EvidenceType,
   FactorCode,
   FlagStatus,
   FlagType,
+  GateResult,
   Grade,
   HandoffStatus,
   TenxFeasibility,
+  TenxPath,
   Verdict,
 } from "./scoring/config.ts";
 
@@ -26,11 +29,14 @@ export interface Company {
 
 export interface FactorScore {
   factorCode: FactorCode;
-  score: number;
+  score: number | null;
+  weight: number;
+  weightedScore: number | null;
   evidenceSummary: string;
   found?: string;
   benchmark?: string;
-  originalScore: number;
+  confidence: Confidence;
+  originalScore: number | null;
   overrideScore: number | null;
   overrideReason: string | null;
   overrideDate: string | null;
@@ -56,8 +62,15 @@ export interface RedFlag {
   hardStop: boolean;
 }
 
+export interface HardGates {
+  tenx: GateResult;
+  survival: GateResult;
+  customer: GateResult;
+  evidence: GateResult;
+}
+
 export interface TenxScenario {
-  scenario: "BASE" | "BULL";
+  scenario: "BEAR" | "BASE" | "BULL";
   revenue: number;
   operatingMargin: number;
   netMargin: number;
@@ -66,6 +79,20 @@ export interface TenxScenario {
   multipleValue: number;
   impliedMarketCap: number;
   upsideMultiple: number;
+}
+
+export interface TenxMath {
+  currentMarketCap: number;
+  targetMarketCap: number;
+  currentRevenue: number | null;
+  assumedCagr: number | null;
+  revenue5y: number | null;
+  revenue7y: number | null;
+  matureMargin: number;
+  exitMultiple: number;
+  impliedFutureMarketCap: number | null;
+  impliedMultipleVsToday: number | null;
+  path: TenxPath;
 }
 
 export interface FinancialSnapshot {
@@ -98,8 +125,10 @@ export interface Analysis {
   verdict: Verdict;
   tenxFeasibility: TenxFeasibility;
   redFlags: RedFlag[];
+  hardGates: HardGates;
   hardStop: boolean;
   tenxScenarios: TenxScenario[];
+  tenxMath: TenxMath;
   requiredRevenue: number | null;
   requiredNetIncome: number | null;
   requiredMarketShare: number | null;
@@ -111,8 +140,10 @@ export interface Analysis {
   risks: string[];
   nextProof: string[];
   killCriteria: string[];
+  quarterlyKpis: string[];
   evidences: Evidence[];
   findings?: Array<{ label: string; value: string }>;
+  overallConfidence: Confidence;
   scoringVersion: string;
   researchProvider: string;
   createdAt: string;
@@ -148,10 +179,11 @@ export interface ResearchQuote {
 
 export interface DraftFactor {
   code: FactorCode;
-  score: number;
+  score: number | null;
   summary: string;
   found?: string;
   benchmark?: string;
+  confidence?: Confidence;
 }
 
 export interface ResearchDraft {
@@ -159,6 +191,7 @@ export interface ResearchDraft {
   factors: DraftFactor[];
   redFlags: RedFlag[];
   tenxScenarios: TenxScenario[];
+  tenxMath?: TenxMath;
   requiredRevenue: number | null;
   requiredNetIncome: number | null;
   requiredPe: number | null;
@@ -168,6 +201,7 @@ export interface ResearchDraft {
   risks: string[];
   nextProof: string[];
   killCriteria: string[];
+  quarterlyKpis?: string[];
   thesis: string;
   evidences: Evidence[];
   findings?: Array<{ label: string; value: string }>;

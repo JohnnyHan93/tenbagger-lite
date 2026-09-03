@@ -27,8 +27,8 @@ export function ScoreHero({
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Stat label="Wildcard" value={formatScore(analysis.adjustedScore)} accent />
-        <Stat label="Factor" value={`${analysis.factorTotal}/20`} />
+        <Stat label="Total" value={formatScore(analysis.adjustedScore)} accent />
+        <Stat label="Raw Σ" value={`${analysis.factorTotal}/100`} />
         <Stat label="Price" value={formatPrice(analysis.price, analysis.currency)} />
         <Stat label="Market Cap" value={formatMoney(analysis.marketCap, analysis.currency)} />
       </div>

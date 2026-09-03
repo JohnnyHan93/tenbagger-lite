@@ -62,18 +62,19 @@ describe("extractNamedCustomers", () => {
 });
 
 describe("heuristicDraft IONQ-like filings", () => {
-  it("scores all 10 factors from filings + profile", () => {
+  it("scores all 10 factors on the 0-10 ladder from filings + profile", () => {
     const d = heuristicDraft(ionqQuote(), ionqPack);
     const by = Object.fromEntries(d.factors.map((f) => [f.code, f]));
     assert.equal(d.factors.length, 10);
-    assert.equal(by.F2?.score, 2);
-    assert.equal(by.F4?.score, 2);
-    assert.equal(by.F6?.score, 1);
-    assert.equal(by.F7?.score, 1);
+    assert.equal(by.F2?.score, 10);
+    assert.equal(by.F4?.score, 8);
+    assert.equal(by.F6?.score, 4);
+    assert.ok((by.F7?.score ?? 0) >= 6);
     assert.equal(by.F8?.score, 0);
-    assert.equal(by.F10?.score, 0);
+    assert.ok((by.F10?.score ?? 0) <= 2);
     assert.match(by.F6?.summary ?? "", /NVIDIA|AstraZeneca|Amazon/);
     assert.ok(by.F2?.found);
     assert.ok(by.F2?.benchmark);
+    assert.equal(d.tenxScenarios.length, 3);
   });
 });

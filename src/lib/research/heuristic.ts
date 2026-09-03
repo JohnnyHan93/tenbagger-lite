@@ -1,12 +1,14 @@
-import { FACTOR_ORDER, FACTOR_META, type FactorCode } from "../scoring/config.ts";
+import { FACTOR_ORDER, FACTOR_META, type Confidence, type FactorCode } from "../scoring/config.ts";
 import { makeFlag } from "../risk/flags.ts";
 import {
+  buildTenxMath,
   defaultScenarios,
   feasibilityFromMath,
   requiredEvSalesFor10x,
   requiredNetIncomeFor10x,
   requiredPeFor10x,
   requiredRevenueFor10x,
+  scoreTenxFromUpside,
 } from "../tenx/calculator.ts";
 import { formatMoney, formatPct } from "../format.ts";
 import type {
@@ -23,6 +25,14 @@ function evId(prefix: string) {
 
 const GROWING =
   /quantum|semiconductor|robot|aerospace|space\b|artificial intelligence|\bai\b|cyber|biotech|electric vehicle|\bev\b|data center|foundry|photonic|networking|defense/i;
+
+type Row = {
+  score: number | null;
+  summary: string;
+  found: string;
+  benchmark: string;
+  confidence: Confidence;
+};
 
 export function heuristicDraft(
   quote: ResearchQuote,
@@ -49,284 +59,320 @@ export function heuristicDraft(
   const blob = `${pack.profile}\n${pack.wiki}\n${quote.sector}\n${quote.industry}`;
   const growingTheme = GROWING.test(blob);
   const requiredRev = requiredRevenueFor10x(marketCap, "EV_SALES", 8, 0.12);
+  const { bear, base, bull } = defaultScenarios(marketCap || 1, financials);
+  const tenxMath = buildTenxMath(marketCap || 1, financials, [bear, base, bull]);
 
-  let f2 = 1;
-  let f2s = "매출 숫자 없음. 2점 조건: 최근 연간 매출이 전년 대비 +40% 이상.";
+  let f2: Row = {
+    score: null,
+    summary: "매출 시계열 없음. N/A — 공시 확인 필요.",
+    found: "매출 없음",
+    benchmark: "10점: YoY 50%+ 또는 30%+ 재가속",
+    confidence: "Low",
+  };
   if (growth != null && rev != null && prior != null) {
-    if (growth >= 0.4) {
-      f2 = 2;
-      f2s = `매출 ${formatMoney(prior, currency)} → ${formatMoney(rev, currency)} (${formatPct(growth)}). 고성장 확인.`;
-    } else if (growth >= 0.15) {
-      f2 = 1;
-      f2s = `매출 성장 ${formatPct(growth)}. 2점 조건: +40% 이상 가속.`;
-    } else if (growth < 0) {
-      f2 = 0;
-      f2s = `매출 감소 ${formatPct(growth)}.`;
-    } else {
-      f2 = 1;
-      f2s = `매출 성장 ${formatPct(growth)}로 완만.`;
-    }
+    let score = 4;
+    if (growth < 0) score = 0;
+    else if (growth < 0.05) score = 2;
+    else if (growth < 0.15) score = 4;
+    else if (growth < 0.3) score = 6;
+    else if (growth < 0.5) score = 8;
+    else score = 10;
+    f2 = {
+      score,
+      summary: `매출 ${formatMoney(prior, currency)} → ${formatMoney(rev, currency)} (${formatPct(growth)}).`,
+      found: formatPct(growth),
+      benchmark: "10점: YoY 50%+ / 8점: 30–50%",
+      confidence: "High",
+    };
   }
 
-  let f1 = 1;
-  let f1s = `${FACTOR_META.F1.nameKo} — 구조 성장 근거 부족. 2점 조건: TAM CAGR ≥15% 공시/리서치.`;
   const cagr = blob.match(/CAGR[^0-9]{0,12}(\d{1,2}(?:\.\d+)?)\s*%/i);
   const cagrN = cagr ? Number(cagr[1]) / 100 : null;
-  if (cagrN != null && cagrN >= 0.15) {
-    f1 = 2;
-    f1s = `언급된 TAM CAGR ${formatPct(cagrN)}. 구조 성장 근거.`;
-  } else if (growingTheme && (growth == null || growth >= 0.15)) {
-    f1 = 1;
-    f1s = `성장 테마(${quote.sector || quote.industry || "profile"})와 사업 설명이 맞음. 2점은 TAM 숫자.`;
+  const tamMult = rev && rev > 0 && requiredRev ? requiredRev / rev : null;
+  let f1: Row = {
+    score: null,
+    summary: "TAM·CAGR 외부 숫자 없음. N/A.",
+    found: "TAM 없음",
+    benchmark: "8점: CAGR 15–25% + TAM 10배+",
+    confidence: "Low",
+  };
+  if (cagrN != null) {
+    let score = 4;
+    if (cagrN < 0) score = 0;
+    else if (cagrN < 0.03) score = 2;
+    else if (cagrN < 0.08) score = 4;
+    else if (cagrN < 0.15) score = 6;
+    else if (cagrN < 0.25) score = 8;
+    else score = 10;
+    f1 = {
+      score,
+      summary: `언급된 TAM CAGR ${formatPct(cagrN)}.`,
+      found: `TAM CAGR ${formatPct(cagrN)}`,
+      benchmark: "8점: CAGR 15–25%",
+      confidence: "Medium",
+    };
+  } else if (growingTheme && (growth == null || growth >= 0.08)) {
+    f1 = {
+      score: 6,
+      summary: `구조 성장 테마(${quote.sector || quote.industry || "profile"}). 외부 TAM 숫자는 없음.`,
+      found: `성장 테마 · ${quote.sector || quote.industry || "profile"}`,
+      benchmark: "8점: CAGR 15–25% + TAM 10배+",
+      confidence: "Medium",
+    };
   } else if (!growingTheme && growth != null && growth < 0) {
-    f1 = 0;
-    f1s = "시장·매출이 동시에 약함.";
+    f1 = {
+      score: 0,
+      summary: "시장·매출이 동시에 약함.",
+      found: "축소 징후",
+      benchmark: "8점: CAGR 15–25%",
+      confidence: "Medium",
+    };
   }
 
-  let f3 = 1;
-  let f3s = `${FACTOR_META.F3.nameKo} — 마진 데이터 부족.`;
-  if (gm != null && gm >= 0.55 && op != null && op > 0) {
-    f3 = 2;
-    f3s = `매출총이익률 ${formatPct(gm)} · 영업흑자. 레버리지 확인.`;
-  } else if (gm != null && gm >= 0.3) {
-    f3 = 1;
-    f3s =
-      op != null && op < 0
-        ? `매출총이익률 ${formatPct(gm)}이나 영업적자. 확장성은 미완성.`
-        : `매출총이익률 ${formatPct(gm)}. 영업 레버리지 추가 확인.`;
-  } else if (gm != null && gm < 0.15) {
-    f3 = 0;
-    f3s = `매출총이익률 ${formatPct(gm)}. 한계이익이 약함.`;
+  let f3: Row = {
+    score: null,
+    summary: "마진 데이터 없음. N/A.",
+    found: "마진 없음",
+    benchmark: "8점: 플랫폼/IP + 높은 증분이익",
+    confidence: "Low",
+  };
+  if (gm != null) {
+    let score = 4;
+    if (gm < 0.1) score = 0;
+    else if (gm < 0.2) score = 2;
+    else if (gm < 0.35) score = 4;
+    else if (gm < 0.55) score = op != null && op > 0 ? 6 : 4;
+    else score = op != null && op > 0 ? 8 : 6;
+    if (gm >= 0.7 && op != null && op > 0) score = 8;
+    f3 = {
+      score,
+      summary:
+        op != null && op < 0
+          ? `매출총이익률 ${formatPct(gm)}이나 영업적자.`
+          : `매출총이익률 ${formatPct(gm)}.`,
+      found: `GPM ${formatPct(gm)}`,
+      benchmark: "8점: 높은 증분이익 + 레버리지",
+      confidence: "High",
+    };
   }
 
-  let f4 = 1;
-  let f4s = `${FACTOR_META.F4.nameKo} — 해자 문서 없음. 2점 조건: 특허·qualification.`;
-  if (pack.techClaims.length) {
-    f4 = 1;
-    f4s = pack.techClaims[0]!;
-    if (/world record|patent/i.test(pack.techClaims.join(" ")) && pack.customers.length >= 2) {
-      f4 = 2;
-      f4s = `${pack.techClaims[0]} 고객 ${pack.customers.slice(0, 3).join(", ")}가 사용.`;
-    }
+  let f4: Row = {
+    score: pack.techClaims.length ? 4 : null,
+    summary: pack.techClaims[0] || "해자 문서 없음. N/A.",
+    found: pack.techClaims[0] || "해자 문서 없음",
+    benchmark: "8점: 복수 moat (특허+락인+인증)",
+    confidence: pack.techClaims.length ? "Medium" : "Low",
+  };
+  if (/world record|patent/i.test(pack.techClaims.join(" "))) {
+    f4 = {
+      score: pack.customers.length >= 2 ? 8 : 6,
+      summary: `${pack.techClaims[0]} ${pack.customers.length ? `고객 ${pack.customers.slice(0, 3).join(", ")}` : ""}`.trim(),
+      found: pack.techClaims[0]!,
+      benchmark: "8점: 복수 moat",
+      confidence: "Medium",
+    };
   }
 
-  let f5 = 1;
-  let f5s = `${FACTOR_META.F5.nameKo} — 점유율 숫자 없음.`;
-  if (/world'?s leading|leader|first commercially/i.test(blob)) {
-    f5 = 1;
-    f5s = "사업 설명이 리더를 주장. 2점은 점유율·bottleneck 숫자.";
-  }
-  if (pack.customers.length >= 3) {
-    f5 = 1;
-    f5s = `공개 고객 ${pack.customers.slice(0, 3).join(", ")}. 점유율은 미확인.`;
+  let f5: Row = {
+    score: null,
+    summary: "점유율 숫자 없음. N/A.",
+    found: "점유율 없음",
+    benchmark: "8점: Top 3 또는 빠른 점유 상승",
+    confidence: "Low",
+  };
+  if (/world'?s leading|leader|first commercially/i.test(blob) || pack.customers.length >= 3) {
+    f5 = {
+      score: 4,
+      summary: pack.customers.length
+        ? `공개 고객 ${pack.customers.slice(0, 3).join(", ")}. 점유율은 미확인.`
+        : "리더 주장. 점유율 숫자 없음.",
+      found: pack.customers.length ? `고객 ${pack.customers.length}곳` : "리더 주장",
+      benchmark: "8점: Top 3 또는 점유 상승",
+      confidence: "Medium",
+    };
   }
 
-  let f6 = 1;
-  let f6s = `${FACTOR_META.F6.nameKo} — 고객명 없음. 2점 조건: Repeat PO / 양산.`;
-  if (pack.customers.length >= 2) {
-    f6 = 1;
-    f6s = `공개 고객: ${pack.customers.join(", ")}. Repeat PO는 미확인.`;
-  }
   const poHit = pack.news.find((n) =>
     /purchase order|\brepeat\b|production contract|양산|수주/i.test(n.title),
   );
+  let f6: Row = {
+    score: rev && rev > 0 ? 4 : pack.customers.length ? 4 : 2,
+    summary: pack.customers.length
+      ? `공개 고객: ${pack.customers.join(", ")}. Repeat PO 미확인.`
+      : rev && rev > 0
+        ? "매출은 있으나 고객명 없음."
+        : "고객 증거 약함.",
+    found: pack.customers.length ? pack.customers.slice(0, 3).join(", ") : rev ? "매출만 확인" : "고객명 없음",
+    benchmark: "6점: 다수 유료+반복 / 8점: 대형 고객 반복",
+    confidence: pack.customers.length ? "Medium" : "Low",
+  };
   if (poHit && pack.customers.length) {
-    f6 = 2;
-    f6s = `${poHit.title} + 고객 ${pack.customers.slice(0, 3).join(", ")}.`;
+    f6 = {
+      score: 6,
+      summary: `${poHit.title} + 고객 ${pack.customers.slice(0, 3).join(", ")}.`,
+      found: poHit.title,
+      benchmark: "8점: 대형 고객 반복·갱신",
+      confidence: "Medium",
+    };
+  }
+  if (!pack.customers.length && !(rev && rev > 0)) {
+    f6 = {
+      score: 2,
+      summary: "MOU/파일럿 이상으로 보기 어려움.",
+      found: "고객명 없음",
+      benchmark: "6점: 다수 유료+반복",
+      confidence: "Low",
+    };
   }
 
-  let f7 = 1;
+  let f7score: number | null = null;
+  let f7s = "현금·부채·CFO 미확인. N/A.";
+  let f7conf: Confidence = "Low";
   let survival: RedFlag = makeFlag(
     "SURVIVAL",
     "YELLOW",
-    "현금·부채·CFO를 완전 확인하지 못함. 보수적으로 YELLOW.",
+    "현금·부채·CFO를 완전 확인하지 못함.",
   );
-  if (op != null && op > 0 && cash >= debt) {
-    f7 = 2;
-    survival = makeFlag(
-      "SURVIVAL",
-      "GREEN",
-      `영업흑자 ${formatMoney(op, currency)} · 순현금 성격. 단기 생존 위험 낮음.`,
-    );
+  if (fcf != null && fcf > 0 && cash >= debt) {
+    f7score = 10;
+    f7s = `FCF 흑자 ${formatMoney(fcf, currency)} · 순현금.`;
+    f7conf = "High";
+    survival = makeFlag("SURVIVAL", "GREEN", f7s);
+  } else if (op != null && op > 0 && cash >= debt) {
+    f7score = 8;
+    f7s = `영업흑자 ${formatMoney(op, currency)} · 순현금 성격.`;
+    f7conf = "High";
+    survival = makeFlag("SURVIVAL", "GREEN", f7s);
+  } else if (runwayYears != null && runwayYears >= 2) {
+    f7score = 6;
+    f7s = `영업적자 ${formatMoney(op, currency)}. 현금 런웨이 약 ${runwayYears.toFixed(1)}년.`;
+    f7conf = "High";
+    survival = makeFlag("SURVIVAL", "YELLOW", f7s);
+  } else if (runwayYears != null && runwayYears >= 1.5) {
+    f7score = 4;
+    f7s = `런웨이 약 ${runwayYears.toFixed(1)}년. 자본조달 가능성.`;
+    f7conf = "High";
+    survival = makeFlag("SURVIVAL", "YELLOW", f7s);
+  } else if (runwayYears != null && runwayYears >= 1) {
+    f7score = 2;
+    f7s = `런웨이 약 ${runwayYears.toFixed(1)}년. 반복 증자 위험.`;
+    f7conf = "High";
+    survival = makeFlag("SURVIVAL", "YELLOW", f7s);
   } else if (runwayYears != null && runwayYears < 1) {
-    f7 = 0;
-    survival = makeFlag(
-      "SURVIVAL",
-      "RED",
-      `런웨이 약 ${runwayYears.toFixed(1)}년. 현금 고갈·희석 위험.`,
-    );
-  } else if (op != null && op < 0) {
-    f7 = 1;
-    const run =
-      runwayYears != null ? ` 현금 런웨이 약 ${runwayYears.toFixed(1)}년.` : "";
-    survival = makeFlag(
-      "SURVIVAL",
-      "YELLOW",
-      `영업적자 ${formatMoney(op, currency)}.${run} 2점은 CFO 흑자 전환 시.`,
-    );
+    f7score = 0;
+    f7s = `런웨이 약 ${runwayYears.toFixed(1)}년. 유동성 위기 가능.`;
+    f7conf = "High";
+    survival = makeFlag("SURVIVAL", "RED", f7s);
+  } else if (cash > 0 || op != null) {
+    f7score = 4;
+    f7s = `현금 ${formatMoney(cash, currency)} · 영업손익 ${formatMoney(op, currency)}. 런웨이 추정 불완전.`;
+    f7conf = "Medium";
+    survival = makeFlag("SURVIVAL", "YELLOW", f7s);
   }
+  const f7: Row = {
+    score: f7score,
+    summary: f7s,
+    found: runwayYears != null ? `런웨이 ${runwayYears.toFixed(1)}년` : op != null ? formatMoney(op, currency) : "현금/손익 없음",
+    benchmark: "8점: 순현금 + CFO/FCF 흑자",
+    confidence: f7conf,
+  };
 
-  let f8 = 1;
+  let f8score: number | null = 4;
   let f8s = "적정 수준으로 보수 평가.";
-  let f10 = 1;
+  let f10score = scoreTenxFromUpside(bull.upsideMultiple, base.upsideMultiple);
   let tenx = makeFlag(
     "TENX",
-    "YELLOW",
-    "10x가 가능하려면 강한 성공 가정이 필요. 자동 모드는 보수적으로 판정.",
+    f10score >= 6 ? "GREEN" : f10score >= 4 ? "YELLOW" : "RED",
+    `Bull ${bull.upsideMultiple.toFixed(1)}x · Base ${base.upsideMultiple.toFixed(1)}x. 경로 ${tenxMath.path}.`,
   );
 
   if (marketCap >= 2e11 && currency === "USD") {
-    f8 = 0;
-    f10 = 0;
-    f8s = "시총이 이미 커서 미래 기회가 상당 반영.";
-    tenx = makeFlag(
-      "TENX",
-      "RED",
-      "시총이 이미 커서 10배는 비현실적 매출·멀티플을 요구.",
-    );
+    f8score = 0;
+    f8s = "시총이 이미 커서 미래가 상당 반영.";
   } else if (marketCap >= 2e14 && currency === "KRW") {
-    f8 = 0;
-    f10 = 0;
+    f8score = 0;
     f8s = "시총이 이미 커서 10배는 비현실적.";
-    tenx = makeFlag("TENX", "RED", "시총이 이미 커서 10배는 비현실적.");
   } else if (salesMultiple != null && salesMultiple >= 40) {
-    f8 = 0;
-    f10 = 0;
-    f8s = `시총/매출 ${salesMultiple.toFixed(0)}x. 성공이 이미 상당 반영.`;
-    tenx = makeFlag(
-      "TENX",
-      "YELLOW",
-      `고멀티플 상태. 10배는 매출 ${formatMoney(requiredRev, currency)} 경로가 필요.`,
-    );
-  } else if (salesMultiple != null && salesMultiple < 8 && marketCap < 1e10) {
-    f8 = 2;
-    f10 = 1;
-    f8s = `시총/매출 ${salesMultiple.toFixed(1)}x. 미래 기회 대비 시총 여지.`;
-    tenx = makeFlag(
-      "TENX",
-      "GREEN",
-      "시총이 상대적으로 작아 10배 수학의 여지가 있음. 사업 검증은 수동 확인.",
-    );
-  } else if (marketCap >= 3e10 && currency === "USD") {
-    f8 = 0;
-    f10 = 1;
-    f8s = "현재 시총에 성공이 상당 반영.";
-    tenx = makeFlag(
-      "TENX",
-      "YELLOW",
-      "현재 시총에서 10배는 TAM 확대와 높은 멀티플이 동시에 필요.",
-    );
+    f8score = 0;
+    f8s = `시총/매출 ${salesMultiple.toFixed(0)}x. 성공이 이미 가격에 반영.`;
+  } else if (salesMultiple != null && salesMultiple >= 20) {
+    f8score = 2;
+    f8s = `시총/매출 ${salesMultiple.toFixed(0)}x. 성장의 상당 부분 반영.`;
+  } else if (salesMultiple != null && salesMultiple >= 8) {
+    f8score = 4;
+    f8s = `시총/매출 ${salesMultiple.toFixed(1)}x. 고성장으로 일부 정당화.`;
+  } else if (salesMultiple != null && salesMultiple < 8) {
+    f8score = 8;
+    f8s = `시총/매출 ${salesMultiple.toFixed(1)}x. 성장 대비 여지.`;
   } else if (marketCap > 0 && marketCap < 1e10 && currency === "USD") {
-    f8 = 2;
-    f10 = 1;
+    f8score = 6;
     f8s = "시총 대비 미래 기회 여지.";
-    tenx = makeFlag(
-      "TENX",
-      "GREEN",
-      "시총이 상대적으로 작아 10배 수학의 여지가 있음. 사업 검증은 수동 확인.",
-    );
   } else if (currency === "KRW" && marketCap > 0 && marketCap < 1.5e13) {
-    f8 = 2;
-    f10 = 1;
+    f8score = 6;
     f8s = "시총 대비 미래 기회 여지.";
-    tenx = makeFlag(
-      "TENX",
-      "GREEN",
-      "시총 대비 10배 여지. 사업 검증은 수동 확인.",
-    );
   }
 
-  let f9 = 1;
-  let f9s = `${FACTOR_META.F9.nameKo} — 6–24개월 촉매 미확인.`;
+  const f8: Row = {
+    score: f8score,
+    summary: f8s,
+    found: salesMultiple != null ? `${salesMultiple.toFixed(0)}x 시총/매출` : formatMoney(marketCap, currency),
+    benchmark: "8점: 성장 대비 저평가",
+    confidence: salesMultiple != null ? "High" : "Medium",
+  };
+
   const catNews = pack.news.find((n) =>
-    /earnings|guidance|launch|contract|FDA|수주|실적|investor day|partnership|world record/i.test(
+    /earnings|guidance|launch|contract|FDA|수주|실적|investor day|partnership|world record|ramp|승인/i.test(
       n.title,
     ),
   );
+  let f9: Row = {
+    score: pack.news.length ? 2 : 0,
+    summary: pack.news[0] ? `장기 기대/뉴스: ${pack.news[0].title}` : "명확한 촉매 없음.",
+    found: catNews?.title || pack.news[0]?.title || "촉매 없음",
+    benchmark: "8점: 12–24개월 실적 반영 복수 촉매",
+    confidence: pack.news.length ? "Medium" : "Low",
+  };
   if (catNews) {
-    f9 = 1;
-    f9s = `촉매 후보: ${catNews.title}`;
-  } else if (pack.news.length) {
-    f9 = 1;
-    f9s = `최근 뉴스: ${pack.news[0]!.title}`;
+    f9 = {
+      score: 4,
+      summary: `촉매 후보: ${catNews.title}`,
+      found: catNews.title,
+      benchmark: "8점: 복수 촉매·일정",
+      confidence: "Medium",
+    };
   }
 
-  const { base, bull } = defaultScenarios(marketCap || 1, financials);
+  const f10: Row = {
+    score: f10score,
+    summary: tenx.reason,
+    found: `Bull ${bull.upsideMultiple.toFixed(1)}x · 필요 매출 ${formatMoney(requiredRev, currency)}`,
+    benchmark: "6점: 현실 가정 5–7배 / 10점: Base~Bull로 10배",
+    confidence: rev != null ? "High" : "Medium",
+  };
+
+  void tamMult;
   const flags = [
     makeFlag(
       "MANAGEMENT",
       "YELLOW",
-      "자동 모드는 거버넌스를 확인하지 못함. 공시·IR을 직접 볼 것.",
+      "자동 모드는 거버넌스·희석(ATM/CB/워런트)을 확인하지 못함.",
     ),
     survival,
     tenx,
   ];
-  const feasibility = feasibilityFromMath([base, bull], f10, tenx.hardStop);
+  const feasibility = feasibilityFromMath([bear, base, bull], f10score, tenx.hardStop);
 
-  const summary: Record<
-    FactorCode,
-    { score: number; summary: string; found: string; benchmark: string }
-  > = {
-    F1: {
-      score: f1,
-      summary: f1s,
-      found: cagrN != null ? `TAM CAGR ${formatPct(cagrN)}` : growingTheme ? `성장 테마 · ${quote.sector || quote.industry || "profile"}` : "구조 성장 근거 없음",
-      benchmark: "2점: TAM CAGR ≥15%",
-    },
-    F2: {
-      score: f2,
-      summary: f2s,
-      found: growth != null ? formatPct(growth) : "매출 없음",
-      benchmark: "2점: YoY ≥+40%",
-    },
-    F3: {
-      score: f3,
-      summary: f3s,
-      found: gm != null ? `GPM ${formatPct(gm)}` : "마진 없음",
-      benchmark: "2점: GPM ≥55% + 영업흑자",
-    },
-    F4: {
-      score: f4,
-      summary: f4s,
-      found: pack.techClaims[0] || "해자 문서 없음",
-      benchmark: "2점: 특허/기록 + 고객 2곳+",
-    },
-    F5: {
-      score: f5,
-      summary: f5s,
-      found: pack.customers.length ? `고객 ${pack.customers.length}곳` : "점유율 없음",
-      benchmark: "2점: 점유율 또는 bottleneck 숫자",
-    },
-    F6: {
-      score: f6,
-      summary: f6s,
-      found: pack.customers.length ? pack.customers.slice(0, 3).join(", ") : "고객명 없음",
-      benchmark: "2점: Repeat PO / 양산 공시",
-    },
-    F7: {
-      score: f7,
-      summary: survival.reason,
-      found: runwayYears != null ? `런웨이 ${runwayYears.toFixed(1)}년` : op != null ? formatMoney(op, currency) : "현금/손익 없음",
-      benchmark: "2점: 영업흑자 + 순현금",
-    },
-    F8: {
-      score: f8,
-      summary: f8s,
-      found: salesMultiple != null ? `${salesMultiple.toFixed(0)}x 시총/매출` : formatMoney(marketCap, currency),
-      benchmark: "2점: 시총/매출 <8x 이고 시총 작음",
-    },
-    F9: {
-      score: f9,
-      summary: f9s,
-      found: catNews?.title || pack.news[0]?.title || "촉매 없음",
-      benchmark: "2점: 6–24개월 인식 전환 이벤트",
-    },
-    F10: {
-      score: f10,
-      summary: tenx.reason,
-      found: requiredRev ? `10x 필요 매출 ${formatMoney(requiredRev, currency)}` : "수학 불가",
-      benchmark: "2점: 보수 가정으로 10x 설명",
-    },
+  const summary: Record<FactorCode, Row> = {
+    F1: f1,
+    F2: f2,
+    F3: f3,
+    F4: f4,
+    F5: f5,
+    F6: f6,
+    F7: f7,
+    F8: f8,
+    F9: f9,
+    F10: f10,
   };
 
   const factors = FACTOR_ORDER.map((code) => ({
@@ -335,6 +381,7 @@ export function heuristicDraft(
     summary: summary[code].summary,
     found: summary[code].found,
     benchmark: summary[code].benchmark,
+    confidence: summary[code].confidence,
   }));
 
   const today = new Date().toISOString().slice(0, 10);
@@ -433,16 +480,25 @@ export function heuristicDraft(
     pack.customers.length
       ? { label: "공개 고객", value: pack.customers.slice(0, 3).join(", ") }
       : null,
+    { label: "10x 경로", value: tenxMath.path },
     requiredRev
       ? { label: "10x 필요 매출", value: formatMoney(requiredRev, currency) }
       : null,
   ].filter((x): x is { label: string; value: string } => x != null);
 
+  const kpis = [
+    "다음 분기 매출 YoY",
+    f6.score != null && f6.score < 6 ? "Repeat PO / 갱신율" : "고객당 매출",
+    runwayYears != null && runwayYears < 3 ? "현금 소진·희석" : "FCF 추세",
+    "가이던스 vs 실제",
+  ];
+
   return {
     quote,
     factors,
     redFlags: flags,
-    tenxScenarios: [base, bull],
+    tenxScenarios: [bear, base, bull],
+    tenxMath,
     requiredRevenue: requiredRev,
     requiredNetIncome: requiredNetIncomeFor10x(marketCap, 25),
     requiredPe: requiredPeFor10x(marketCap, bull.netIncome),
@@ -454,22 +510,23 @@ export function heuristicDraft(
     risks: [
       pack.customers.length
         ? "고객은 공개됐지만 Repeat PO·양산은 별도 확인"
-        : "시장·기술·고객 팩터는 스토리만으로 2점 금지",
-      "자동 모드 거버넌스 미확인",
+        : "고객 검증 전 단계",
+      "자동 모드 거버넌스·희석 미확인",
       salesMultiple != null && salesMultiple >= 40
         ? "고멀티플: 기대가 이미 가격에 반영"
         : "10x 수학은 가정에 민감",
     ],
     nextProof: [
-      f6 < 2 ? "10-Q/IR에서 Repeat PO 또는 양산 확인" : "매출 성장 지속 확인",
-      "TAM CAGR 3rd-party 숫자",
-      "10x에 필요한 매출 경로를 숫자로 설명",
+      f6.score != null && f6.score < 6 ? "10-Q/IR에서 Repeat PO 또는 양산" : "매출 성장 지속",
+      "외부 검증 TAM/SAM",
+      "희석(ATM/CB/워런트) 없음 확인",
     ],
     killCriteria: [
       "현금 고갈·대규모 희석",
       "핵심 고객 실패",
       "10x 수학이 더 비현실적으로 악화",
     ],
+    quarterlyKpis: kpis,
     thesis: "",
     evidences,
     findings,

@@ -47,7 +47,7 @@ export function ManualForm({
   });
   const [scores, setScores] = useState<Record<FactorCode, number>>(() => {
     const o = {} as Record<FactorCode, number>;
-    for (const c of FACTOR_ORDER) o[c] = 1;
+    for (const c of FACTOR_ORDER) o[c] = 4;
     return o;
   });
   const [summaries, setSummaries] = useState<Record<FactorCode, string>>(() => {
@@ -208,8 +208,11 @@ export function ManualForm({
                 onChange={(e) => setScores({ ...scores, [code]: Number(e.target.value) })}
               >
                 <option value={0}>0</option>
-                <option value={1}>1</option>
                 <option value={2}>2</option>
+                <option value={4}>4</option>
+                <option value={6}>6</option>
+                <option value={8}>8</option>
+                <option value={10}>10</option>
               </NativeSelect>
               <Input
                 placeholder={FACTOR_META[code].nameKo}

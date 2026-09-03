@@ -1,6 +1,14 @@
-import { SCORING_VERSION, FACTOR_ORDER, type FactorCode } from "./config.ts";
-import { scoreAnalysis } from "./wildcard-score.ts";
 import {
+  SCORING_VERSION,
+  FACTOR_ORDER,
+  FACTOR_WEIGHT,
+  snapEvenScore,
+  type Confidence,
+  type FactorCode,
+} from "./config.ts";
+import { decorateFactor, scoreAnalysis } from "./wildcard-score.ts";
+import {
+  buildTenxMath,
   defaultScenarios,
   feasibilityFromMath,
   requiredEvSalesFor10x,
@@ -21,9 +29,12 @@ import type {
 export function emptyFactorScores(): FactorScore[] {
   return FACTOR_ORDER.map((code) => ({
     factorCode: code,
-    score: 0,
-    evidenceSummary: "UNKNOWN",
-    originalScore: 0,
+    score: null,
+    weight: FACTOR_WEIGHT[code],
+    weightedScore: null,
+    evidenceSummary: "N/A",
+    confidence: "Low" as Confidence,
+    originalScore: null,
     overrideScore: null,
     overrideReason: null,
     overrideDate: null,
@@ -34,18 +45,22 @@ export function draftToFactorScores(draft: ResearchDraft): FactorScore[] {
   const byCode = new Map(draft.factors.map((f) => [f.code, f]));
   return FACTOR_ORDER.map((code) => {
     const f = byCode.get(code);
-    const score = f ? Math.min(2, Math.max(0, Math.round(f.score))) : 0;
-    return {
+    const score = f ? snapEvenScore(f.score) : null;
+    const weight = FACTOR_WEIGHT[code];
+    return decorateFactor({
       factorCode: code as FactorCode,
       score,
-      evidenceSummary: f?.summary || "UNKNOWN",
+      weight,
+      weightedScore: null,
+      evidenceSummary: f?.summary || "N/A",
       found: f?.found,
       benchmark: f?.benchmark,
+      confidence: f?.confidence ?? "Medium",
       originalScore: score,
       overrideScore: null,
       overrideReason: null,
       overrideDate: null,
-    };
+    });
   });
 }
 
@@ -62,10 +77,13 @@ export function materializeAnalysis(
   let scenarios = draft.tenxScenarios;
   if (scenarios.length < 2) {
     const d = defaultScenarios(draft.quote.marketCap, draft.quote.financials);
-    scenarios = [d.base, d.bull];
+    scenarios = [d.bear, d.base, d.bull];
   }
   const feasibility =
     draft.tenxFeasibility || feasibilityFromMath(scenarios, f10, tenxRed);
+  const tenxMath =
+    draft.tenxMath ??
+    buildTenxMath(draft.quote.marketCap, draft.quote.financials, scenarios);
   const { thesis, gate } = thesisFromDraft({
     ...draft,
     tenxFeasibility: feasibility,
@@ -96,26 +114,30 @@ export function materializeAnalysis(
     verdict: scored.verdict,
     tenxFeasibility: feasibility,
     redFlags: flags,
+    hardGates: scored.hardGates,
     hardStop: scored.hardStop,
     tenxScenarios: scenarios,
+    tenxMath,
     requiredRevenue:
       draft.requiredRevenue ??
       requiredRevenueFor10x(draft.quote.marketCap, "EV_SALES", evs, netMargin),
     requiredNetIncome:
       draft.requiredNetIncome ?? requiredNetIncomeFor10x(draft.quote.marketCap, pe),
     requiredMarketShare: null,
-    requiredPe: draft.requiredPe ?? requiredPeFor10x(draft.quote.marketCap, scenarios[0]?.netIncome ?? 0),
+    requiredPe: draft.requiredPe ?? requiredPeFor10x(draft.quote.marketCap, scenarios.find((s) => s.scenario === "BASE")?.netIncome ?? 0),
     requiredEvSales:
       draft.requiredEvSales ??
-      requiredEvSalesFor10x(draft.quote.marketCap, scenarios[0]?.revenue ?? 0),
+      requiredEvSalesFor10x(draft.quote.marketCap, scenarios.find((s) => s.scenario === "BULL")?.revenue ?? 0),
     oneSentenceThesis: thesis,
     thesisGate: scored.hardStop || feasibility === "UNREALISTIC" ? "FAIL" : gate,
     catalysts: draft.catalysts.slice(0, 5),
     risks: draft.risks.slice(0, 5),
     nextProof: draft.nextProof.slice(0, 3),
     killCriteria: draft.killCriteria.slice(0, 3),
+    quarterlyKpis: (draft.quarterlyKpis ?? draft.nextProof).slice(0, 4),
     evidences: draft.evidences,
     findings: draft.findings ?? [],
+    overallConfidence: scored.overallConfidence,
     scoringVersion: SCORING_VERSION,
     researchProvider: draft.researchProvider,
     createdAt: analysisDate,
@@ -130,12 +152,12 @@ export function applyFactorOverride(
 ): Analysis {
   const factorScores = analysis.factorScores.map((fs) =>
     fs.factorCode === code
-      ? {
+      ? decorateFactor({
           ...fs,
-          overrideScore,
+          overrideScore: snapEvenScore(overrideScore),
           overrideReason: reason,
           overrideDate: new Date().toISOString(),
-        }
+        })
       : fs,
   );
   const scored = scoreAnalysis(factorScores, analysis.redFlags);
@@ -147,6 +169,8 @@ export function applyFactorOverride(
     adjustedScore: scored.adjustedScore,
     grade: scored.grade,
     verdict: scored.verdict,
+    hardGates: scored.hardGates,
     hardStop: scored.hardStop,
+    overallConfidence: scored.overallConfidence,
   };
 }

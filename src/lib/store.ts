@@ -169,7 +169,7 @@ export const useAppStore = create<AppState>()(
       updateSettings: (s) => set({ settings: { ...get().settings, ...s } }),
     }),
     {
-      name: "tenbagger-lite-v1",
+      name: "tenbagger-lite-v2",
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         companies: s.companies,
