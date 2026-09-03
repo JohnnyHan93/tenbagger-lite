@@ -98,6 +98,7 @@ export function currencyOf(code?: string): Currency {
 export function emptyFinancials(): FinancialSnapshot {
   return {
     revenueTtm: null,
+    revenuePrior: null,
     operatingIncomeTtm: null,
     netIncomeTtm: null,
     cash: null,
@@ -116,6 +117,7 @@ export function financialsFromYahoo(r: YahooResult): FinancialSnapshot {
   const npm = rawNumber(fin?.profitMargins);
   return {
     revenueTtm: rev,
+    revenuePrior: null,
     operatingIncomeTtm: rev != null && opm != null ? rev * opm : null,
     netIncomeTtm: rev != null && npm != null ? rev * npm : null,
     cash: rawNumber(fin?.totalCash),
@@ -246,4 +248,99 @@ export function extractYahooQuoteFromHtml(
     return { ...base, marketCap: streamer, enterpriseValue: streamer };
   }
   return null;
+}
+
+export type NasdaqStatementTable = {
+  headers?: Record<string, string>;
+  rows?: Array<Record<string, string>>;
+};
+
+export type NasdaqFinancialsPayload = {
+  data?: {
+    symbol?: string;
+    incomeStatementTable?: NasdaqStatementTable;
+    balanceSheetTable?: NasdaqStatementTable;
+    cashFlowTable?: NasdaqStatementTable;
+  };
+};
+
+/** Nasdaq company financials print in thousands. */
+const NASDAQ_SCALE = 1_000;
+
+export function parseNasdaqMoney(text: string): number | null {
+  const t = text.replace(/\s/g, "");
+  if (!t || t === "--" || t === "-" || t === "—" || /^n\/?a$/i.test(t)) {
+    return null;
+  }
+  const neg = t.includes("(") || t.startsWith("-");
+  const n = Number(t.replace(/[$,()]/g, ""));
+  if (!Number.isFinite(n)) return null;
+  return neg ? -Math.abs(n) : n;
+}
+
+function nasdaqRow(
+  table: NasdaqStatementTable | undefined,
+  label: string,
+): { latest: number | null; prior: number | null } {
+  const row = table?.rows?.find(
+    (r) => (r.value1 ?? "").trim().toLowerCase() === label.toLowerCase(),
+  );
+  if (!row) return { latest: null, prior: null };
+  const latest = parseNasdaqMoney(row.value2 ?? "");
+  const prior = parseNasdaqMoney(row.value3 ?? "");
+  return {
+    latest: latest == null ? null : latest * NASDAQ_SCALE,
+    prior: prior == null ? null : prior * NASDAQ_SCALE,
+  };
+}
+
+export function financialsFromNasdaq(
+  payload: NasdaqFinancialsPayload,
+): FinancialSnapshot | null {
+  const data = payload.data;
+  if (!data) return null;
+  const inc = data.incomeStatementTable;
+  const bal = data.balanceSheetTable;
+  const cf = data.cashFlowTable;
+  const rev = nasdaqRow(inc, "Total Revenue");
+  if (rev.latest == null && rev.prior == null) return null;
+  const op = nasdaqRow(inc, "Operating Income");
+  const ni = nasdaqRow(inc, "Net Income");
+  const gp = nasdaqRow(inc, "Gross Profit");
+  const cash = nasdaqRow(bal, "Cash and Cash Equivalents");
+  const sti = nasdaqRow(bal, "Short-Term Investments");
+  const ltd = nasdaqRow(bal, "Long-Term Debt");
+  const std = nasdaqRow(
+    bal,
+    "Short-Term Debt / Current Portion of Long-Term Debt",
+  );
+  const ocf = nasdaqRow(cf, "Net Cash Flow-Operating");
+  const cashNow =
+    cash.latest == null && sti.latest == null
+      ? null
+      : (cash.latest ?? 0) + (sti.latest ?? 0);
+  const debtNow =
+    ltd.latest == null && std.latest == null
+      ? null
+      : (ltd.latest ?? 0) + (std.latest ?? 0);
+  const gpm =
+    gp.latest != null && rev.latest && rev.latest !== 0
+      ? gp.latest / rev.latest
+      : null;
+  const opm =
+    op.latest != null && rev.latest && rev.latest !== 0
+      ? op.latest / rev.latest
+      : null;
+  return {
+    revenueTtm: rev.latest,
+    revenuePrior: rev.prior,
+    operatingIncomeTtm: op.latest,
+    netIncomeTtm: ni.latest,
+    cash: cashNow,
+    totalDebt: debtNow,
+    sharesOutstanding: null,
+    grossMargin: gpm,
+    operatingMargin: opm,
+    fcf: ocf.latest,
+  };
 }

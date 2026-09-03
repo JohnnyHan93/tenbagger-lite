@@ -18,3 +18,4 @@ startup.sh
 .grok/preview.log
 .grok/status
 .grok/*.png
+.project_id

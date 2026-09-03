@@ -141,6 +141,7 @@ export function buildSampleWorld(): {
     currency: "KRW",
     financials: {
       revenueTtm: 8.4e10,
+      revenuePrior: null,
       operatingIncomeTtm: -1.2e10,
       netIncomeTtm: -8e9,
       cash: 2.1e11,
@@ -212,6 +213,7 @@ export function buildSampleWorld(): {
     currency: "KRW",
     financials: {
       revenueTtm: 9.6e10,
+      revenuePrior: null,
       operatingIncomeTtm: -9e9,
       netIncomeTtm: -5e9,
       cash: 1.9e11,
@@ -315,6 +317,7 @@ export function buildSampleWorld(): {
     currency: "USD",
     financials: {
       revenueTtm: 8.53e8,
+      revenuePrior: null,
       operatingIncomeTtm: 2.1e8,
       netIncomeTtm: 1.8e8,
       cash: 1.1e9,
@@ -400,6 +403,7 @@ export function buildSampleWorld(): {
     currency: "KRW",
     financials: {
       revenueTtm: 3.1e14,
+      revenuePrior: null,
       operatingIncomeTtm: 3.5e13,
       netIncomeTtm: 2.8e13,
       cash: 9e13,

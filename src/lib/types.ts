@@ -68,6 +68,7 @@ export interface TenxScenario {
 
 export interface FinancialSnapshot {
   revenueTtm: number | null;
+  revenuePrior: number | null;
   operatingIncomeTtm: number | null;
   netIncomeTtm: number | null;
   cash: number | null;

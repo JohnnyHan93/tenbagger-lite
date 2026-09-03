@@ -3,9 +3,11 @@ import {
   currencyOf,
   emptyFinancials,
   extractYahooQuoteFromHtml,
+  financialsFromNasdaq,
   parseCommaNumber,
   parseKoreanMoney,
   quoteFromYahooResult,
+  type NasdaqFinancialsPayload,
   type YahooResult,
 } from "./quote-parse";
 
@@ -150,13 +152,16 @@ type NasdaqSummary = {
 async function tryNasdaq(ticker: string): Promise<ResearchQuote | null> {
   if (ticker.includes(".")) return null;
   try {
-    const [info, summary] = await Promise.all([
+    const [info, summary, financialsRaw] = await Promise.all([
       fetchJson(
         `https://api.nasdaq.com/api/quote/${encodeURIComponent(ticker)}/info?assetclass=stocks`,
       ) as Promise<NasdaqInfo>,
       fetchJson(
         `https://api.nasdaq.com/api/quote/${encodeURIComponent(ticker)}/summary?assetclass=stocks`,
       ) as Promise<NasdaqSummary>,
+      fetchJson(
+        `https://api.nasdaq.com/api/company/${encodeURIComponent(ticker)}/financials?frequency=1`,
+      ).catch(() => null) as Promise<NasdaqFinancialsPayload | null>,
     ]);
     const mcap = parseCommaNumber(
       summary.data?.summaryData?.MarketCap?.value ?? "",
@@ -165,6 +170,8 @@ async function tryNasdaq(ticker: string): Promise<ResearchQuote | null> {
       parseCommaNumber(info.data?.primaryData?.lastSalePrice ?? "") ??
       parseCommaNumber(info.data?.secondaryData?.lastSalePrice ?? "");
     if (!mcap || price == null) return null;
+    const financials =
+      (financialsRaw && financialsFromNasdaq(financialsRaw)) || emptyFinancials();
     return {
       ticker,
       exchange:
@@ -177,7 +184,7 @@ async function tryNasdaq(ticker: string): Promise<ResearchQuote | null> {
       country: "US",
       sector: summary.data?.summaryData?.Sector?.value ?? "",
       industry: summary.data?.summaryData?.Industry?.value ?? "",
-      financials: emptyFinancials(),
+      financials,
     };
   } catch {
     return null;

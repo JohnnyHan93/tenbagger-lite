@@ -3,7 +3,6 @@ import { FACTOR_ORDER, FACTOR_META, type FactorCode } from "../scoring/config";
 import { makeFlag, defaultFlags } from "../risk/flags";
 import {
   buildScenario,
-  defaultScenarios,
   feasibilityFromMath,
   requiredEvSalesFor10x,
   requiredNetIncomeFor10x,
@@ -16,123 +15,15 @@ import type {
   ResearchDraft,
   ResearchQuote,
 } from "../types";
-
-function heuristicDraft(quote: ResearchQuote): ResearchDraft {
-  const { marketCap, financials } = quote;
-  const rev = financials.revenueTtm;
-  const cash = financials.cash ?? 0;
-  const debt = financials.totalDebt ?? 0;
-  const op = financials.operatingMargin;
-
-  let f7 = 1;
-  let survival: RedFlag = makeFlag("SURVIVAL", "YELLOW", "현금·부채·CFO를 완전 확인하지 못함. 보수적으로 YELLOW.");
-  if (op != null && op > 0 && cash >= debt) {
-    f7 = 2;
-    survival = makeFlag("SURVIVAL", "GREEN", "영업흑자·순현금 성격. 단기 생존 위험 낮음.");
-  } else if (cash > 0 && rev && rev > 0 && cash / (rev * 0.2) < 1) {
-    f7 = 0;
-    survival = makeFlag("SURVIVAL", "RED", "런웨이가 짧을 수 있음. 공시로 재확인 필요.");
-  } else if (op != null && op < 0) {
-    f7 = 1;
-    survival = makeFlag("SURVIVAL", "YELLOW", "영업적자. 12–24개월 런웨이 확인 필요.");
-  }
-
-  let f8 = 1;
-  let f10 = 1;
-  let tenx = makeFlag("TENX", "YELLOW", "10x가 가능하려면 강한 성공 가정이 필요. 자동 모드는 보수적으로 판정.");
-  if (marketCap >= 2e11 && quote.currency === "USD") {
-    f8 = 0;
-    f10 = 0;
-    tenx = makeFlag("TENX", "RED", "시총이 이미 커서 10배는 비현실적 매출·멀티플을 요구.");
-  } else if (marketCap >= 2e14 && quote.currency === "KRW") {
-    f8 = 0;
-    f10 = 0;
-    tenx = makeFlag("TENX", "RED", "시총이 이미 커서 10배는 비현실적.");
-  } else if (marketCap >= 3e10 && quote.currency === "USD") {
-    f8 = 0;
-    f10 = 1;
-    tenx = makeFlag("TENX", "YELLOW", "현재 시총에서 10배는 TAM 확대와 높은 멀티플이 동시에 필요.");
-  } else if (marketCap > 0 && marketCap < 1e10 && quote.currency === "USD") {
-    f8 = 2;
-    f10 = 1;
-    tenx = makeFlag("TENX", "GREEN", "시총이 상대적으로 작아 10배 수학의 여지가 있음. 사업 검증은 수동 확인.");
-  } else if (quote.currency === "KRW" && marketCap > 0 && marketCap < 1.5e13) {
-    f8 = 2;
-    f10 = 1;
-    tenx = makeFlag("TENX", "GREEN", "시총 대비 10배 여지. 사업 검증은 수동 확인.");
-  }
-
-  const { base, bull } = defaultScenarios(marketCap || 1, financials);
-  const flags = [
-    makeFlag("MANAGEMENT", "YELLOW", "자동 모드는 거버넌스를 확인하지 못함. 공시·IR을 직접 볼 것."),
-    survival,
-    tenx,
-  ];
-  const f10eff = f10;
-  const feasibility = feasibilityFromMath([base, bull], f10eff, tenx.hardStop);
-
-  const factors = FACTOR_ORDER.map((code) => {
-    let score = 1;
-    let summary = "UNKNOWN — 자동 수집만으로는 2점을 줄 수 없음.";
-    if (code === "F7") {
-      score = f7;
-      summary = survival.reason;
-    } else if (code === "F8") {
-      score = f8;
-      summary = f8 === 0 ? "현재 시총에 성공이 상당 반영." : f8 === 2 ? "시총 대비 미래 기회 여지." : "적정 수준으로 보수 평가.";
-    } else if (code === "F10") {
-      score = f10;
-      summary = tenx.reason;
-    } else if (code === "F2" && rev && marketCap) {
-      score = 1;
-      summary = `TTM 매출 확인. 성장 가속 여부는 공시 확인 필요.`;
-    }
-    return { code, score, summary };
-  });
-
-  const evidences: Evidence[] = [
-    {
-      id: `e_${Date.now()}`,
-      factorCode: "F8",
-      evidence: `시가총액 ${marketCap}, 주가 ${quote.price} ${quote.currency}.`,
-      evidenceType: "FACT",
-      sourceName: "Yahoo Finance",
-      sourceUrl: `https://finance.yahoo.com/quote/${encodeURIComponent(quote.ticker)}/`,
-      sourceDate: new Date().toISOString().slice(0, 10),
-      confidence: 0.9,
-      createdAt: new Date().toISOString(),
-    },
-  ];
-
-  return {
-    quote,
-    factors,
-    redFlags: flags,
-    tenxScenarios: [base, bull],
-    requiredRevenue: requiredRevenueFor10x(marketCap, "EV_SALES", 8, 0.12),
-    requiredNetIncome: requiredNetIncomeFor10x(marketCap, 25),
-    requiredPe: requiredPeFor10x(marketCap, bull.netIncome),
-    requiredEvSales: requiredEvSalesFor10x(marketCap, bull.revenue),
-    tenxFeasibility: feasibility,
-    catalysts: ["실적 발표", "고객/제품 공시", "가이던스 변화"],
-    risks: ["스토리만으로 2점을 준 항목이 있음 — 재검토", "자동 모드 증거 공백", "거버넌스 미확인"],
-    nextProof: [
-      "매출 성장 가속 확인",
-      "대형 고객 Qualification / Repeat PO",
-      "10x에 필요한 매출 경로를 숫자로 설명",
-    ],
-    killCriteria: ["현금 고갈·대규모 희석", "핵심 고객 실패", "10x 수학이 더 비현실적으로 악화"],
-    thesis: "",
-    evidences,
-    researchProvider: "yahoo+heuristic",
-  };
-}
+import { heuristicDraft } from "./heuristic";
 
 const GROK_PROMPT = `You are the research engine for Tenbagger Lite, a private wildcard 5% tenbagger discovery terminal.
 Score the company for 5–10 year 10x feasibility from TODAY's market cap. Be conservative. Evidence > story.
-Do NOT give a factor score of 2 based only on MANAGEMENT_TARGET or INFERENCE.
-If you do not know, score 0 or 1 and mark evidence UNKNOWN.
-Never invent filings, PO, or customers.
+You MAY score a factor 2 only when you attach at least one FACT or REPORTED evidence item with a real sourceName (Nasdaq financials, 10-K, 10-Q, IR).
+The financials in the user message are FACT from public filings/Nasdaq. Use them for F2, F7, F8, F10.
+Do NOT give 2 based only on MANAGEMENT_TARGET or INFERENCE.
+Do NOT invent filings, purchase orders, or customers. If unknown, score 0 or 1 and say what proof would unlock 2.
+Korean summaries.
 
 Return ONLY JSON with this shape:
 {

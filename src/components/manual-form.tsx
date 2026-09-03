@@ -20,6 +20,7 @@ const emptyQuote = (): ResearchQuote => ({
   industry: "",
   financials: {
     revenueTtm: null,
+    revenuePrior: null,
     operatingIncomeTtm: null,
     netIncomeTtm: null,
     cash: null,

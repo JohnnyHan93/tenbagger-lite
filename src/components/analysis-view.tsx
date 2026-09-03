@@ -31,6 +31,14 @@ export function AnalysisView({
     <div className="space-y-6">
       <ScoreHero company={company} analysis={analysis} />
 
+      {analysis.researchProvider.includes("heuristic") ? (
+        <p className="rounded-[var(--radius-md)] bg-elevated px-3 py-2 text-xs leading-relaxed text-muted">
+          자동 모드는 공시 숫자(매출·현금·시총)가 확인된 팩터만 2점을 줍니다.
+          나머지 항목은 요약의 <span className="text-fg">2점 조건</span>을
+          채운 뒤 팩터를 눌러 Override 하세요. 원래 점수는 보존됩니다.
+        </p>
+      ) : null}
+
       <section>
         <h3 className="mb-2 font-mono text-xs tracking-widest text-muted uppercase">
           10 Factors

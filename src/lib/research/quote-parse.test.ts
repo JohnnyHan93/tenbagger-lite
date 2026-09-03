@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   extractYahooQuoteFromHtml,
+  financialsFromNasdaq,
   parseAbbrevMoney,
   parseCommaNumber,
   parseKoreanMoney,
+  parseNasdaqMoney,
   quoteFromYahooResult,
 } from "./quote-parse.ts";
 
@@ -155,5 +157,64 @@ describe("extractYahooQuoteFromHtml", () => {
     const q = extractYahooQuoteFromHtml(html, "IONQ");
     assert.ok(q);
     assert.equal(q.marketCap, 15.249e9);
+  });
+});
+
+describe("parseNasdaqMoney", () => {
+  it("reads signed thousands-style cells", () => {
+    assert.equal(parseNasdaqMoney("$130,016"), 130016);
+    assert.equal(parseNasdaqMoney("-$633,715"), -633715);
+    assert.equal(parseNasdaqMoney("--"), null);
+  });
+});
+
+describe("financialsFromNasdaq", () => {
+  it("scales IonQ-style tables from thousands to USD", () => {
+    const fin = financialsFromNasdaq({
+      data: {
+        incomeStatementTable: {
+          rows: [
+            { value1: "Total Revenue", value2: "$130,016", value3: "$43,073" },
+            { value1: "Gross Profit", value2: "$52,528", value3: "$22,476" },
+            {
+              value1: "Operating Income",
+              value2: "-$633,715",
+              value3: "-$232,455",
+            },
+            { value1: "Net Income", value2: "-$510,378", value3: "-$331,647" },
+          ],
+        },
+        balanceSheetTable: {
+          rows: [
+            {
+              value1: "Cash and Cash Equivalents",
+              value2: "$1,030,865",
+              value3: "$54,393",
+            },
+            {
+              value1: "Short-Term Investments",
+              value2: "$1,361,291",
+              value3: "$285,896",
+            },
+            { value1: "Long-Term Debt", value2: "--", value3: "--" },
+          ],
+        },
+        cashFlowTable: {
+          rows: [
+            {
+              value1: "Net Cash Flow-Operating",
+              value2: "-$283,187",
+              value3: "-$105,683",
+            },
+          ],
+        },
+      },
+    });
+    assert.ok(fin);
+    assert.equal(fin.revenueTtm, 130_016_000);
+    assert.equal(fin.revenuePrior, 43_073_000);
+    assert.equal(fin.operatingIncomeTtm, -633_715_000);
+    assert.equal(fin.cash, 1_030_865_000 + 1_361_291_000);
+    assert.ok(fin.grossMargin != null && fin.grossMargin > 0.4);
   });
 });

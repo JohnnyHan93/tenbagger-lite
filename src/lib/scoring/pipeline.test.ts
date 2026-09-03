@@ -21,6 +21,7 @@ function dummyDraft(over: Partial<ResearchDraft> = {}): ResearchDraft {
       industry: "Software",
       financials: {
         revenueTtm: 80_000_000,
+        revenuePrior: null,
         operatingIncomeTtm: 8_000_000,
         netIncomeTtm: 5_000_000,
         cash: 120_000_000,
