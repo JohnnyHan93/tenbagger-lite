@@ -39,14 +39,14 @@ Identity universe: 100 names, US 50 / KR 50. Sample100 analyses = 100 (3 preserv
 - Run `run_4e0qh36xkgya` INITIAL_BATCH COMPLETE. 97 jobs, all `RESEARCH_REQUIRED`, FAILED 0.
 - AI: grok-4.5 on all 97 jobs. Preserved three remain `filings+profile`.
 - Operator locked: `V24_OPERATOR_ENABLED = false`. `EXECUTE_FULL_100 = false`.
-- LAST VERIFIED still GitHub Actions SUCCESS on `7ebab69` until this SHA's Actions run succeeds.
+- LAST VERIFIED = GitHub Actions SUCCESS on `e82507d` ([run 33854158716](https://github.com/JohnnyHan93/tenbagger-lite/actions/runs/33854158716))
 
 ## v2.3.2 preflight enforcement
 
 - Start is blocked unless live preflight `ready === true`
 - Production path always probes US + KR quote endpoints (no xAI)
 - Flag-off still returns `FULL100_EXECUTION_DISABLED` before load/probe
-- LAST VERIFIED = GitHub Actions SUCCESS on `7ebab69` ([run 33847524248](https://github.com/JohnnyHan93/tenbagger-lite/actions/runs/33847524248))
+- v2.3.2 LAST VERIFIED was `7ebab69` ([run 33847524248](https://github.com/JohnnyHan93/tenbagger-lite/actions/runs/33847524248)); superseded by v2.4 `e82507d`
 
 ## v2.3.1 execution wiring
 
@@ -64,7 +64,7 @@ Identity universe: 100 names, US 50 / KR 50. Sample100 analyses = 100 (3 preserv
 | GitHub Actions | same commands on a fresh checkout without `.grok/skills` | `.github/workflows/ci.yml` |
 | Vercel deployment | hosted preview/prod of a pushed SHA | Vercel dashboard |
 
-LAST VERIFIED in the Queue UI is **GitHub Actions**. Source `github-actions`, SHA `7ebab6957328af5d616dccc6e3bee28993b4b608`, run [33847524248](https://github.com/JohnnyHan93/tenbagger-lite/actions/runs/33847524248) SUCCESS @ 2026-09-04T07:12:32.000Z. Do not point LAST VERIFIED at a SHA whose Actions run has not succeeded.
+LAST VERIFIED in the Queue UI is **GitHub Actions**. Source `github-actions`, SHA `e82507d03364ddc06ca21c220f31f031a7159ec3`, run [33854158716](https://github.com/JohnnyHan93/tenbagger-lite/actions/runs/33854158716) SUCCESS @ 2026-09-04T08:38:58.000Z. Do not point LAST VERIFIED at a SHA whose Actions run has not succeeded.
 
 ## Full 100
 

@@ -338,7 +338,7 @@ X-Bagger 최고점도 70 미만이라 EARLY SIGNAL 배너는 달지 않았다. �
 
 ## K. CI
 
-GitHub Actions SUCCESS 전에는 LAST VERIFIED 를 새 SHA 로 옮기지 않는다.
+LAST VERIFIED 는 GitHub Actions SUCCESS SHA `e82507d` 를 가리킨다.
 
 ```text
 Typecheck:          PASS
@@ -347,11 +347,11 @@ Tests:              PASS (App 172 / Platform 195 / Total 367, 0 fail)
 Production Build:   PASS
 
 GitHub Actions:
-PENDING until this SHA is green
-LAST VERIFIED remains 7ebab69
-  run: 33847524248
-  sha: 7ebab6957328af5d616dccc6e3bee28993b4b608
-  url: https://github.com/JohnnyHan93/tenbagger-lite/actions/runs/33847524248
+SUCCESS
+  run: 33854158716
+  sha: e82507d03364ddc06ca21c220f31f031a7159ec3
+  url: https://github.com/JohnnyHan93/tenbagger-lite/actions/runs/33854158716
+  completed: 2026-09-04T08:38:58Z
 ```
 
 ---
@@ -414,7 +414,7 @@ FAKE DEMO = 0
 - [x] Sample100 remains exactly 100
 - [x] fake demo remains 0
 - [x] typecheck / lint / tests / build (local PASS: 367 tests, 0 fail)
-- [ ] GitHub Actions green
+- [x] GitHub Actions green ([run 33854158716](https://github.com/JohnnyHan93/tenbagger-lite/actions/runs/33854158716))
 - [x] EXECUTE_FULL_100 restored to NO
 - [x] Full100 cannot automatically run again
 
@@ -426,7 +426,9 @@ FAKE DEMO = 0
 |---|---|
 | Repository | [JohnnyHan93/tenbagger-lite](https://github.com/JohnnyHan93/tenbagger-lite) |
 | Branch | `main` |
-| LAST VERIFIED (until this SHA is green) | `7ebab69` source=`github-actions` @ 2026-09-04T07:12:32.000Z |
+| Code commit | [`e82507d03364ddc06ca21c220f31f031a7159ec3`](https://github.com/JohnnyHan93/tenbagger-lite/commit/e82507d03364ddc06ca21c220f31f031a7159ec3) |
+| GitHub Actions | [run 33854158716](https://github.com/JohnnyHan93/tenbagger-lite/actions/runs/33854158716) SUCCESS |
+| LAST VERIFIED | `e82507d` source=`github-actions` @ 2026-09-04T08:38:58.000Z |
 | 시크릿 | `.env` 및 API/DB 키 미포함. `data/` PGLite·checkpoint 미커밋. `AGENTS.md` / `.grok/skills/` 미커밋 |
 
 LAST VERIFIED 는 GitHub Actions 가 성공한 SHA 만 가리킨다.
