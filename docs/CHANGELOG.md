@@ -1,3 +1,11 @@
+## v2.3.2 — Preflight enforcement
+
+- Production start (`startFull100FromWorkspace`) now **enforces** `preflight.ready` before inserting any `research_runs` / `research_jobs`.
+- Authorization order: flag first → load workspace → real `probeQuoteProviders` → live preflight with `executeFull100: true` → create jobs only if ready.
+- Failed preflight returns `PREFLIGHT_FAILED` + `failedChecks` (no secrets). Zero runs, zero jobs, zero research.
+- Isolated tests: US/KR provider fail, DB down, queue missing, universe 99, US/KR split, fake demo, active-run conflict. Success path still creates **97** jobs.
+- `EXECUTE_FULL_100` remains `false`. Full 100 not started.
+
 ## v2.3.1 — Execution wiring & CI repair
 
 - Production start loads the DB workspace (`startFull100FromWorkspace`) before creating jobs. Empty-array start can no longer invent 100 remaining names.

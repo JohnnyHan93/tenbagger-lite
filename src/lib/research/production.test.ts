@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { getSql } from "../db.ts";
+import { getSql, type Sql } from "../db.ts";
 import type { Company, ResearchDraft } from "../types.ts";
 import type { Snapshot } from "../domain/snapshot.ts";
 import { emptyFinancials } from "./quote-parse.ts";
 import { FACTOR_ORDER } from "../scoring/config.ts";
 import { defaultScenarios } from "../tenx/calculator.ts";
 import { SAMPLE_RESEARCH_100, SAMPLE_RESEARCH_100_UNIVERSE_ID } from "../sample-research-100.ts";
-import { remainingUniverseJobs, EXECUTE_FULL_100, FULL100_EXECUTION_DISABLED } from "./jobs.ts";
+import { remainingUniverseJobs, EXECUTE_FULL_100, FULL100_EXECUTION_DISABLED, PREFLIGHT_FAILED } from "./jobs.ts";
 import {
   createProductionDeps,
   processFull100Chunk,
@@ -139,6 +139,36 @@ async function startIsolated(remaining: Array<{ ticker: string; companyId: strin
   });
 }
 
+function sampleWorkspace() {
+  const companies = SAMPLE_RESEARCH_100;
+  const snapshots = companies.filter((c) => (PRESERVED as readonly string[]).includes(c.ticker)).map(stubSnap);
+  return { companies, snapshots };
+}
+
+async function startAuthorized(extra: Parameters<typeof startFull100FromWorkspace>[0] = {}) {
+  const { companies, snapshots } = sampleWorkspace();
+  return startFull100FromWorkspace({
+    executeEnabled: true,
+    loadWorkspace: async () => emptyDump(companies, snapshots),
+    providerProbe: async () => ({ us: true, kr: true }),
+    ...extra,
+  });
+}
+
+function queueDownSql(inner: Sql): Sql {
+  const wrap = (db: Sql): Sql => {
+    const tagged = (async (strings: TemplateStringsArray, ...values: unknown[]) =>
+      db(strings, ...values)) as Sql;
+    tagged.query = async (text, params) => {
+      if (/from research_jobs|from research_runs/i.test(text)) throw new Error("queue missing");
+      return db.query(text, params);
+    };
+    tagged.transaction = (fn) => db.transaction((tx) => fn(wrap(tx)));
+    return tagged;
+  };
+  return wrap(inner);
+}
+
 describe("production Full100 start wiring", () => {
   it("keeps EXECUTE_FULL_100 off", () => {
     assert.equal(EXECUTE_FULL_100, false);
@@ -146,16 +176,22 @@ describe("production Full100 start wiring", () => {
 
   it("flag off creates 0 jobs and does not load workspace", async () => {
     let loaded = false;
+    let probed = false;
     const before = (await listResearchRuns()).length;
     const res = await startFull100FromWorkspace({
       loadWorkspace: async () => {
         loaded = true;
         return emptyDump(SAMPLE_RESEARCH_100, []);
       },
+      providerProbe: async () => {
+        probed = true;
+        return { us: true, kr: true };
+      },
     });
     assert.equal(res.ok, false);
     if (!res.ok) assert.equal(res.error, FULL100_EXECUTION_DISABLED);
     assert.equal(loaded, false);
+    assert.equal(probed, false);
     assert.equal((await listResearchRuns()).length, before);
   });
 
@@ -201,7 +237,10 @@ describe("production Full100 start wiring", () => {
       providerProbe: async () => ({ us: true, kr: true }),
     });
     assert.equal(second.ok, false);
-    if (!second.ok) assert.equal(second.error, "ACTIVE_FULL100_RUN");
+    if (!second.ok) {
+      assert.equal(second.error, PREFLIGHT_FAILED);
+      assert.ok(second.failedChecks?.includes("conflict"));
+    }
     if (first.ok) await cancelResearchRun(first.runId);
   });
 });
@@ -431,5 +470,120 @@ describe("chunk pause / cancel / DB-authoritative status", () => {
     assert.equal(chunk.ok, false);
     assert.equal(chunk.skipped, FULL100_EXECUTION_DISABLED);
     assert.equal(researched.length, 0);
+  });
+});
+
+describe("preflight enforcement", () => {
+  it("US provider fail creates 0 jobs", async () => {
+    await retireSample100Runs();
+    const before = (await listResearchRuns()).length;
+    const res = await startAuthorized({
+      providerProbe: async () => ({ us: false, kr: true }),
+    });
+    assert.equal(res.ok, false);
+    if (!res.ok) {
+      assert.equal(res.error, PREFLIGHT_FAILED);
+      assert.ok(res.failedChecks?.includes("provider"));
+    }
+    assert.equal((await listResearchRuns()).length, before);
+  });
+
+  it("KR provider fail creates 0 jobs", async () => {
+    await retireSample100Runs();
+    const before = (await listResearchRuns()).length;
+    const res = await startAuthorized({
+      providerProbe: async () => ({ us: true, kr: false }),
+    });
+    assert.equal(res.ok, false);
+    if (!res.ok) {
+      assert.equal(res.error, PREFLIGHT_FAILED);
+      assert.ok(res.failedChecks?.includes("provider"));
+    }
+    assert.equal((await listResearchRuns()).length, before);
+  });
+
+  it("database unavailable creates 0 jobs", async () => {
+    await retireSample100Runs();
+    const before = (await listResearchRuns()).length;
+    const res = await startAuthorized({ sql: null });
+    assert.equal(res.ok, false);
+    if (!res.ok) {
+      assert.equal(res.error, PREFLIGHT_FAILED);
+      assert.ok(res.failedChecks?.includes("db"));
+    }
+    assert.equal((await listResearchRuns()).length, before);
+  });
+
+  it("queue tables unavailable creates 0 jobs", async () => {
+    await retireSample100Runs();
+    const before = (await listResearchRuns()).length;
+    const res = await startAuthorized({ sql: queueDownSql(await getSql()) });
+    assert.equal(res.ok, false);
+    if (!res.ok) {
+      assert.equal(res.error, PREFLIGHT_FAILED);
+      assert.ok(res.failedChecks?.includes("queue"));
+    }
+    assert.equal((await listResearchRuns()).length, before);
+  });
+
+  it("universe count 99 creates 0 jobs", async () => {
+    await retireSample100Runs();
+    const before = (await listResearchRuns()).length;
+    const res = await startAuthorized({ universeMembers: SAMPLE_RESEARCH_100.slice(0, 99) });
+    assert.equal(res.ok, false);
+    if (!res.ok) {
+      assert.equal(res.error, PREFLIGHT_FAILED);
+      assert.ok(res.failedChecks?.includes("universe"));
+    }
+    assert.equal((await listResearchRuns()).length, before);
+  });
+
+  it("US/KR split mismatch creates 0 jobs", async () => {
+    await retireSample100Runs();
+    const before = (await listResearchRuns()).length;
+    const members = SAMPLE_RESEARCH_100.map((c, i) => (i === 0 ? { ...c, country: "KR" as const } : c));
+    const res = await startAuthorized({ universeMembers: members });
+    assert.equal(res.ok, false);
+    if (!res.ok) {
+      assert.equal(res.error, PREFLIGHT_FAILED);
+      assert.ok(res.failedChecks?.includes("us50") || res.failedChecks?.includes("kr50"));
+    }
+    assert.equal((await listResearchRuns()).length, before);
+  });
+
+  it("fake demo present creates 0 jobs", async () => {
+    await retireSample100Runs();
+    const before = (await listResearchRuns()).length;
+    const { companies, snapshots } = sampleWorkspace();
+    const fake: Company = {
+      ...companyOf("SMPL-SOFT"),
+      companyName: "Northline Analytics",
+    };
+    const res = await startAuthorized({
+      loadWorkspace: async () => emptyDump([...companies, fake], snapshots),
+    });
+    assert.equal(res.ok, false);
+    if (!res.ok) {
+      assert.equal(res.error, PREFLIGHT_FAILED);
+      assert.ok(res.failedChecks?.includes("fake"));
+    }
+    assert.equal((await listResearchRuns()).length, before);
+  });
+
+  it("active Full100 run is blocked with zero extra jobs", async () => {
+    await retireSample100Runs();
+    const first = await startAuthorized({ remaining: [{ ticker: "HOLD1", companyId: "c_hold1" }] });
+    assert.equal(first.ok, true);
+    const beforeJobs = first.ok ? (await listJobsForRun(first.runId)).length : 0;
+    const second = await startAuthorized({ remaining: [{ ticker: "HOLD2", companyId: "c_hold2" }] });
+    assert.equal(second.ok, false);
+    if (!second.ok) {
+      assert.ok(second.error === PREFLIGHT_FAILED || second.error === "ACTIVE_FULL100_RUN");
+      if (second.error === PREFLIGHT_FAILED) assert.ok(second.failedChecks?.includes("conflict"));
+    }
+    if (first.ok) {
+      assert.equal((await listJobsForRun(first.runId)).length, beforeJobs);
+      await cancelResearchRun(first.runId);
+    }
   });
 });

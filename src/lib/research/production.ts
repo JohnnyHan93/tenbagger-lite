@@ -1,10 +1,12 @@
 import type { Company, ResearchDraft } from "../types.ts";
 import type { Snapshot } from "../domain/snapshot.ts";
+import type { Sql } from "../db.ts";
 import { tickersEqual } from "../format.ts";
 import { uid } from "../utils.ts";
 import {
   EXECUTE_FULL_100,
   FULL100_EXECUTION_DISABLED,
+  PREFLIGHT_FAILED,
   DEFAULT_CONCURRENCY,
   classifyQuoteFailure,
 } from "./jobs.ts";
@@ -16,6 +18,8 @@ import {
 import type { ResearchRunRow } from "../persist/queue.ts";
 import type { AnalysisJobUpdate, WorkspaceDump } from "../persist/repo.ts";
 import type { QuoteProviderHealth } from "./provider-health.ts";
+
+export { PREFLIGHT_FAILED, FULL100_EXECUTION_DISABLED };
 
 export const DEFAULT_CHUNK_SIZE = DEFAULT_CONCURRENCY;
 
@@ -37,6 +41,10 @@ export interface ProductionOverrides {
   loadWorkspace?: () => Promise<WorkspaceDump>;
   useAi?: boolean;
 }
+
+export type StartFull100Result =
+  | { ok: true; runId: string; totalJobs: number }
+  | { ok: false; error: string; failedChecks?: string[] };
 
 export function productionCapabilities(): {
   chunkProcessor: boolean;
@@ -121,18 +129,32 @@ export async function startFull100FromWorkspace(opts?: {
   loadWorkspace?: () => Promise<WorkspaceDump>;
   providerProbe?: () => Promise<QuoteProviderHealth>;
   remaining?: Array<{ ticker: string; companyId: string }>;
-}): Promise<{ ok: true; runId: string; totalJobs: number } | { ok: false; error: string }> {
+  sql?: Sql | null;
+  universeMembers?: Array<{ ticker: string; country: string }>;
+}): Promise<StartFull100Result> {
   if (!(opts?.executeEnabled ?? EXECUTE_FULL_100)) {
     return { ok: false, error: FULL100_EXECUTION_DISABLED };
   }
   const loadWorkspace = opts?.loadWorkspace ?? (await import("../persist/repo.ts")).loadWorkspace;
   const ws = await loadWorkspace();
+  const { probeQuoteProviders } = await import("./provider-health.ts");
+  const providerProbe = opts?.providerProbe ?? probeQuoteProviders;
   const { runLivePreflight } = await import("./preflight.ts");
-  await runLivePreflight({
+  const preflight = await runLivePreflight({
     companies: ws.companies,
     snapshots: ws.snapshots,
-    providerProbe: opts?.providerProbe,
+    executeFull100: true,
+    providerProbe,
+    sql: opts?.sql,
+    universeMembers: opts?.universeMembers,
   });
+  if (!preflight.ready) {
+    return {
+      ok: false,
+      error: PREFLIGHT_FAILED,
+      failedChecks: preflight.checks.filter((c) => c.kind === "LIVE" && !c.pass).map((c) => c.id),
+    };
+  }
   return startFull100Research({
     companies: ws.companies,
     snapshots: ws.snapshots,

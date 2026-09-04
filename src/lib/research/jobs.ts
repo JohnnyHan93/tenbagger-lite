@@ -12,6 +12,7 @@ function latestOf(snapshots: Snapshot[], companyId: string): Snapshot | undefine
 
 export const EXECUTE_FULL_100 = false;
 export const FULL100_EXECUTION_DISABLED = "FULL100_EXECUTION_DISABLED";
+export const PREFLIGHT_FAILED = "PREFLIGHT_FAILED";
 export const MAX_JOB_ATTEMPTS = 3;
 export const DEFAULT_CONCURRENCY = 3;
 
