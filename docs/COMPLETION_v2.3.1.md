@@ -132,10 +132,10 @@ NO
 
 ```text
 Fresh GitHub checkout:
-PASS (skip wrappers; .grok/skills 미커밋)
+PASS (Grok skill tests skipped; VITE_AUTH_ENABLED isolated)
 
 npm ci:
-see GitHub Actions
+PASS
 
 Typecheck:
 PASS
@@ -146,17 +146,22 @@ PASS
 Tests:
 PASS
   App:              163 / 0 fail
-  Platform/scripts: 195 / 0 fail
-  Total:            358 / 0 fail
+  Platform/scripts: 191 pass + 4 skip (Grok skill pack absent)
+  Total:            358 portable (4 skip on GitHub)
 
 Build:
 PASS
 
 GitHub Actions:
-PENDING at docs write; updated after the green run
+SUCCESS
+  run: 33845002445
+  sha: 20673fd5dee32d3c7834d0d7cbf4e130cdf01fed
+  url: https://github.com/JohnnyHan93/tenbagger-lite/actions/runs/33845002445
 ```
 
 Grok-only 테스트 (`.grok/skills/og/SKILL.md`, `AGENTS.md`) 는 해당 파일이 없는 checkout 에서 skip 한다. `npm run test:grok-platform` 은 빌더용으로 남긴다. `.grok/skills/` 와 `AGENTS.md` 는 커밋하지 않는다.
+
+Auth-off CI (`VITE_AUTH_ENABLED=false`) 에서도 gate-identity 테스트가 통과하도록 스위트를 격리했다.
 
 ---
 
@@ -201,7 +206,7 @@ EXECUTE_FULL_100 = NO
 
 FULL 100 NOT STARTED
 
-GITHUB CI = (updated after Actions)
+GITHUB CI = GREEN
 ```
 
 v2.4 FULL 100 CONTROLLED EXECUTION 은 별도 지시 후에만.
@@ -225,7 +230,7 @@ v2.4 FULL 100 CONTROLLED EXECUTION 은 별도 지시 후에만.
 - [x] Queue UI does not fake LIVE PASS
 - [x] default npm test works on fresh GitHub checkout (Grok files skipped)
 - [x] Grok-only platform tests do not break repository CI
-- [ ] GitHub Actions conclusion = success (filled after push)
+- [x] GitHub Actions conclusion = success
 - [x] Build actually runs in GitHub Actions workflow
 - [x] CFO/FCF regressions remain green
 - [x] transaction regressions remain green
@@ -240,4 +245,14 @@ v2.4 FULL 100 CONTROLLED EXECUTION 은 별도 지시 후에만.
 
 ## J. COMMIT
 
-코드 커밋 SHA 는 push 후 이 절과 `src/lib/research/verified-build.ts` 에 반영한다. LAST VERIFIED 는 GitHub Actions 가 성공한 SHA 만 가리킨다. v2.3 SHA `65e3019` 의 GitHub CI 는 실패했으므로 그 SHA 를 GitHub-green 으로 표시하지 않는다.
+| 항목 | 값 |
+|---|---|
+| Repository | [JohnnyHan93/tenbagger-lite](https://github.com/JohnnyHan93/tenbagger-lite) |
+| Branch | `main` |
+| Wiring commit | [`c11fe76302e379667cdd32bf7874c988d3028c97`](https://github.com/JohnnyHan93/tenbagger-lite/commit/c11fe76302e379667cdd32bf7874c988d3028c97) |
+| CI-green commit | [`20673fd5dee32d3c7834d0d7cbf4e130cdf01fed`](https://github.com/JohnnyHan93/tenbagger-lite/commit/20673fd5dee32d3c7834d0d7cbf4e130cdf01fed) |
+| GitHub Actions | [run 33845002445](https://github.com/JohnnyHan93/tenbagger-lite/actions/runs/33845002445) SUCCESS |
+| LAST VERIFIED | `20673fd` source=`github-actions` @ 2026-09-04T06:43:27.000Z |
+| 시크릿 | `.env` 및 API/DB 키 미포함. `AGENTS.md` / `.grok/skills/` 미커밋 |
+
+LAST VERIFIED 는 GitHub Actions 가 성공한 SHA 만 가리킨다. v2.3 SHA `65e3019` 의 GitHub CI 는 실패했으므로 그 SHA 를 GitHub-green 으로 표시하지 않는다.

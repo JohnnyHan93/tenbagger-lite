@@ -49,7 +49,7 @@ Identity universe: 100 names, US 50 / KR 50. Smoke 12 have live research snapsho
 | GitHub Actions | same commands on a fresh checkout without `.grok/skills` | `.github/workflows/ci.yml` |
 | Vercel deployment | hosted preview/prod of a pushed SHA | Vercel dashboard |
 
-LAST VERIFIED in the Queue UI is **GitHub Actions** once that run is green. Until then it stays on the last green SHA (`65e3019` from v2.3 local verification). v2.3 GitHub CI was red because of Grok-only tests — that SHA must not be presented as GitHub-green.
+LAST VERIFIED in the Queue UI is **GitHub Actions** once that run is green. Current LAST VERIFIED: `20673fd` source=`github-actions` @ 2026-09-04T06:43:27.000Z ([run 33845002445](https://github.com/JohnnyHan93/tenbagger-lite/actions/runs/33845002445)). v2.3 SHA `65e3019` is not GitHub-green.
 
 ## Full 100
 
