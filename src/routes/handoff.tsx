@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { PageTitle, SafetyNote } from "@/components/shell";
-import { displayTicker } from "@/lib/format";
+import { CompanyTicker } from "@/components/company-ticker";
 import { rankCompanies } from "@/lib/selectors";
 import { useAppStore } from "@/lib/store";
 
@@ -27,8 +27,7 @@ function Page() {
             params={{ ticker: encodeURIComponent(r.company.ticker) }}
             className="block rounded-[var(--radius-md)] bg-surface p-4 shadow-[var(--shadow-border)]"
           >
-            <p className="font-mono text-sage">{displayTicker(r.company.ticker)}</p>
-            <p className="text-sm">{r.company.companyName}</p>
+            <CompanyTicker ticker={r.company.ticker} name={r.company.companyName} linked={false} />
             <p className="mt-1 font-mono text-xs text-muted">
               Discovery {Math.round(r.snapshot.xbagger.adjustedScore)} · 10x {r.snapshot.xbagger.tenxFeasibility} ·{" "}
               {r.snapshot.oneSentenceThesis}

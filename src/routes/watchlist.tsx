@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
+import { CompanyTicker } from "@/components/company-ticker";
 import { PageTitle, SafetyNote } from "@/components/shell";
 import { GradeBadge } from "@/components/ui/badge";
-import { displayTicker } from "@/lib/format";
 import { latestSnapshot, useAppStore } from "@/lib/store";
 
 export const Route = createFileRoute("/watchlist")({ component: Page });
@@ -25,9 +25,8 @@ function Page() {
               params={{ ticker: encodeURIComponent(c.ticker) }}
               className="flex items-center justify-between rounded-[var(--radius-md)] bg-surface px-4 py-3 shadow-[var(--shadow-border)]"
             >
-              <div>
-                <p className="font-mono text-sage">{displayTicker(c.ticker)}</p>
-                <p className="text-xs text-muted">{c.companyName}</p>
+              <div className="min-w-0">
+                <CompanyTicker ticker={c.ticker} name={c.companyName} linked={false} />
               </div>
               {s ? <GradeBadge grade={s.xbagger.grade} /> : null}
             </Link>

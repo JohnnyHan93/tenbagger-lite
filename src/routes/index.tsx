@@ -9,7 +9,8 @@ import { dashboardStats, rosterCompanies } from "@/lib/selectors";
 import { buildCoverageReport } from "@/lib/research/coverage-report";
 import { useAppStore } from "@/lib/store";
 import { APP_NAME } from "@/lib/brand";
-import { displayTicker, ENGINE_TAB, formatOppScore, formatPct, formatQualityScore, formatXScore } from "@/lib/format";
+import { CompanyTicker, FREEZE_COL } from "@/components/company-ticker";
+import { ENGINE_TAB, formatOppScore, formatPct, formatQualityScore, formatXScore } from "@/lib/format";
 
 export const Route = createFileRoute("/")({ component: Dashboard });
 
@@ -81,10 +82,10 @@ function Dashboard() {
       </div>
       {!hydrated ? <p className="mt-4 text-sm text-muted">불러오는 중…</p> : null}
       <div className="mt-4 overflow-x-auto rounded-[var(--radius-lg)] bg-surface shadow-[var(--shadow-border)]">
-        <table className="min-w-[880px] w-max text-left text-sm">
+        <table className="idt-table min-w-[880px] w-max text-left text-sm">
           <thead className="border-b border-border font-mono text-[0.625rem] tracking-widest text-subtle uppercase">
             <tr>
-              <th className="px-3 py-3">Ticker</th>
+              <th className={FREEZE_COL}>종목</th>
               <th className="px-3 py-3">Market</th>
               <th className="px-3 py-3 text-right">
                 {ENGINE_TAB.xbagger.name}
@@ -108,15 +109,8 @@ function Dashboard() {
           <tbody className="divide-y divide-border">
             {rows.map((r) => (
               <tr key={r.company.id} className="hover:bg-elevated/50">
-                <td className="px-3 py-3">
-                  <Link
-                    to="/company/$ticker"
-                    params={{ ticker: encodeURIComponent(r.company.ticker) }}
-                    className="font-mono text-sage"
-                  >
-                    {displayTicker(r.company.ticker)}
-                  </Link>
-                  <p className="text-xs text-muted">{r.company.companyName}</p>
+                <td className={FREEZE_COL}>
+                  <CompanyTicker ticker={r.company.ticker} name={r.company.companyName} />
                 </td>
                 <td className="px-3 py-3 font-mono text-xs text-subtle">
                   {r.company.country}

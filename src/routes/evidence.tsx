@@ -1,6 +1,6 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { CompanyTicker } from "@/components/company-ticker";
 import { PageTitle, SafetyNote } from "@/components/shell";
-import { displayTicker } from "@/lib/format";
 import { latestSnapshot, useAppStore } from "@/lib/store";
 
 export const Route = createFileRoute("/evidence")({ component: Page });
@@ -20,11 +20,11 @@ function Page() {
         {rows.length === 0 ? <p className="text-sm text-muted">증거가 없습니다.</p> : null}
         {rows.map(({ c, e }) => (
           <div key={e.id} className="rounded-[var(--radius-md)] bg-surface p-3 shadow-[var(--shadow-border)]">
+            <div className="mb-1 max-w-28">
+              <CompanyTicker ticker={c.ticker} name={c.companyName} />
+            </div>
             <p className="font-mono text-xs text-sage">
-              <Link to="/company/$ticker" params={{ ticker: encodeURIComponent(c.ticker) }}>
-                {displayTicker(c.ticker)}
-              </Link>{" "}
-              · {e.factorCode} · {e.evidenceType} · {e.sourceTier ?? "TIER_3"} · {e.status ?? "ACTIVE"}
+              {e.factorCode} · {e.evidenceType} · {e.sourceTier ?? "TIER_3"} · {e.status ?? "ACTIVE"}
             </p>
             <p className="mt-1 text-sm">{e.statement ?? e.evidence}</p>
             <p className="mt-1 text-xs text-subtle">

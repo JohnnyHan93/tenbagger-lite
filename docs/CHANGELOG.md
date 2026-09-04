@@ -1,3 +1,8 @@
+## v2.4.1 — Sticky identity column
+
+- Ranking tables show **company name / ticker** stacked in two lines, narrow column.
+- Horizontal scroll freezes that identity column so scores can slide underneath.
+
 ## v2.4 — Full 100 controlled execution
 
 - Authorized one-time Full 100 research of the remaining 97 Sample100 names (`useAi=true`, chunk size 3).

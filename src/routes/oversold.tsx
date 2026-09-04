@@ -1,6 +1,7 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { CompanyTicker, FREEZE_NAME_AFTER_RANK, FREEZE_RANK } from "@/components/company-ticker";
 import { PageTitle, SafetyNote } from "@/components/shell";
-import { displayTicker, ENGINE_TAB, formatOppScore } from "@/lib/format";
+import { ENGINE_TAB, formatOppScore } from "@/lib/format";
 import { oversoldRank } from "@/lib/selectors";
 import { useAppStore } from "@/lib/store";
 
@@ -12,11 +13,11 @@ function Table({ market }: { market: "KR" | "US" }) {
   const rows = oversoldRank(companies, snapshots, market);
   return (
     <div className="overflow-x-auto rounded-[var(--radius-lg)] bg-surface shadow-[var(--shadow-border)]">
-      <table className="w-full min-w-[560px] text-left text-sm">
+      <table className="idt-table w-full min-w-[560px] text-left text-sm">
         <thead className="border-b border-border font-mono text-[0.625rem] tracking-widest text-subtle uppercase">
           <tr>
-            <th className="px-3 py-3">#</th>
-            <th className="px-3 py-3">Ticker</th>
+            <th className={FREEZE_RANK}>#</th>
+            <th className={FREEZE_NAME_AFTER_RANK}>종목</th>
             <th className="px-3 py-3 text-right">Opp 0–10</th>
             <th className="px-3 py-3">Case</th>
             <th className="px-3 py-3 text-right">Value Trap 1–10</th>
@@ -33,15 +34,9 @@ function Table({ market }: { market: "KR" | "US" }) {
           ) : (
             rows.map((r) => (
               <tr key={r.company.id}>
-                <td className="px-3 py-3 font-mono text-xs text-subtle">{r.rank}</td>
-                <td className="px-3 py-3">
-                  <Link
-                    to="/company/$ticker"
-                    params={{ ticker: encodeURIComponent(r.company.ticker) }}
-                    className="font-mono text-sage"
-                  >
-                    {displayTicker(r.company.ticker)}
-                  </Link>
+                <td className={`${FREEZE_RANK} font-mono text-[0.625rem] text-subtle`}>{r.rank}</td>
+                <td className={FREEZE_NAME_AFTER_RANK}>
+                  <CompanyTicker ticker={r.company.ticker} name={r.company.companyName} />
                 </td>
                 <td className="px-3 py-3 text-right font-mono tabular-nums">
                   {formatOppScore(r.snapshot.oversold.opportunity)}

@@ -1,5 +1,6 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { CompanyTicker, FREEZE_COL } from "@/components/company-ticker";
 import { PageTitle, SafetyNote } from "@/components/shell";
 import { buildQueue } from "@/lib/engines/run";
 import { displayTicker, formatPct } from "@/lib/format";
@@ -264,40 +265,41 @@ function Page() {
           ) : null}
         </section>
       ) : null}
-      <div className="overflow-hidden rounded-[var(--radius-lg)] bg-surface shadow-[var(--shadow-border)]">
-        <table className="w-full text-left text-sm">
+      <div className="overflow-x-auto rounded-[var(--radius-lg)] bg-surface shadow-[var(--shadow-border)]">
+        <table className="idt-table w-full min-w-[520px] text-left text-sm">
           <thead className="border-b border-border font-mono text-[0.625rem] tracking-widest text-subtle uppercase">
             <tr>
+              <th className={FREEZE_COL}>종목</th>
               <th className="px-3 py-3">Pri</th>
-              <th className="px-3 py-3">Ticker</th>
               <th className="px-3 py-3">Engine</th>
               <th className="px-3 py-3">Factor</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {items.slice(0, 40).map((it) => (
+            {items.slice(0, 40).map((it) => {
+              const company = companies.find((c) => c.ticker === it.ticker);
+              const ident = SAMPLE_RESEARCH_100.find((c) => c.ticker === it.ticker);
+              return (
               <tr key={it.id}>
-                <td className="px-3 py-2 font-mono text-xs">{it.priority}</td>
-                <td className="px-3 py-2">
+                <td className={FREEZE_COL}>
                   {it.ticker ? (
-                    <Link
-                      to="/company/$ticker"
-                      params={{ ticker: encodeURIComponent(it.ticker) }}
-                      className="font-mono text-sage"
-                    >
-                      {displayTicker(it.ticker)}
-                    </Link>
+                    <CompanyTicker
+                      ticker={it.ticker}
+                      name={company?.companyName ?? ident?.companyName ?? it.ticker}
+                    />
                   ) : (
                     "—"
                   )}
                 </td>
+                <td className="px-3 py-2 font-mono text-xs">{it.priority}</td>
                 <td className="px-3 py-2 font-mono text-xs text-muted">{it.engine}</td>
                 <td className="px-3 py-2">
                   <p className="font-mono text-xs">{it.factor}</p>
                   <p className="text-xs text-subtle">{it.reason}</p>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

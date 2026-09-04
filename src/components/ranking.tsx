@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
+import { CompanyTicker, FREEZE_COL } from "@/components/company-ticker";
 import { GradeBadge } from "@/components/ui/badge";
-import { displayTicker } from "@/lib/format";
 import type { RankRow } from "@/lib/selectors";
 
 export function RankingList({ rows }: { rows: RankRow[] }) {
@@ -15,11 +15,11 @@ export function RankingList({ rows }: { rows: RankRow[] }) {
     );
   }
   return (
-    <div className="overflow-hidden rounded-[var(--radius-lg)] bg-surface shadow-[var(--shadow-border)]">
-      <table className="w-full text-left text-sm">
+    <div className="overflow-x-auto rounded-[var(--radius-lg)] bg-surface shadow-[var(--shadow-border)]">
+      <table className="idt-table w-full min-w-[360px] text-left text-sm">
         <thead className="border-b border-border font-mono text-[0.625rem] tracking-widest text-subtle uppercase">
           <tr>
-            <th className="px-4 py-3">Ticker</th>
+            <th className={FREEZE_COL}>종목</th>
             <th className="px-4 py-3 text-right">X</th>
             <th className="px-4 py-3">Grade</th>
           </tr>
@@ -27,14 +27,8 @@ export function RankingList({ rows }: { rows: RankRow[] }) {
         <tbody className="divide-y divide-border">
           {rows.map((r) => (
             <tr key={r.company.id}>
-              <td className="px-4 py-3">
-                <Link
-                  to="/company/$ticker"
-                  params={{ ticker: encodeURIComponent(r.company.ticker) }}
-                  className="font-mono text-sage"
-                >
-                  {displayTicker(r.company.ticker)}
-                </Link>
+              <td className={FREEZE_COL}>
+                <CompanyTicker ticker={r.company.ticker} name={r.company.companyName} />
               </td>
               <td className="px-4 py-3 text-right font-mono">{Math.round(r.snapshot.xbagger.adjustedScore)}</td>
               <td className="px-4 py-3">

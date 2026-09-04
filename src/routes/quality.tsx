@@ -1,7 +1,8 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { CompanyTicker, FREEZE_COL } from "@/components/company-ticker";
 import { PageTitle, SafetyNote } from "@/components/shell";
 import { FlagBadge, GradeBadge } from "@/components/ui/badge";
-import { displayTicker, ENGINE_TAB, formatQualityScore } from "@/lib/format";
+import { ENGINE_TAB, formatQualityScore } from "@/lib/format";
 import { rankCompanies } from "@/lib/selectors";
 import { useAppStore } from "@/lib/store";
 
@@ -20,10 +21,10 @@ function Page() {
         N/A는 0점이 아닙니다. Diagnostic은 기본 점수에 넣지 않습니다. 74 Factor는 실험 모델로 섞지 않습니다.
       </p>
       <div className="overflow-x-auto rounded-[var(--radius-lg)] bg-surface shadow-[var(--shadow-border)]">
-        <table className="w-full min-w-[640px] text-left text-sm">
+        <table className="idt-table w-full min-w-[640px] text-left text-sm">
           <thead className="border-b border-border font-mono text-[0.625rem] tracking-widest text-subtle uppercase">
             <tr>
-              <th className="px-3 py-3">Ticker</th>
+              <th className={FREEZE_COL}>종목</th>
               <th className="px-3 py-3 text-right">Score 0–100</th>
               <th className="px-3 py-3">Grade</th>
               <th className="px-3 py-3">Flags</th>
@@ -40,14 +41,8 @@ function Page() {
             ) : null}
             {rows.map((r) => (
               <tr key={r.company.id}>
-                <td className="px-3 py-3">
-                  <Link
-                    to="/company/$ticker"
-                    params={{ ticker: encodeURIComponent(r.company.ticker) }}
-                    className="font-mono text-sage"
-                  >
-                    {displayTicker(r.company.ticker)}
-                  </Link>
+                <td className={FREEZE_COL}>
+                  <CompanyTicker ticker={r.company.ticker} name={r.company.companyName} />
                 </td>
                 <td className="px-3 py-3 text-right font-mono tabular-nums">
                   {formatQualityScore(r.snapshot.quality.score)}
