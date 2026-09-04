@@ -59,6 +59,33 @@ describe("real preflight", () => {
     });
     assert.equal(result.executeFull100, false);
     assert.equal(result.ready, false);
-    assert.equal(result.executorReady, true);
+    assert.equal(result.executorReady, false);
+    assert.equal(result.providerConfig, false);
+  });
+
+  it("executorReady is computed, not a literal PASS, and stays separate from authorization", async () => {
+    const result = await runLivePreflight({
+      companies: SAMPLE_RESEARCH_100,
+      snapshots: [],
+      sql: null,
+      executeFull100: false,
+      providerProbe: async () => ({ us: true, kr: true }),
+    });
+    assert.equal(result.executorReady, false);
+    assert.equal(result.providerConfig, true);
+    assert.equal(result.ready, false);
+    assert.equal(result.checks.find((c) => c.id === "executor")?.pass, false);
+  });
+
+  it("providerConfig is not hardcoded true when probe fails", async () => {
+    const result = await runLivePreflight({
+      companies: SAMPLE_RESEARCH_100,
+      snapshots: [],
+      sql: null,
+      executeFull100: true,
+      providerProbe: async () => ({ us: false, kr: false }),
+    });
+    assert.equal(result.providerConfig, false);
+    assert.equal(result.checks.find((c) => c.id === "provider")?.pass, false);
   });
 });

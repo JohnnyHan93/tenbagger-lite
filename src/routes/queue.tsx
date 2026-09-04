@@ -67,12 +67,40 @@ function Page() {
     };
   }, [companies, snapshots]);
 
+  useEffect(() => {
+    if (!EXECUTE_FULL_100) return;
+    if (!run || run.status !== "RUNNING") return;
+    let cancelled = false;
+    void (async () => {
+      const { processFull100ChunkFn, queueStateFn } = await import("@/lib/persist/actions");
+      while (!cancelled) {
+        const chunk = await processFull100ChunkFn({ data: { runId: run.id } });
+        if (!chunk.ok || chunk.skipped || chunk.run?.status !== "RUNNING") break;
+        if (chunk.processed.length === 0) break;
+        const next = await queueStateFn();
+        if (!cancelled) {
+          setRun(next.run);
+          setRunJobs(next.jobs);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [run?.id, run?.status]);
+
   const researching = runJobs.filter((j) => j.status === "RESEARCHING");
   const failed = runJobs.filter((j) => j.status === "FAILED").length;
   const partial = runJobs.filter((j) => j.status === "PARTIAL").length;
   const required = runJobs.filter((j) => j.status === "RESEARCH_REQUIRED").length;
   const complete = runJobs.filter((j) => j.status === "COMPLETE" || j.status === "PARTIAL" || j.status === "RESEARCH_REQUIRED").length;
   const sha = LAST_VERIFIED_BUILD.commitSha.slice(0, 7);
+  const liveReady = Boolean(live);
+  const liveMark = (pass: boolean | undefined) => {
+    if (!liveReady) return "UNKNOWN";
+    return pass ? "PASS" : "FAIL";
+  };
+  const executorLabel = !liveReady ? "UNKNOWN" : live?.executorReady ? "READY" : "NOT READY";
 
   return (
     <>
@@ -81,12 +109,14 @@ function Page() {
         <p className="font-mono text-[0.625rem] tracking-widest text-sage uppercase">Full 100</p>
         <p className="mt-2 text-sm">
           상태 <span className="font-mono">LOCKED</span> · 실행기{" "}
-          <span className="font-mono">READY</span> · 플래그{" "}
+          <span className="font-mono">{executorLabel}</span> · 권한{" "}
+          <span className="font-mono">NO</span> · 플래그{" "}
           <span className="font-mono">EXECUTE_FULL_100 = NO</span>
         </p>
         <p className="mt-1 text-sm text-muted">
-          Explicit authorization required. 유니버스 분석 {flight.researchedUniverse} / 100 · 남은{" "}
-          {flight.remaining} · 유니버스 밖 Smoke {flight.extraResearched}. 기존 12건은 유지한다.
+          Explicit authorization required. 유니버스 분석 {live?.researchedUniverse ?? flight.researchedUniverse} / 100 ·
+          남은 {live?.remaining ?? flight.remaining} · 유니버스 밖 Smoke{" "}
+          {live?.extraResearched ?? flight.extraResearched}. 기존 12건은 유지한다.
         </p>
         {run ? (
           <p className="mt-2 font-mono text-xs text-muted">
@@ -94,21 +124,22 @@ function Page() {
             {researching[0] ? ` · 조사중 ${displayTicker(researching[0].ticker)} retry ${researching[0].attemptCount}/3` : ""}
           </p>
         ) : (
-          <p className="mt-2 font-mono text-xs text-subtle">Run 없음 · 97 remaining · 시작하지 않음</p>
+          <p className="mt-2 font-mono text-xs text-subtle">Run 없음 · remaining 97 · 시작하지 않음</p>
         )}
         <p className="mt-2 text-xs text-subtle">
-          동시성 3 (2–4). 재시도 429/timeout. Resume RESEARCHING→QUEUED. 유료 배치 미시작.
+          청크 3종목. 재시도 429/timeout. Resume RESEARCHING→QUEUED. 유료 배치 미시작.
         </p>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <ul className="grid gap-1 font-mono text-xs text-muted">
             <li className="text-[0.625rem] tracking-widest text-sage uppercase">LIVE CHECK</li>
-            <li>DB {(live?.dbAvailable ?? false) ? "PASS" : "WAIT"}</li>
-            <li>Universe 100 {flight.universe100 ? "PASS" : "FAIL"}</li>
-            <li>US50/KR50 {live?.us50 && live?.kr50 ? "PASS" : flight.universe100 ? "PASS" : "FAIL"}</li>
-            <li>Fake demo {flight.fakeDemoZero ? "0" : "PRESENT"}</li>
-            <li>기존 분석 보존 {flight.existingPreserved ? "PASS" : "WAIT"}</li>
-            <li>Queue tables {live?.queuePersistence ? "PASS" : "WAIT"}</li>
-            <li>활성 충돌 {live?.noActiveConflict === false ? "YES" : "NONE"}</li>
+            <li>DB {liveMark(live?.dbAvailable)}</li>
+            <li>Universe 100 {liveMark(live?.universe100)}</li>
+            <li>US50/KR50 {liveMark(Boolean(live?.us50 && live?.kr50))}</li>
+            <li>Fake demo {liveReady ? (live?.fakeDemoZero ? "0" : "PRESENT") : "UNKNOWN"}</li>
+            <li>기존 분석 보존 {liveMark(live?.existingPreserved)}</li>
+            <li>Queue tables {liveMark(live?.queuePersistence)}</li>
+            <li>활성 충돌 {liveReady ? (live?.noActiveConflict === false ? "YES" : "NONE") : "UNKNOWN"}</li>
+            <li>시세 경로 {liveMark(live?.providerConfig)}</li>
             <li>EXECUTE_FULL_100 NO</li>
           </ul>
           <ul className="grid gap-1 font-mono text-xs text-muted">

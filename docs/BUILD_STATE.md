@@ -1,4 +1,4 @@
-# Build State — IDT 투자발견 v2.3
+# Build State — IDT 투자발견 v2.3.1
 
 ## Stack
 
@@ -19,7 +19,7 @@ Runtime bootstrap no longer inserts fictional research.
 | Class | What | Runtime |
 |---|---|---|
 | FAKE_DEMO | Sample Six + heuristic library scores | Removed |
-| TEST_FIXTURE | `src/lib/samples.ts` | Tests only |
+| TEST_FIXTURE | `src/lib/samples.ts` + isolated ISO* identities in tests | Tests only |
 | REAL_RESEARCH_DATA | IDT SAMPLE RESEARCH 100 identities + Smoke 12 research | Seeded / analyzed |
 
 Identity universe: 100 names, US 50 / KR 50. Smoke 12 have live research snapshots. Scores are not identity-seeded.
@@ -33,29 +33,33 @@ Identity universe: 100 names, US 50 / KR 50. Smoke 12 have live research snapsho
 | Quality 70 | MFC70-v1.2 | Bank leverage/ROIC not forced; biotech inventory/ROIC conditional; CFO≠FCF |
 | Investor Lenses | LENS-v1.0 | Overlay |
 
-## v2.3 hardening
+## v2.3.1 execution wiring
 
-- CFO / FCF semantic split
-- Transactional persist + SAVE_FAILED visibility
-- Persistent research queue (runs + jobs)
-- Batch runner implemented, **not started**
-- Real preflight (LIVE vs LAST VERIFIED)
-- GitHub Actions CI
+- Start action loads DB workspace, then creates remaining jobs only
+- Production deps: `executeResearch` + `runSnapshotFromDraft` + `saveAnalysisTransaction`
+- Chunk size 3; client orchestrator gated off
+- Run counters synced from actual job rows
+- LIVE vs LAST VERIFIED vs Vercel deploy are three different claims
+
+## Verification layers (not interchangeable)
+
+| Layer | What it proves | Where |
+|---|---|---|
+| Local / Grok Builder | typecheck, lint, `npm test`, `npm run build` in this workspace | this session |
+| GitHub Actions | same commands on a fresh checkout without `.grok/skills` | `.github/workflows/ci.yml` |
+| Vercel deployment | hosted preview/prod of a pushed SHA | Vercel dashboard |
+
+LAST VERIFIED in the Queue UI is **GitHub Actions** once that run is green. Until then it stays on the last green SHA (`65e3019` from v2.3 local verification). v2.3 GitHub CI was red because of Grok-only tests — that SHA must not be presented as GitHub-green.
 
 ## Full 100
 
 ```text
-FULL 100 EXECUTOR READY
+FULL 100 EXECUTOR ACTUALLY READY
 EXECUTE_FULL_100 = NO
 FULL 100 NOT STARTED
 ```
 
-Do not write an authorized "Full 100 READY to run" until the user sets the flag.
-
-## Latest verification
-
-Recorded in `src/lib/research/verified-build.ts` as LAST VERIFIED (never presented as a live browser check).
-
+Executor ready ≠ authorized. Do not add a Start button while the flag is NO.
 
 ## Sample data (1A)
 
@@ -85,7 +89,7 @@ Identity universe: 100 names, US 50 / KR 50. Smoke 12 have live research snapsho
 - Research gaps ranked by engine impact; Coverage report split US vs KR and by adapter
 - Full 100: READY, `EXECUTE_FULL_100 = NO`
 
-## Latest verification
+## Latest local verification (Grok Builder)
 
 ```text
 Production Build: PASS (npm run build)
@@ -96,17 +100,17 @@ PASS
 
 Tests:
 npm test
-src: 124 passed / 0 failed
+src: 163 passed / 0 failed
 scripts: 195 passed / 0 failed
-total: 319 passed / 0 failed
+total: 358 passed / 0 failed
 
-Lint (changed pipeline files):
-PASS
+Lint:
+PASS (0 errors)
 
 Smoke 12:
 12/12 preserved (not auto-refreshed)
-12/12 retained after localStorage clear + reload (P0)
+INOD preserved
 Fake demo names remain absent
-Full 100: READY, not started
+Full 100: executor wired, not started
 EXECUTE_FULL_100 = NO
 ```

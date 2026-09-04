@@ -60,6 +60,7 @@ export interface RunnerDeps {
   isPaused?: (runId: string) => boolean;
   isCancelled?: (runId: string) => boolean;
   executeEnabled?: boolean;
+  persistFinalizesJob?: boolean;
 }
 
 const pausedRuns = new Set<string>();
@@ -93,7 +94,8 @@ export async function startFull100Research(opts?: {
   snapshots?: Snapshot[];
   deps?: RunnerDeps;
   executeEnabled?: boolean;
-}): Promise<{ ok: true; runId: string } | { ok: false; error: string }> {
+  remaining?: Array<{ ticker: string; companyId: string }>;
+}): Promise<{ ok: true; runId: string; totalJobs: number } | { ok: false; error: string }> {
   if (!(opts?.executeEnabled ?? opts?.deps?.executeEnabled ?? EXECUTE_FULL_100)) {
     return { ok: false, error: FULL100_EXECUTION_DISABLED };
   }
@@ -101,23 +103,25 @@ export async function startFull100Research(opts?: {
   const snapshots = opts?.snapshots ?? [];
   const q = await import("../persist/queue.ts");
   const conflict = await q.activeFull100Run();
-  if (conflict && conflict.status === "RUNNING") {
+  if (conflict) {
     return { ok: false, error: "ACTIVE_FULL100_RUN" };
   }
-  const run = await createFull100Run({ companies, snapshots });
+  const run = await createFull100Run({
+    companies,
+    snapshots,
+    remaining: opts?.remaining,
+  });
   await q.updateResearchRun(run.id, { status: "RUNNING", startedAt: new Date().toISOString() });
-  if (opts?.deps) {
-    void processRun(run.id, opts.deps);
-  }
-  return { ok: true, runId: run.id };
+  return { ok: true, runId: run.id, totalJobs: run.totalJobs };
 }
 
 export async function createFull100Run(input: {
   companies: Company[];
   snapshots: Snapshot[];
   universeId?: string;
+  remaining?: Array<{ ticker: string; companyId: string }>;
 }): Promise<ResearchRunRow> {
-  const remaining = remainingUniverseJobs(input.companies, input.snapshots);
+  const remaining = input.remaining ?? remainingUniverseJobs(input.companies, input.snapshots);
   const now = new Date().toISOString();
   const q = await import("../persist/queue.ts");
   const run: ResearchRunRow = {
@@ -166,17 +170,20 @@ const SAMPLE_RESEARCH_100_COUNT = 100;
 export async function pauseResearchRun(runId: string): Promise<void> {
   pausedRuns.add(runId);
   const q = await import("../persist/queue.ts");
-  await q.updateResearchRun(runId, { status: "PAUSED" });
+  const run = await q.getResearchRun(runId).catch(() => null);
+  if (run) await q.updateResearchRun(runId, { status: "PAUSED" });
 }
 
 export async function resumeResearchRun(runId: string, deps?: RunnerDeps): Promise<void> {
   pausedRuns.delete(runId);
   cancelledRuns.delete(runId);
   const q = await import("../persist/queue.ts");
-  await q.recoverStaleJobs(runId);
-  await q.updateResearchRun(runId, { status: "RUNNING" });
-  if (!(deps?.executeEnabled ?? EXECUTE_FULL_100)) return;
-  if (deps) await processRun(runId, deps);
+  const run = await q.getResearchRun(runId).catch(() => null);
+  if (run) {
+    await q.recoverStaleJobs(runId);
+    await q.updateResearchRun(runId, { status: "RUNNING" });
+  }
+  void deps;
 }
 
 export async function cancelResearchRun(runId: string, store?: JobStore): Promise<void> {
@@ -185,7 +192,8 @@ export async function cancelResearchRun(runId: string, store?: JobStore): Promis
   const jobs = store ?? (await defaultJobStore());
   const q = await import("../persist/queue.ts").catch(() => null);
   if (q) {
-    await q.updateResearchRun(runId, { status: "CANCELLED", completedAt: new Date().toISOString() });
+    const run = await q.getResearchRun(runId).catch(() => null);
+    if (run) await q.updateResearchRun(runId, { status: "CANCELLED", completedAt: new Date().toISOString() });
   }
   const list = await jobs.list(runId);
   for (const job of list) {
@@ -282,17 +290,24 @@ export async function processJobWithRetry(job: ResearchJobRow, deps: RunnerDeps)
 
     const status = researchStatusOf(result.snapshot);
     try {
-      await deps.persist(result.company, result.snapshot, job, status);
-      await jobs.update(job.id, {
-        status,
-        failureClass: null,
-        lastError: null,
-        provider: result.provider ?? "research",
+      const jobForPersist: ResearchJobRow = {
+        ...job,
         attemptCount: attempt,
-        completedAt: stamp(now),
         payload: { ...job.payload, attempts, snapshotId: result.snapshot.id },
-      });
-      return (await jobs.get(job.id)) ?? job;
+      };
+      await deps.persist(result.company, result.snapshot, jobForPersist, status);
+      if (!deps.persistFinalizesJob) {
+        await jobs.update(job.id, {
+          status,
+          failureClass: null,
+          lastError: null,
+          provider: result.provider ?? "research",
+          attemptCount: attempt,
+          completedAt: stamp(now),
+          payload: { ...job.payload, attempts, snapshotId: result.snapshot.id },
+        });
+      }
+      return (await jobs.get(job.id)) ?? { ...job, status, attemptCount: attempt };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       attempts.push({
@@ -326,27 +341,35 @@ export async function processJobWithRetry(job: ResearchJobRow, deps: RunnerDeps)
   return (await jobs.get(job.id)) ?? job;
 }
 
-export async function processRun(runId: string, deps: RunnerDeps): Promise<{ processed: string[] }> {
+export async function processRun(
+  runId: string,
+  deps: RunnerDeps,
+  opts?: { maxJobs?: number },
+): Promise<{ processed: string[] }> {
   const jobs = deps.jobs ?? (await defaultJobStore());
+  if (deps.isPaused?.(runId) || pausedRuns.has(runId) || deps.isCancelled?.(runId) || cancelledRuns.has(runId)) {
+    return { processed: [] };
+  }
   const list = await jobs.list(runId);
   const pending = list.filter((j) => j.status === "QUEUED" || j.status === "RETRY_WAIT");
+  const limited = opts?.maxJobs != null ? pending.slice(0, Math.max(0, opts.maxJobs)) : pending;
   const concurrency = clampConcurrency(deps.concurrency);
   const processed: string[] = [];
   let cursor = 0;
   const stop = () =>
     Boolean(deps.isPaused?.(runId) || deps.isCancelled?.(runId) || pausedRuns.has(runId) || cancelledRuns.has(runId));
 
-  const workers = Array.from({ length: Math.min(concurrency, Math.max(pending.length, 1)) }, async () => {
-    while (cursor < pending.length && !stop()) {
+  const workers = Array.from({ length: Math.min(concurrency, Math.max(limited.length, 1)) }, async () => {
+    while (cursor < limited.length && !stop()) {
       const idx = cursor;
       cursor += 1;
-      const job = pending[idx];
+      const job = limited[idx];
       if (!job) break;
       const done = await processJobWithRetry(job, { ...deps, jobs });
       processed.push(done.ticker);
     }
   });
-  if (pending.length > 0) await Promise.all(workers);
+  if (limited.length > 0) await Promise.all(workers);
   return { processed };
 }
 

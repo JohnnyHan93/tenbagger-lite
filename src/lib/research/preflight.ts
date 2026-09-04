@@ -9,6 +9,8 @@ import {
   type PreflightResult,
 } from "./jobs.ts";
 import { LAST_VERIFIED_BUILD } from "./verified-build.ts";
+import type { QuoteProviderHealth } from "./provider-health.ts";
+import { productionCapabilities } from "./production.ts";
 
 export type CheckKind = "LIVE" | "LAST_VERIFIED";
 
@@ -27,6 +29,8 @@ export interface LivePreflightResult extends PreflightResult {
   noActiveConflict: boolean;
   providerConfig: boolean;
   executorReady: boolean;
+  providerUs: boolean;
+  providerKr: boolean;
 }
 
 export interface LivePreflightInput {
@@ -35,6 +39,7 @@ export interface LivePreflightInput {
   sql?: Sql | null;
   universeMembers?: Array<{ ticker: string; country: string }>;
   executeFull100?: boolean;
+  providerProbe?: () => Promise<QuoteProviderHealth>;
 }
 
 function check(
@@ -89,7 +94,33 @@ export async function runLivePreflight(input: LivePreflightInput): Promise<LiveP
     }
   }
 
-  const providerConfig = true;
+  let providerUs = false;
+  let providerKr = false;
+  let providerProbed = false;
+  if (input.providerProbe) {
+    try {
+      const health = await input.providerProbe();
+      providerUs = health.us;
+      providerKr = health.kr;
+      providerProbed = true;
+    } catch {
+      providerProbed = true;
+      providerUs = false;
+      providerKr = false;
+    }
+  }
+  const providerConfig = providerProbed && providerUs && providerKr;
+  const caps = productionCapabilities();
+  const wired = caps.chunkProcessor && caps.transactionalPersist && caps.productionDeps;
+  const executorReady =
+    dbAvailable &&
+    queuePersistence &&
+    universe100 &&
+    us50 &&
+    kr50 &&
+    fakeDemoZero &&
+    noActiveConflict &&
+    wired;
   const last = LAST_VERIFIED_BUILD;
   const checks: PreflightCheck[] = [
     check("db", "DB 연결", "LIVE", dbAvailable, dbAvailable ? "reachable" : "unreachable"),
@@ -102,7 +133,14 @@ export async function runLivePreflight(input: LivePreflightInput): Promise<LiveP
     check("queue", "research_jobs / research_runs", "LIVE", queuePersistence, queuePersistence ? "tables ready" : "missing"),
     check("conflict", "활성 Full-100 충돌 없음", "LIVE", noActiveConflict, noActiveConflict ? "none" : "active run"),
     check("flag", "EXECUTE_FULL_100", "LIVE", executeFull100, executeFull100 ? "YES" : "NO"),
-    check("provider", "시세/공시 경로", "LIVE", providerConfig, "quote+filings public; xAI optional"),
+    check(
+      "provider",
+      "시세/공시 경로",
+      "LIVE",
+      providerConfig,
+      providerProbed ? `US=${providerUs ? "ok" : "fail"} KR=${providerKr ? "ok" : "fail"}; xAI optional` : "not probed",
+    ),
+    check("executor", "Executor wiring", "LIVE", executorReady, executorReady ? "structural ready" : "not ready"),
     check(
       "typecheck",
       "Typecheck",
@@ -133,25 +171,14 @@ export async function runLivePreflight(input: LivePreflightInput): Promise<LiveP
     ),
   ];
 
-  const liveMustPass = [
-    dbAvailable,
-    universe100,
-    us50,
-    kr50,
-    fakeDemoZero,
-    existingPreserved,
-    queuePersistence,
-    noActiveConflict,
-    executeFull100,
-    providerConfig,
-  ];
-  const ready = liveMustPass.every(Boolean);
+  const ready = executorReady && executeFull100 && providerConfig;
 
   const notes: string[] = [];
   if (!executeFull100) notes.push("EXECUTE_FULL_100 = NO — 배치 실행 잠금");
   if (!dbAvailable) notes.push("DB LIVE FAIL");
   if (!universe100) notes.push(`Universe total ${stats.total} ≠ 100`);
   if (!queuePersistence) notes.push("Queue tables LIVE FAIL");
+  if (!executorReady) notes.push("Executor not ready");
   notes.push(`LAST VERIFIED build ${last.commitSha.slice(0, 7)}`);
 
   return {
@@ -180,6 +207,8 @@ export async function runLivePreflight(input: LivePreflightInput): Promise<LiveP
     kr50,
     noActiveConflict,
     providerConfig,
-    executorReady: true,
+    executorReady,
+    providerUs,
+    providerKr,
   };
 }

@@ -68,8 +68,13 @@ export const recoverStaleRunsFn = createServerFn({ method: "POST" }).handler(asy
 export const livePreflightFn = createServerFn({ method: "GET" }).handler(async () => {
   const { loadWorkspace } = await import("./repo.ts");
   const { runLivePreflight } = await import("../research/preflight.ts");
+  const { probeQuoteProviders } = await import("../research/provider-health.ts");
   const ws = await loadWorkspace();
-  return runLivePreflight({ companies: ws.companies, snapshots: ws.snapshots });
+  return runLivePreflight({
+    companies: ws.companies,
+    snapshots: ws.snapshots,
+    providerProbe: probeQuoteProviders,
+  });
 });
 
 export const queueStateFn = createServerFn({ method: "GET" }).handler(async () => {
@@ -144,9 +149,30 @@ function toJobDto(job: {
 }
 
 export const startFull100Fn = createServerFn({ method: "POST" }).handler(async () => {
-  const { startFull100Research } = await import("../research/runner.ts");
-  return startFull100Research();
+  const { startFull100FromWorkspace } = await import("../research/production.ts");
+  return startFull100FromWorkspace();
 });
+
+export const processFull100ChunkFn = createServerFn({ method: "POST" })
+  .validator((input: { runId: string }) => input)
+  .handler(async ({ data }) => {
+    const { processFull100Chunk } = await import("../research/production.ts");
+    const result = await processFull100Chunk(data.runId);
+    return {
+      ok: result.ok,
+      processed: result.processed,
+      skipped: result.skipped ?? null,
+      run: result.run
+        ? {
+            id: result.run.id,
+            status: result.run.status,
+            totalJobs: result.run.totalJobs,
+            completedJobs: result.run.completedJobs,
+            failedJobs: result.run.failedJobs,
+          }
+        : null,
+    };
+  });
 
 export const pauseFull100Fn = createServerFn({ method: "POST" })
   .validator((input: { runId: string }) => input)

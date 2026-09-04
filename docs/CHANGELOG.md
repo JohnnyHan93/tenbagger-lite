@@ -1,4 +1,17 @@
+## v2.3.1 — Execution wiring & CI repair
+
+- Production start loads the DB workspace (`startFull100FromWorkspace`) before creating jobs. Empty-array start can no longer invent 100 remaining names.
+- Real remaining with Sample100 + INOD / 삼성전자 / KB금융 = **97 jobs**, not 100.
+- Production research path: `executeResearch` → `runSnapshotFromDraft` → `saveAnalysisTransaction` (job status in the same transaction). Grok X scores stay on the draft.
+- Bounded chunk processor (`processFull100Chunk`, default 3). No detached unbounded `processRun`. Queue orchestrator exists but is gated by `EXECUTE_FULL_100 = NO`.
+- `syncRunProgress`: `completed_jobs` = COMPLETE+PARTIAL+RESEARCH_REQUIRED; `failed_jobs` = FAILED; remaining 0 → run COMPLETE + `completed_at`.
+- Pause / cancel / resume read `research_runs.status` from DB. Process restart recovers RESEARCHING → QUEUED.
+- Preflight: no hardcoded `providerConfig = true` / `executorReady = true`. LIVE HTTP probe (Yahoo AAPL + Naver 005930). Queue LIVE CHECK shows UNKNOWN when live is missing — not PASS.
+- GitHub CI portable: Grok-only brand/og tests skip when `.grok/skills` / `AGENTS.md` are absent. `npm run test:grok-platform` kept for the builder.
+- Full 100 still **not started**.
+
 ## v2.3 — Pre-Full100 hardening
+
 
 - FinancialSnapshot: independent `cfo` / `fcf` (`fcfSource` provenance). Nasdaq OCF → CFO. Derived metrics never fall back across the two.
 - Quality 70: CFO factors N/A without CFO; FCF factors N/A without FCF. Q41 still not a copy of ROIC.

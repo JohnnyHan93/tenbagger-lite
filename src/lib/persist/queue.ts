@@ -1,5 +1,6 @@
 import { getSql, type Sql } from "../db.ts";
 import type { FailureClass, JobStatus } from "../research/jobs.ts";
+import { SAMPLE_RESEARCH_100_UNIVERSE_ID } from "../sample-research-100.ts";
 
 export type RunType = "INITIAL_BATCH" | "REFRESH" | "MANUAL";
 export type RunStatus = "QUEUED" | "RUNNING" | "PAUSED" | "COMPLETE" | "CANCELLED" | "FAILED";
@@ -301,11 +302,69 @@ export function isTerminalJobStatus(status: ResearchJobRow["status"]): boolean {
   return TERMINAL_JOB_STATUSES.has(status);
 }
 
-export async function activeFull100Run(sql?: Sql): Promise<ResearchRunRow | null> {
+export const SUCCESS_JOB_STATUSES = new Set(["COMPLETE", "PARTIAL", "RESEARCH_REQUIRED"]);
+
+export function summarizeJobCounts(jobs: ResearchJobRow[]): {
+  successful: number;
+  failed: number;
+  cancelled: number;
+  queued: number;
+  researching: number;
+  terminal: number;
+} {
+  let successful = 0;
+  let failed = 0;
+  let cancelled = 0;
+  let queued = 0;
+  let researching = 0;
+  for (const job of jobs) {
+    if (SUCCESS_JOB_STATUSES.has(job.status)) successful += 1;
+    else if (job.status === "FAILED") failed += 1;
+    else if (job.status === "CANCELLED") cancelled += 1;
+    else if (job.status === "QUEUED" || job.status === "RETRY_WAIT" || job.status === "NOT_RESEARCHED") queued += 1;
+    else if (job.status === "RESEARCHING") researching += 1;
+  }
+  return {
+    successful,
+    failed,
+    cancelled,
+    queued,
+    researching,
+    terminal: successful + failed + cancelled,
+  };
+}
+
+export async function syncRunProgress(runId: string, sql?: Sql): Promise<ResearchRunRow> {
+  const db = sql ?? (await getSql());
+  const run = await getResearchRun(runId, db);
+  if (!run) throw new Error(`research run ${runId} not found`);
+  const jobs = await listJobsForRun(runId, db);
+  const counts = summarizeJobCounts(jobs);
+  const now = new Date().toISOString();
+  const patch: Partial<Pick<ResearchRunRow, "status" | "completedJobs" | "failedJobs" | "completedAt">> = {
+    completedJobs: counts.successful,
+    failedJobs: counts.failed,
+  };
+  if (run.status === "CANCELLED") {
+    patch.completedAt = run.completedAt ?? now;
+  } else if (run.status === "FAILED") {
+    patch.completedAt = run.completedAt ?? now;
+  } else if (run.totalJobs > 0 && counts.terminal === run.totalJobs) {
+    patch.status = "COMPLETE";
+    patch.completedAt = now;
+  }
+  await updateResearchRun(runId, patch, db);
+  const next = await getResearchRun(runId, db);
+  if (!next) throw new Error(`research run ${runId} missing after sync`);
+  return next;
+}
+
+export async function activeFull100Run(sql?: Sql, universeId = SAMPLE_RESEARCH_100_UNIVERSE_ID): Promise<ResearchRunRow | null> {
   const db = sql ?? (await getSql());
   if (!(await queueTablesReady(db))) return null;
   const rows = await db.query<{ id: string }>(
-    "select id from research_runs where status in ('RUNNING','PAUSED','QUEUED') and type = 'INITIAL_BATCH' order by created_at desc limit 1",
+    "select id from research_runs where status in ('RUNNING','PAUSED','QUEUED') and type = 'INITIAL_BATCH' and universe_id = $1 order by created_at desc limit 1",
+    [universeId],
   );
   if (!rows[0]) return null;
   return getResearchRun(rows[0].id, db);

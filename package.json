@@ -16,7 +16,8 @@
     "preview:stop": "node scripts/preview.mjs stop",
     "typecheck": "tsc --noEmit",
     "check:auth": "node scripts/check-auth-invariant.mjs",
-    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/research/quote-parse.test.ts src/lib/research/heuristic.test.ts src/lib/research/gaps.test.ts src/lib/research/runner.test.ts src/lib/research/preflight.test.ts src/lib/scoring/pipeline.test.ts src/lib/scoring/scoring.test.ts src/lib/engines/oversold.test.ts src/lib/engines/industry.test.ts src/lib/metrics/cashflow.test.ts src/lib/persist/p0.test.ts src/lib/persist/demo.test.ts src/lib/persist/transaction.test.ts src/lib/persist/queue.test.ts",
+    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/research/quote-parse.test.ts src/lib/research/heuristic.test.ts src/lib/research/gaps.test.ts src/lib/research/runner.test.ts src/lib/research/preflight.test.ts src/lib/research/production.test.ts src/lib/scoring/pipeline.test.ts src/lib/scoring/scoring.test.ts src/lib/engines/oversold.test.ts src/lib/engines/industry.test.ts src/lib/metrics/cashflow.test.ts src/lib/persist/p0.test.ts src/lib/persist/demo.test.ts src/lib/persist/transaction.test.ts src/lib/persist/queue.test.ts",
+    "test:grok-platform": "node --test --test-name-pattern='SKILL.md|brand-task prohibition|self-check with the flag|og skill' scripts/brand-check.test.mjs scripts/write-atomic.test.mjs",
     "cleanup:demo-data": "node --experimental-strip-types scripts/cleanup-demo-data.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."

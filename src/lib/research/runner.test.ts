@@ -232,3 +232,106 @@ describe("resume does not re-run completed jobs", () => {
     assert.ok(researched.includes("T4"));
   });
 });
+
+describe("bounded chunks", () => {
+  it("one chunk processes at most 3 of 10 pending jobs", async () => {
+    __resetRunnerControl();
+    const rows = Array.from({ length: 10 }, (_, i) =>
+      jobRow({ id: `c_${i}`, ticker: `C${i}`, runId: "r_chunk", status: "QUEUED" }),
+    );
+    const store = memoryJobs(rows);
+    const researched: string[] = [];
+    const { processed } = await processRun(
+      "r_chunk",
+      {
+        jobs: store,
+        concurrency: 3,
+        sleep: async () => undefined,
+        research: async (ticker) => {
+          researched.push(ticker);
+          return { ok: true, company: company(ticker), snapshot: snapshot(ticker) };
+        },
+        persist: async () => undefined,
+      },
+      { maxJobs: 3 },
+    );
+    assert.equal(processed.length, 3);
+    assert.equal(researched.length, 3);
+    const stillQueued = [...store.map.values()].filter((j) => j.status === "QUEUED");
+    assert.equal(stillQueued.length, 7);
+  });
+
+  it("paused run does not schedule the next chunk", async () => {
+    __resetRunnerControl();
+    const { pauseResearchRun } = await import("./runner.ts");
+    const rows = Array.from({ length: 6 }, (_, i) =>
+      jobRow({ id: `p_${i}`, ticker: `P${i}`, runId: "r_pause", status: "QUEUED" }),
+    );
+    const store = memoryJobs(rows);
+    const researched: string[] = [];
+    const deps = {
+      jobs: store,
+      concurrency: 3,
+      sleep: async () => undefined,
+      research: async (ticker: string) => {
+        researched.push(ticker);
+        return { ok: true as const, company: company(ticker), snapshot: snapshot(ticker) };
+      },
+      persist: async () => undefined,
+    };
+    await processRun("r_pause", deps, { maxJobs: 3 });
+    assert.equal(researched.length, 3);
+    await pauseResearchRun("r_pause");
+    const second = await processRun("r_pause", deps, { maxJobs: 3 });
+    assert.equal(second.processed.length, 0);
+    assert.equal(researched.length, 3);
+  });
+
+  it("cancelled run does not execute further jobs", async () => {
+    __resetRunnerControl();
+    const { cancelResearchRun } = await import("./runner.ts");
+    const rows = Array.from({ length: 6 }, (_, i) =>
+      jobRow({ id: `k_${i}`, ticker: `K${i}`, runId: "r_cancel", status: "QUEUED" }),
+    );
+    const store = memoryJobs(rows);
+    const researched: string[] = [];
+    const deps = {
+      jobs: store,
+      concurrency: 3,
+      sleep: async () => undefined,
+      research: async (ticker: string) => {
+        researched.push(ticker);
+        return { ok: true as const, company: company(ticker), snapshot: snapshot(ticker) };
+      },
+      persist: async () => undefined,
+    };
+    await processRun("r_cancel", deps, { maxJobs: 3 });
+    await cancelResearchRun("r_cancel", store);
+    const second = await processRun("r_cancel", deps, { maxJobs: 3 });
+    assert.equal(second.processed.length, 0);
+    assert.equal(researched.length, 3);
+  });
+
+  it("persistFinalizesJob skips a second status write", async () => {
+    const store = memoryJobs([jobRow({ id: "j_fin", ticker: "FIN", runId: "r1", status: "QUEUED" })]);
+    let extraStatusWrites = 0;
+    const origUpdate = store.update.bind(store);
+    store.update = async (id, patch) => {
+      if (patch.status === "RESEARCH_REQUIRED" || patch.status === "COMPLETE" || patch.status === "PARTIAL") {
+        extraStatusWrites += 1;
+      }
+      return origUpdate(id, patch);
+    };
+    const done = await processJobWithRetry(store.map.get("j_fin")!, {
+      jobs: store,
+      persistFinalizesJob: true,
+      sleep: async () => undefined,
+      research: async (ticker) => ({ ok: true, company: company(ticker), snapshot: snapshot(ticker) }),
+      persist: async (_c, _s, job, status) => {
+        await origUpdate(job.id, { status, completedAt: "2026-09-04T00:00:01.000Z" });
+      },
+    });
+    assert.equal(done.status, "RESEARCH_REQUIRED");
+    assert.equal(extraStatusWrites, 0);
+  });
+});
