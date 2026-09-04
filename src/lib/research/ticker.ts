@@ -144,14 +144,15 @@ async function grokResearch(
     body: JSON.stringify({
       model: "grok-4.5",
       temperature: 0.15,
-      max_tokens: 2800,
+      max_tokens: 6000,
+      reasoning_effort: "low",
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: GROK_PROMPT },
         { role: "user", content: user },
       ],
     }),
-    signal: AbortSignal.timeout(28000),
+    signal: AbortSignal.timeout(90000),
   });
   if (!res.ok) return null;
   const body = (await res.json()) as ChatBody;

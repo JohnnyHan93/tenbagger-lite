@@ -145,7 +145,9 @@ async function createPgliteSql(): Promise<Sql> {
   // data survives source edits (it resets on dev-server restart).
   globalRef.__pgliteInstance__ ??= (async () => {
     const { PGlite } = await import("@electric-sql/pglite");
+    const dataDir = process.env.IDT_PGLITE_DIR?.trim();
     const pg = new PGlite({
+      ...(dataDir ? { dataDir } : {}),
       parsers: {
         [OID_INT8]: Number,
         [OID_DATE]: identity,
@@ -280,7 +282,16 @@ export async function getPglite(): Promise<import("@electric-sql/pglite").PGlite
  */
 export function ensureDbReady(): Promise<void> {
   if (dbSource !== "pglite") return Promise.resolve();
-  return getSql().then(() => undefined);
+  return getSql()
+    .then(async () => {
+      try {
+        const { restoreCheckpointIfEmpty } = await import("./persist/checkpoint.ts");
+        await restoreCheckpointIfEmpty();
+      } catch (err) {
+        console.error("[db] checkpoint restore skipped:", err);
+      }
+    })
+    .then(() => undefined);
 }
 
 // Server-only eager start: kick PGLite bootstrap as soon as this module loads in

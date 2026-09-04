@@ -1,4 +1,4 @@
-# Build State — IDT 투자발견 v2.3.2
+# Build State — IDT 투자발견 v2.4
 
 ## Stack
 
@@ -11,6 +11,7 @@ TanStack Start + React 19 + Tailwind v4 + Zustand (UI prefs only) + Kysely/pg + 
 - Analyses are insert-only (immutable)
 - Each ANALYZE/Refresh writes company + snapshot + evidence in **one transaction** (`saveAnalysisTransaction`)
 - Persist status: IDLE / SAVING / SAVED / SAVE_FAILED (retry)
+- Preview-only durable PGLite via `IDT_PGLITE_DIR` (not used in tests). Checkpoint restore is skipped unless that dir is set.
 
 ## Sample data (1A)
 
@@ -20,9 +21,9 @@ Runtime bootstrap no longer inserts fictional research.
 |---|---|---|
 | FAKE_DEMO | Sample Six + heuristic library scores | Removed |
 | TEST_FIXTURE | `src/lib/samples.ts` + isolated ISO* identities in tests | Tests only |
-| REAL_RESEARCH_DATA | IDT SAMPLE RESEARCH 100 identities + Smoke 12 research | Seeded / analyzed |
+| REAL_RESEARCH_DATA | IDT SAMPLE RESEARCH 100 identities + Smoke 12 + Full100 research | Seeded / analyzed |
 
-Identity universe: 100 names, US 50 / KR 50. Smoke 12 have live research snapshots. Scores are not identity-seeded.
+Identity universe: 100 names, US 50 / KR 50. Sample100 analyses = 100 (3 preserved + 97 new). Extra Smoke 9 remain outside the universe. Scores are not identity-seeded.
 
 ## Model versions
 
@@ -32,6 +33,13 @@ Identity universe: 100 names, US 50 / KR 50. Smoke 12 have live research snapsho
 | Oversold Opportunity | OSM-v2.1 | N/A renormalization; REIT skips ordinary P/E |
 | Quality 70 | MFC70-v1.2 | Bank leverage/ROIC not forced; biotech inventory/ROIC conditional; CFO≠FCF |
 | Investor Lenses | LENS-v1.0 | Overlay |
+
+## v2.4 Full 100
+
+- Run `run_4e0qh36xkgya` INITIAL_BATCH COMPLETE. 97 jobs, all `RESEARCH_REQUIRED`, FAILED 0.
+- AI: grok-4.5 on all 97 jobs. Preserved three remain `filings+profile`.
+- Operator locked: `V24_OPERATOR_ENABLED = false`. `EXECUTE_FULL_100 = false`.
+- LAST VERIFIED still GitHub Actions SUCCESS on `7ebab69` until this SHA's Actions run succeeds.
 
 ## v2.3.2 preflight enforcement
 
@@ -61,10 +69,20 @@ LAST VERIFIED in the Queue UI is **GitHub Actions**. Source `github-actions`, SH
 ## Full 100
 
 ```text
-FULL 100 EXECUTOR READY
-PREFLIGHT ENFORCEMENT READY
-EXECUTE_FULL_100 = NO
-FULL 100 NOT STARTED
-REMAINING = 97
-GITHUB CI = GREEN
+FULL100 DATASET:
+RESEARCHED
+
+EXECUTOR:
+READY
+
+EXECUTION:
+LOCKED
+
+EXECUTE_FULL_100:
+NO
+
+SAMPLE100 = 100
+ANALYZED = 100
+REMAINING = 0
+FAKE DEMO = 0
 ```

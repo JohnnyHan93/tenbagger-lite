@@ -1,3 +1,16 @@
+## v2.4 — Full 100 controlled execution
+
+- Authorized one-time Full 100 research of the remaining 97 Sample100 names (`useAi=true`, chunk size 3).
+- Existing INOD / 삼성전자 / KB금융 snapshots were excluded from the 97 jobs and not refreshed.
+- Extra Smoke 12 names outside Sample100 (9 companies) were left untouched.
+- All 97 jobs finished terminal `RESEARCH_REQUIRED` (honest Quality 70 gaps; not fabricated COMPLETE). FAILED = 0, CANCELLED = 0.
+- Operator path (`V24_OPERATOR_ENABLED`) was used instead of leaving `EXECUTE_FULL_100` true in source. Flag is now **false**; Full 100 cannot auto-run again.
+- Grok research: `reasoning_effort: "low"`, 90s timeout, max_tokens 6000 so grok-4.5 completes instead of aborting.
+- Durable preview PGLite (`IDT_PGLITE_DIR`) + checkpoint restore only when that dir is set. Tests stay in-memory.
+- Vite ignores `data/**` so WAL writes do not reload the app.
+- Coverage: X-Bagger 89.6% · Oversold 100% · Quality 27.3% · median overall 73.5%. No score tuning after seeing ranks.
+- `EXECUTE_FULL_100` remains `false`. Queue UI LOCKED.
+
 ## v2.3.2 — Preflight enforcement
 
 - Production start (`startFull100FromWorkspace`) now **enforces** `preflight.ready` before inserting any `research_runs` / `research_jobs`.

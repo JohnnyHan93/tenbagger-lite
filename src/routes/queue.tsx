@@ -68,26 +68,56 @@ function Page() {
   }, [companies, snapshots]);
 
   useEffect(() => {
-    if (!EXECUTE_FULL_100) return;
-    if (!run || run.status !== "RUNNING") return;
+    let cancelled = false;
+    const hydrateFromDb = useAppStore.getState().hydrateFromDb;
+    const tick = async () => {
+      try {
+        const { queueStateFn, loadWorkspaceFn } = await import("@/lib/persist/actions");
+        const q = await queueStateFn();
+        if (cancelled) return;
+        setRun(q.run);
+        setRunJobs(q.jobs);
+        if (q.run && (q.run.status === "RUNNING" || q.run.status === "COMPLETE" || q.run.status === "PAUSED")) {
+          const db = await loadWorkspaceFn();
+          if (!cancelled) hydrateFromDb(db);
+        }
+      } catch {
+        /* keep last */
+      }
+    };
+    void tick();
+    const id = window.setInterval(() => void tick(), 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, []);
+
+  useEffect(() => {
+    const w = window as unknown as { __idtOperator?: unknown };
     let cancelled = false;
     void (async () => {
-      const { processFull100ChunkFn, queueStateFn } = await import("@/lib/persist/actions");
-      while (!cancelled) {
-        const chunk = await processFull100ChunkFn({ data: { runId: run.id } });
-        if (!chunk.ok || chunk.skipped || chunk.run?.status !== "RUNNING") break;
-        if (chunk.processed.length === 0) break;
-        const next = await queueStateFn();
-        if (!cancelled) {
-          setRun(next.run);
-          setRunJobs(next.jobs);
-        }
-      }
+      const actions = await import("@/lib/persist/actions");
+      if (cancelled) return;
+      w.__idtOperator = {
+        preflight: () => actions.livePreflightFn(),
+        queue: () => actions.queueStateFn(),
+        dump: () => actions.full100DumpFn(),
+        report: () => actions.full100ReportFn(),
+        checkpoint: () => actions.full100CheckpointFn(),
+        start: () => actions.v24StartFn(),
+        chunk: (runId: string) => actions.v24ChunkFn({ data: { runId } }),
+        researchOne: (ticker: string) => actions.v24ResearchOneFn({ data: { ticker } }),
+        pause: (runId: string) => actions.pauseFull100Fn({ data: { runId } }),
+        resume: (runId: string) => actions.resumeFull100Fn({ data: { runId } }),
+        load: () => actions.loadWorkspaceFn(),
+      };
     })();
     return () => {
       cancelled = true;
+      delete w.__idtOperator;
     };
-  }, [run?.id, run?.status]);
+  }, []);
 
   const researching = runJobs.filter((j) => j.status === "RESEARCHING");
   const failed = runJobs.filter((j) => j.status === "FAILED").length;
@@ -124,10 +154,11 @@ function Page() {
             {researching[0] ? ` · 조사중 ${displayTicker(researching[0].ticker)} retry ${researching[0].attemptCount}/3` : ""}
           </p>
         ) : (
-          <p className="mt-2 font-mono text-xs text-subtle">Run 없음 · remaining 97 · 시작하지 않음</p>
+          <p className="mt-2 font-mono text-xs text-subtle">Run 없음 · remaining {live?.remaining ?? flight.remaining} · 시작하지 않음</p>
         )}
         <p className="mt-2 text-xs text-subtle">
-          청크 3종목. 재시도 429/timeout. Resume RESEARCHING→QUEUED. 유료 배치 미시작.
+          청크 3종목. 재시도 429/timeout. Resume RESEARCHING→QUEUED.
+          {run ? ` 배치 ${run.status}.` : " 유료 배치는 통제 실행으로만 시작."}
         </p>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <ul className="grid gap-1 font-mono text-xs text-muted">

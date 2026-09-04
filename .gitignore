@@ -26,3 +26,4 @@ startup.sh
 .grok/og-card.html
 .grok/render-*.mjs
 .project_id
+data/

@@ -13,6 +13,7 @@ import {
   processFull100Chunk,
   startFull100FromWorkspace,
 } from "./production.ts";
+import { V24_OPERATOR_ENABLED, v24Start, v24Chunk, v24ResearchOne } from "./v24-operator.ts";
 import { __resetRunnerControl, cancelResearchRun, pauseResearchRun, resumeResearchRun } from "./runner.ts";
 import {
   listJobsForRun,
@@ -172,6 +173,21 @@ function queueDownSql(inner: Sql): Sql {
 describe("production Full100 start wiring", () => {
   it("keeps EXECUTE_FULL_100 off", () => {
     assert.equal(EXECUTE_FULL_100, false);
+  });
+
+  it("keeps v2.4 operator locked so Full100 cannot start again", async () => {
+    assert.equal(V24_OPERATOR_ENABLED, false);
+    const before = (await listResearchRuns()).length;
+    const start = await v24Start();
+    assert.equal(start.ok, false);
+    if (!start.ok) assert.equal(start.error, "OPERATOR_DISABLED");
+    const chunk = await v24Chunk("run_none");
+    assert.equal(chunk.ok, false);
+    assert.equal(chunk.skipped, "OPERATOR_DISABLED");
+    const one = await v24ResearchOne("AAPL");
+    assert.equal(one.ok, false);
+    assert.equal(one.error, "OPERATOR_DISABLED");
+    assert.equal((await listResearchRuns()).length, before);
   });
 
   it("flag off creates 0 jobs and does not load workspace", async () => {

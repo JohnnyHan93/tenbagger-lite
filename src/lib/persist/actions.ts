@@ -154,10 +154,12 @@ export const startFull100Fn = createServerFn({ method: "POST" }).handler(async (
 });
 
 export const processFull100ChunkFn = createServerFn({ method: "POST" })
-  .validator((input: { runId: string }) => input)
+  .validator((input: { runId: string; useAi?: boolean }) => input)
   .handler(async ({ data }) => {
-    const { processFull100Chunk } = await import("../research/production.ts");
-    const result = await processFull100Chunk(data.runId);
+    const { processFull100Chunk, createProductionDeps } = await import("../research/production.ts");
+    const result = await processFull100Chunk(data.runId, {
+      deps: data.useAi ? createProductionDeps({ useAi: true }) : undefined,
+    });
     return {
       ok: result.ok,
       processed: result.processed,
@@ -196,4 +198,66 @@ export const cancelFull100Fn = createServerFn({ method: "POST" })
     const { cancelResearchRun } = await import("../research/runner.ts");
     await cancelResearchRun(data.runId);
     return { ok: true as const };
+  });
+
+export const full100DumpFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { collectFull100Dump } = await import("./checkpoint.ts");
+  const dump = await collectFull100Dump(false);
+  return {
+    dumpedAt: dump.dumpedAt,
+    hasXai: dump.hasXai,
+    counts: dump.counts,
+    universe: dump.universe,
+    preserved: dump.preserved,
+    jobs: dump.jobs,
+    jobCounts: dump.jobCounts,
+    run: dump.run,
+    integrity: dump.integrity,
+  };
+});
+
+export const full100CheckpointFn = createServerFn({ method: "POST" }).handler(async () => {
+  const { writeCheckpoint } = await import("./checkpoint.ts");
+  const path = await writeCheckpoint();
+  return { ok: true as const, path };
+});
+
+export const full100ReportFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { loadWorkspace } = await import("./repo.ts");
+  const { buildFull100Report } = await import("../research/full100-report.ts");
+  const ws = await loadWorkspace();
+  return buildFull100Report(ws.companies, ws.snapshots);
+});
+
+export const v24StartFn = createServerFn({ method: "POST" }).handler(async () => {
+  const { v24Start } = await import("../research/v24-operator.ts");
+  return v24Start();
+});
+
+export const v24ChunkFn = createServerFn({ method: "POST" })
+  .validator((input: { runId: string }) => input)
+  .handler(async ({ data }) => {
+    const { v24Chunk } = await import("../research/v24-operator.ts");
+    const result = await v24Chunk(data.runId);
+    return {
+      ok: result.ok,
+      processed: result.processed,
+      skipped: result.skipped ?? null,
+      run: result.run
+        ? {
+            id: result.run.id,
+            status: result.run.status,
+            totalJobs: result.run.totalJobs,
+            completedJobs: result.run.completedJobs,
+            failedJobs: result.run.failedJobs,
+          }
+        : null,
+    };
+  });
+
+export const v24ResearchOneFn = createServerFn({ method: "POST" })
+  .validator((input: { ticker: string }) => input)
+  .handler(async ({ data }) => {
+    const { v24ResearchOne } = await import("../research/v24-operator.ts");
+    return v24ResearchOne(data.ticker);
   });

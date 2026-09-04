@@ -1,0 +1,755 @@
+{
+  "universe": {
+    "sample100": 100,
+    "us": 50,
+    "kr": 50,
+    "analyzed": 100,
+    "remaining": 0,
+    "fakeDemo": 0,
+    "extraSmoke": 9,
+    "extraSmokeTickers": [
+      "196170.KQ",
+      "267260.KS",
+      "356680.KQ",
+      "ASTS",
+      "JPM",
+      "MSFT",
+      "NVDA",
+      "PLD",
+      "UNH"
+    ]
+  },
+  "coverage": {
+    "xbaggerAvg": 0.8961999999999999,
+    "oversoldAvg": 1,
+    "qualityAvg": 0.2733567358567356,
+    "medianOverall": 0.7345679012345679,
+    "us": {
+      "n": 50,
+      "xbagger": 0.9843999999999999,
+      "oversold": 1,
+      "quality": 0.20477207977207976,
+      "overall": 0.7297240265906931
+    },
+    "kr": {
+      "n": 50,
+      "xbagger": 0.8079999999999999,
+      "oversold": 1,
+      "quality": 0.34194139194139206,
+      "overall": 0.7166471306471307
+    },
+    "engines": [
+      {
+        "engine": "X-Bagger",
+        "us": 0.9843999999999999,
+        "kr": 0.8079999999999999,
+        "gap": 0.1764
+      },
+      {
+        "engine": "Oversold",
+        "us": 1,
+        "kr": 1,
+        "gap": 0
+      },
+      {
+        "engine": "Quality 70",
+        "us": 0.20477207977207976,
+        "kr": 0.34194139194139206,
+        "gap": -0.1371693121693123
+      }
+    ]
+  },
+  "adapters": [
+    {
+      "adapter": "Software",
+      "companies": 23,
+      "avgCoverage": 0.7347045707915273,
+      "COMPLETE": 0,
+      "PARTIAL": 0,
+      "RESEARCH_REQUIRED": 23,
+      "FAILED": 0
+    },
+    {
+      "adapter": "Semiconductor",
+      "companies": 9,
+      "avgCoverage": 0.6866941015089163,
+      "COMPLETE": 0,
+      "PARTIAL": 0,
+      "RESEARCH_REQUIRED": 9,
+      "FAILED": 0
+    },
+    {
+      "adapter": "Industrial",
+      "companies": 16,
+      "avgCoverage": 0.7055246913580249,
+      "COMPLETE": 0,
+      "PARTIAL": 0,
+      "RESEARCH_REQUIRED": 16,
+      "FAILED": 0
+    },
+    {
+      "adapter": "Healthcare",
+      "companies": 3,
+      "avgCoverage": 0.7345679012345679,
+      "COMPLETE": 0,
+      "PARTIAL": 0,
+      "RESEARCH_REQUIRED": 3,
+      "FAILED": 0
+    },
+    {
+      "adapter": "Financial",
+      "companies": 5,
+      "avgCoverage": 0.7847619047619047,
+      "COMPLETE": 0,
+      "PARTIAL": 0,
+      "RESEARCH_REQUIRED": 5,
+      "FAILED": 0
+    },
+    {
+      "adapter": "REIT",
+      "companies": 0,
+      "avgCoverage": 0,
+      "COMPLETE": 0,
+      "PARTIAL": 0,
+      "RESEARCH_REQUIRED": 0,
+      "FAILED": 0
+    },
+    {
+      "adapter": "Biotech",
+      "companies": 10,
+      "avgCoverage": 0.7030123456790124,
+      "COMPLETE": 0,
+      "PARTIAL": 0,
+      "RESEARCH_REQUIRED": 10,
+      "FAILED": 0
+    },
+    {
+      "adapter": "Other",
+      "companies": 31,
+      "avgCoverage": 0.7265790521704503,
+      "COMPLETE": 0,
+      "PARTIAL": 0,
+      "RESEARCH_REQUIRED": 31,
+      "FAILED": 0
+    },
+    {
+      "adapter": "Telecom",
+      "companies": 3,
+      "avgCoverage": 0.7567078189300411,
+      "COMPLETE": 0,
+      "PARTIAL": 0,
+      "RESEARCH_REQUIRED": 3,
+      "FAILED": 0
+    }
+  ],
+  "evidence": {
+    "total": 1523,
+    "TIER_1": 201,
+    "TIER_2": 412,
+    "TIER_3": 910,
+    "MANUAL": 0,
+    "ACTIVE": 1523,
+    "STALE": 0,
+    "CONFLICTED": 0,
+    "INVALIDATED": 0
+  },
+  "ai": {
+    "grok": 97,
+    "filings": 3,
+    "other": 0
+  },
+  "gaps": [
+    {
+      "field": "3Y Revenue CAGR",
+      "engine": "quality",
+      "impact": "HIGH",
+      "n": 100
+    },
+    {
+      "field": "Growth Acceleration",
+      "engine": "quality",
+      "impact": "HIGH",
+      "n": 100
+    },
+    {
+      "field": "ROIC",
+      "engine": "quality",
+      "impact": "HIGH",
+      "n": 95
+    },
+    {
+      "field": "AR Growth Gap",
+      "engine": "quality",
+      "impact": "HIGH",
+      "n": 90
+    },
+    {
+      "field": "OP Growth",
+      "engine": "quality",
+      "impact": "HIGH",
+      "n": 50
+    },
+    {
+      "field": "Profit Growth Leverage",
+      "engine": "quality",
+      "impact": "HIGH",
+      "n": 50
+    },
+    {
+      "field": "Margin Change",
+      "engine": "quality",
+      "impact": "HIGH",
+      "n": 50
+    },
+    {
+      "field": "Operating Leverage",
+      "engine": "quality",
+      "impact": "HIGH",
+      "n": 50
+    },
+    {
+      "field": "Gross Margin",
+      "engine": "quality",
+      "impact": "HIGH",
+      "n": 45
+    },
+    {
+      "field": "Inventory Growth Gap",
+      "engine": "quality",
+      "impact": "HIGH",
+      "n": 43
+    },
+    {
+      "field": "Interest Coverage",
+      "engine": "quality",
+      "impact": "HIGH",
+      "n": 36
+    },
+    {
+      "field": "시장 성장·TAM",
+      "engine": "xbagger",
+      "impact": "HIGH",
+      "n": 27
+    },
+    {
+      "field": "ST Debt / Cash",
+      "engine": "quality",
+      "impact": "HIGH",
+      "n": 27
+    },
+    {
+      "field": "고객 검증",
+      "engine": "xbagger",
+      "impact": "HIGH",
+      "n": 9
+    },
+    {
+      "field": "Cash / Assets",
+      "engine": "quality",
+      "impact": "HIGH",
+      "n": 5
+    },
+    {
+      "field": "R&D / Revenue",
+      "engine": "quality",
+      "impact": "HIGH",
+      "n": 5
+    }
+  ],
+  "leaders": {
+    "xbagger": [
+      {
+        "ticker": "INOD",
+        "company": "Innodata Inc.",
+        "country": "US",
+        "score": 67.5,
+        "coverage": 0.6705128205128205,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $170.46M → $251.66M (48%).",
+        "primaryRisk": "고객 검증 전 단계",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Software",
+        "provider": "filings+profile"
+      },
+      {
+        "ticker": "ANAB",
+        "company": "AnaptysBio, Inc.",
+        "country": "US",
+        "score": 65.2,
+        "coverage": 0.7345679012345679,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $91.28M → $234.60M (157%).",
+        "primaryRisk": "단일·소수 파트너 로열티 집중에 따른 매출 변동",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Biotech",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "ZVRA",
+        "company": "Zevra Therapeutics, Inc.",
+        "country": "US",
+        "score": 65.18181818181817,
+        "coverage": 0.6945679012345679,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $23.61M → $106.47M (351%).",
+        "primaryRisk": "희귀질환 환자 풀 한도로 매출 천장",
+        "topResearchGap": "시장 성장·TAM",
+        "earlySignal": false,
+        "adapter": "Biotech",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "IONQ",
+        "company": "IonQ, Inc.",
+        "country": "US",
+        "score": 64.4,
+        "coverage": 0.7345679012345679,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $43.07M → $130.02M (202%).",
+        "primaryRisk": "이미 ~100x+ 매출 반영 고평가",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Other",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "PAYS",
+        "company": "Paysign, Inc.",
+        "country": "US",
+        "score": 63.6,
+        "coverage": 0.7371794871794872,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $58.38M → $82.03M (40%).",
+        "primaryRisk": "헬스케어 결제·코페이 지원 규제·페이오 구조 변화",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Software",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "259960.KS",
+        "company": "크래프톤",
+        "country": "KR",
+        "score": 63.59999999999999,
+        "coverage": 0.7777777777777778,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 2.71조 → 3.33조 (23%).",
+        "primaryRisk": "히트작 의존·신작 실패 시 성장 정체",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Other",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "MAX",
+        "company": "MediaAlpha, Inc.",
+        "country": "US",
+        "score": 62.8,
+        "coverage": 0.7345679012345679,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $864.70M → $1.11B (29%).",
+        "primaryRisk": "보험 광고 사이클·캐리어 마케팅 예산 축소",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Other",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "RIGL",
+        "company": "Rigel Pharmaceuticals, Inc.",
+        "country": "US",
+        "score": 62.45454545454545,
+        "coverage": 0.6760493827160493,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $179.28M → $294.28M (64%).",
+        "primaryRisk": "신제품 채택 부진 또는 경쟁 요법 대비 점유 실패",
+        "topResearchGap": "시장 성장·TAM",
+        "earlySignal": false,
+        "adapter": "Biotech",
+        "provider": "grok-4.5"
+      }
+    ],
+    "oversold": [
+      {
+        "ticker": "RIGL",
+        "company": "Rigel Pharmaceuticals, Inc.",
+        "country": "US",
+        "score": 7.5,
+        "coverage": 0.6760493827160493,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $179.28M → $294.28M (64%).",
+        "primaryRisk": "신제품 채택 부진 또는 경쟁 요법 대비 점유 실패",
+        "topResearchGap": "시장 성장·TAM",
+        "earlySignal": true,
+        "adapter": "Biotech",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "000990.KS",
+        "company": "DB하이텍",
+        "country": "KR",
+        "score": 7.5,
+        "coverage": 0.6177777777777778,
+        "confidence": "Low",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 1.13조 → 1.40조 (24%).",
+        "primaryRisk": "고객·점유율·기술 해자 미확인",
+        "topResearchGap": "시장 성장·TAM",
+        "earlySignal": true,
+        "adapter": "Semiconductor",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "064350.KS",
+        "company": "현대로템",
+        "country": "KR",
+        "score": 7.5,
+        "coverage": 0.6511111111111111,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 4.38조 → 5.84조 (33%).",
+        "primaryRisk": "10x 수학 불성립(시총 규모 대비 성장 한계)",
+        "topResearchGap": "시장 성장·TAM",
+        "earlySignal": true,
+        "adapter": "Industrial",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "015760.KS",
+        "company": "한국전력",
+        "country": "KR",
+        "score": 7.45,
+        "coverage": 0.7777777777777778,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 93.40조 → 97.43조 (4%).",
+        "primaryRisk": "막대한 이자·차환 부담",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Other",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "009540.KS",
+        "company": "HD한국조선해양",
+        "country": "KR",
+        "score": 7.45,
+        "coverage": 0.6177777777777778,
+        "confidence": "Low",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 25.54조 → 29.93조 (17%).",
+        "primaryRisk": "조선 사이클 다운턴 시 매출·마진 급변",
+        "topResearchGap": "시장 성장·TAM",
+        "earlySignal": true,
+        "adapter": "Industrial",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "EVER",
+        "company": "EverQuote, Inc.",
+        "country": "US",
+        "score": 7.35,
+        "coverage": 0.7371794871794872,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $500.19M → $692.52M (38%).",
+        "primaryRisk": "보험 사이클·광고/리드 단가 변동으로 매출 성장 둔화",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Software",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "PGY",
+        "company": "Pagaya Technologies Ltd.",
+        "country": "US",
+        "score": 7.15,
+        "coverage": 0.7371794871794872,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $1.00B → $1.26B (26%).",
+        "primaryRisk": "신용 사이클 악화 시 손실·자금 조달 비용 상승",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Software",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "QNST",
+        "company": "QuinStreet, Inc.",
+        "country": "US",
+        "score": 7.05,
+        "coverage": 0.7345679012345679,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $1.09B → $1.29B (18%).",
+        "primaryRisk": "저마진 구조로 매출 성장이 이익·FCF로 잘 안 전이",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Other",
+        "provider": "grok-4.5"
+      }
+    ],
+    "quality": [
+      {
+        "ticker": "RDVT",
+        "company": "Red Violet, Inc.",
+        "country": "US",
+        "score": 89.0909090909091,
+        "coverage": 0.7371794871794872,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $75.19M → $90.25M (20%).",
+        "primaryRisk": "이미 ~13x+ 매출 멀티플로 성장 둔화 시 멀티플 수축",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Software",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "RIGL",
+        "company": "Rigel Pharmaceuticals, Inc.",
+        "country": "US",
+        "score": 87.5,
+        "coverage": 0.6760493827160493,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $179.28M → $294.28M (64%).",
+        "primaryRisk": "신제품 채택 부진 또는 경쟁 요법 대비 점유 실패",
+        "topResearchGap": "시장 성장·TAM",
+        "earlySignal": true,
+        "adapter": "Biotech",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "PAYS",
+        "company": "Paysign, Inc.",
+        "country": "US",
+        "score": 87.27272727272727,
+        "coverage": 0.7371794871794872,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $58.38M → $82.03M (40%).",
+        "primaryRisk": "헬스케어 결제·코페이 지원 규제·페이오 구조 변화",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Software",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "064350.KS",
+        "company": "현대로템",
+        "country": "KR",
+        "score": 86.66666666666666,
+        "coverage": 0.6511111111111111,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 4.38조 → 5.84조 (33%).",
+        "primaryRisk": "10x 수학 불성립(시총 규모 대비 성장 한계)",
+        "topResearchGap": "시장 성장·TAM",
+        "earlySignal": true,
+        "adapter": "Industrial",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "039030.KS",
+        "company": "이오테크닉스",
+        "country": "KR",
+        "score": 85.55555555555556,
+        "coverage": 0.6177777777777778,
+        "confidence": "Low",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 3209.0억 → 3809.0억 (19%).",
+        "primaryRisk": "고객·수주 파이프라인 미확인",
+        "topResearchGap": "시장 성장·TAM",
+        "earlySignal": true,
+        "adapter": "Semiconductor",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "INOD",
+        "company": "Innodata Inc.",
+        "country": "US",
+        "score": 85.45454545454545,
+        "coverage": 0.6705128205128205,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $170.46M → $251.66M (48%).",
+        "primaryRisk": "고객 검증 전 단계",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": true,
+        "adapter": "Software",
+        "provider": "filings+profile"
+      },
+      {
+        "ticker": "EVER",
+        "company": "EverQuote, Inc.",
+        "country": "US",
+        "score": 85.45454545454545,
+        "coverage": 0.7371794871794872,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $500.19M → $692.52M (38%).",
+        "primaryRisk": "보험 사이클·광고/리드 단가 변동으로 매출 성장 둔화",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Software",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "PATH",
+        "company": "UiPath, Inc.",
+        "country": "US",
+        "score": 85.45454545454545,
+        "coverage": 0.7371794871794872,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $1.43B → $1.61B (13%).",
+        "primaryRisk": "중성장(~10%대) 고착 시 10x 수학 붕괴",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Software",
+        "provider": "grok-4.5"
+      }
+    ],
+    "cross": [
+      {
+        "ticker": "INOD",
+        "company": "Innodata Inc.",
+        "country": "US",
+        "score": 78,
+        "coverage": 0.6705128205128205,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $170.46M → $251.66M (48%).",
+        "primaryRisk": "고객 검증 전 단계",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": true,
+        "adapter": "Software",
+        "provider": "filings+profile"
+      },
+      {
+        "ticker": "RIGL",
+        "company": "Rigel Pharmaceuticals, Inc.",
+        "country": "US",
+        "score": 77,
+        "coverage": 0.6760493827160493,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $179.28M → $294.28M (64%).",
+        "primaryRisk": "신제품 채택 부진 또는 경쟁 요법 대비 점유 실패",
+        "topResearchGap": "시장 성장·TAM",
+        "earlySignal": true,
+        "adapter": "Biotech",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "EVER",
+        "company": "EverQuote, Inc.",
+        "country": "US",
+        "score": 73,
+        "coverage": 0.7371794871794872,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $500.19M → $692.52M (38%).",
+        "primaryRisk": "보험 사이클·광고/리드 단가 변동으로 매출 성장 둔화",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Software",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "RDVT",
+        "company": "Red Violet, Inc.",
+        "country": "US",
+        "score": 71,
+        "coverage": 0.7371794871794872,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $75.19M → $90.25M (20%).",
+        "primaryRisk": "이미 ~13x+ 매출 멀티플로 성장 둔화 시 멀티플 수축",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Software",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "PAYS",
+        "company": "Paysign, Inc.",
+        "country": "US",
+        "score": 69,
+        "coverage": 0.7371794871794872,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $58.38M → $82.03M (40%).",
+        "primaryRisk": "헬스케어 결제·코페이 지원 규제·페이오 구조 변화",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Software",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "PATH",
+        "company": "UiPath, Inc.",
+        "country": "US",
+        "score": 68,
+        "coverage": 0.7371794871794872,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $1.43B → $1.61B (13%).",
+        "primaryRisk": "중성장(~10%대) 고착 시 10x 수학 붕괴",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Software",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "DSP",
+        "company": "Viant Technology Inc.",
+        "country": "US",
+        "score": 65,
+        "coverage": 0.7371794871794872,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $289.24M → $344.20M (19%).",
+        "primaryRisk": "광고 경기·CTV 경쟁(대형 DSP/플랫폼)으로 성장률 정체",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Software",
+        "provider": "grok-4.5"
+      },
+      {
+        "ticker": "MITK",
+        "company": "Mitek Systems, Inc.",
+        "country": "US",
+        "score": 65,
+        "coverage": 0.7371794871794872,
+        "confidence": "Medium",
+        "engineStatus": "RESEARCH_REQUIRED",
+        "keyEvidence": "TIER_1 · 연간 매출 $172.08M → $179.69M (4%).",
+        "primaryRisk": "전체 매출 성장이 한 자릿수에 정체",
+        "topResearchGap": "3Y Revenue CAGR",
+        "earlySignal": false,
+        "adapter": "Software",
+        "provider": "grok-4.5"
+      }
+    ]
+  },
+  "fmt": {
+    "xbaggerAvg": 89.6,
+    "oversoldAvg": 100,
+    "qualityAvg": 27.3,
+    "medianOverall": 73.5
+  }
+}
