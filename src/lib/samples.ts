@@ -1,3 +1,8 @@
+/**
+ * TEST_FIXTURE only.
+ * Must not be imported by store, hydrate, or any runtime bootstrap.
+ * persist/demo.test.ts uses this to prove initialization does not recreate these records.
+ */
 import { runSnapshot } from "./engines/run.ts";
 import type { Snapshot } from "./domain/snapshot.ts";
 import type { Company, FinancialSnapshot, ResearchQuote } from "./types.ts";

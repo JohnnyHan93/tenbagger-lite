@@ -1,12 +1,7 @@
-import seed from "./library-seed.json";
-import type { Analysis, Company } from "./types";
+import { SAMPLE_RESEARCH_100 } from "./sample-research-100.ts";
+import type { Company } from "./types.ts";
 
-export function buildLibraryWorld(): {
-  companies: Company[];
-  analyses: Analysis[];
-} {
-  return {
-    companies: seed.companies as Company[],
-    analyses: seed.analyses as Analysis[],
-  };
+/** Identity-only view of the original 40 US screener names. Never emits scores. */
+export function buildLibraryIdentities(): Company[] {
+  return SAMPLE_RESEARCH_100.filter((c) => c.testProfile === "US_SCREENER").map((c) => ({ ...c }));
 }

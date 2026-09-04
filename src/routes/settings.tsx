@@ -14,6 +14,7 @@ function Page() {
   const settings = useAppStore((s) => s.settings);
   const updateSettings = useAppStore((s) => s.updateSettings);
   const resetSamples = useAppStore((s) => s.resetSamples);
+  const purgeFakeDemo = useAppStore((s) => s.purgeFakeDemo);
   const companies = useAppStore((s) => s.companies);
   const snapshots = useAppStore((s) => s.snapshots);
   const universes = useAppStore((s) => s.universes);
@@ -52,7 +53,7 @@ function Page() {
               onChange={(e) => updateSettings({ useAi: e.target.checked })}
             />
           </label>
-          <p className="mt-3 text-xs text-subtle">Quality model stays MFC70-v1.1. 74 is listed, not scored.</p>
+          <p className="mt-3 text-xs text-subtle">Quality model stays MFC70-v1.2. 74 is listed, not scored.</p>
         </div>
       </section>
       <div className="mt-6 flex flex-wrap gap-2">
@@ -62,12 +63,22 @@ function Page() {
         >
           Backup JSON
         </Button>
+        <Button
+          variant="ghost"
+          onClick={() => {
+            purgeFakeDemo();
+            void import("@/lib/persist/actions").then(({ cleanupDemoDataFn }) => cleanupDemoDataFn());
+          }}
+        >
+          가짜 데모 삭제
+        </Button>
         <Button variant="ghost" onClick={() => resetSamples()}>
-          Reset samples
+          100 종목 신원 유니버스
         </Button>
       </div>
       <p className="mt-4 text-xs text-muted">
-        Audit log {audit.length} entries. Override는 원본 스냅샷을 지우지 않고 새 스냅샷을 만듭니다.
+        Audit log {audit.length} entries. 시드는 ticker / 회사명 / 시장만 넣습니다. 점수·재무·Evidence는 넣지 않습니다.
+        현재 {companies.length} 종목 · 분석 {snapshots.length}건.
       </p>
       <SafetyNote />
     </>

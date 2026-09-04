@@ -15,6 +15,24 @@ import type {
 
 export type Currency = "USD" | "KRW";
 
+export interface SourceAttempt {
+  provider: string;
+  requestedAt: string;
+  completedAt?: string;
+  status: "ok" | "empty" | "error" | "timeout";
+  errorType?: string;
+  notes?: string;
+}
+
+export interface MissingField {
+  field: string;
+  engines: Array<"xbagger" | "oversold" | "quality">;
+  impact: "HIGH" | "MEDIUM" | "LOW";
+  sourcesChecked: string[];
+  missingReason: string;
+  recommendedNextSearch: string;
+}
+
 export interface Company {
   id: string;
   ticker: string;
@@ -25,6 +43,8 @@ export interface Company {
   industry: string;
   cohort?: "priority" | "conditional" | "sample";
   sample?: boolean;
+  seedTag?: string;
+  testProfile?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -44,15 +64,33 @@ export interface FactorScore {
   overrideDate: string | null;
 }
 
+export type SourceTier = "TIER_1" | "TIER_2" | "TIER_3" | "MANUAL";
+export type EvidenceStatus = "ACTIVE" | "STALE" | "CONFLICTED" | "INVALIDATED";
+
 export interface Evidence {
   id: string;
+  companyId?: string;
+  ticker?: string;
   factorCode: FactorCode | "GENERAL";
+  title?: string;
+  statement?: string;
   evidence: string;
   evidenceType: EvidenceType;
+  sourceTier?: SourceTier;
+  sourceType?: string;
   sourceName: string;
   sourceUrl: string;
   sourceDate: string;
+  publishedAt?: string;
+  retrievedAt?: string;
+  asOfDate?: string;
+  numericValue?: number | null;
+  unit?: string;
+  period?: string;
   confidence: number;
+  factorTargets?: string[];
+  engineTargets?: Array<"xbagger" | "oversold" | "quality">;
+  status?: EvidenceStatus;
   createdAt: string;
 }
 
@@ -177,6 +215,22 @@ export interface ResearchQuote {
   sector: string;
   industry: string;
   financials: FinancialSnapshot;
+  high52w?: number | null;
+  pb?: number | null;
+  extras?: {
+    assets?: number | null;
+    capex?: number | null;
+    cfo?: number | null;
+    roic?: number | null;
+    drawdown52w?: number | null;
+    opPrior?: number | null;
+    omChange?: number | null;
+    nm?: number | null;
+    statementBasis?: "연결" | "별도" | string | null;
+    periodType?: "Annual" | "Quarter" | "TTM" | "YTD" | string | null;
+    fiscalYear?: number | null;
+  };
+  sourceAttempts?: SourceAttempt[];
 }
 
 export interface DraftFactor {

@@ -9,6 +9,7 @@ attachments/
 *.log
 .env
 .env.*
+!.env.example
 .DS_Store
 *.local
 AGENTS.md
@@ -16,6 +17,12 @@ startup.sh
 .grok/skills/
 .grok/references/
 .grok/preview.log
+.grok/preview.pid
 .grok/status
 .grok/*.png
+.grok/*.tmp
+.grok/og-fonts/
+.grok/favicon-16.html
+.grok/og-card.html
+.grok/render-*.mjs
 .project_id

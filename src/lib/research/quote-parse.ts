@@ -344,3 +344,260 @@ export function financialsFromNasdaq(
     fcf: ocf.latest,
   };
 }
+
+/** WiseReport / FnGuide summary prints annuals in 억원 (1e8 KRW). */
+export const WISEREPORT_EOK = 100_000_000;
+
+export function parseWiseReportNumber(text: string): number | null {
+  const t = text.replace(/\s/g, "").replace(/,/g, "");
+  if (!t || t === "-" || t === "—" || t === "N/A" || /^n\/?a$/i.test(t)) return null;
+  const n = Number(t.replace(/[()]/g, ""));
+  if (!Number.isFinite(n)) return null;
+  return t.includes("(") || t.startsWith("-") ? -Math.abs(n) : n;
+}
+
+export function parseWiseReportTable(html: string): { headers: string[]; rows: Record<string, string[]> } {
+  const headers: string[] = [];
+  const rows: Record<string, string[]> = {};
+  const trs = html.split(/<tr/i).slice(1);
+  for (const tr of trs) {
+    const cells = [...tr.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((m) =>
+      m[1]!.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+    );
+    if (cells.length === 0) continue;
+    if (cells.some((c) => /\d{4}\/\d{2}/.test(c)) && headers.length === 0) {
+      headers.push(...cells);
+      continue;
+    }
+    const label = cells[0];
+    if (!label) continue;
+    rows[label] = cells.slice(1);
+  }
+  return { headers, rows };
+}
+
+function wiseAnnualColumns(headers: string[], asOf: Date) {
+  const year = asOf.getUTCFullYear();
+  const firstPeriod = headers.findIndex((h) => /\d{4}\/\d{2}/.test(h));
+  const offset = firstPeriod > 0 ? firstPeriod : 0;
+  const seen = new Set<number>();
+  const out: { i: number; y: number; raw: string }[] = [];
+  for (let hi = 0; hi < headers.length; hi++) {
+    const h = headers[hi]!;
+    const m = h.match(/(\d{4})\/12/);
+    if (!m) {
+      if (out.length > 0) break;
+      continue;
+    }
+    const y = Number(m[1]);
+    if (y >= year) continue;
+    if (seen.has(y)) break;
+    seen.add(y);
+    out.push({ i: hi - offset, y, raw: h });
+  }
+  return out;
+}
+
+/**
+ * Latest complete annual year (YYYY/12 strictly before the as-of calendar year).
+ * Forecast columns for the current year are ignored.
+ */
+export function financialsFromWiseReport(
+  html: string,
+  asOf = new Date(),
+): FinancialSnapshot | null {
+  const { headers, rows } = parseWiseReportTable(html);
+  const annualIdx = wiseAnnualColumns(headers, asOf);
+  const latest = annualIdx.at(-1);
+  const prior = annualIdx.at(-2);
+  if (!latest) return null;
+  const col = (label: string, which: "latest" | "prior"): number | null => {
+    const idx = which === "latest" ? latest.i : prior?.i;
+    if (idx == null) return null;
+    const raw = rows[label]?.[idx];
+    const n = parseWiseReportNumber(raw ?? "");
+    return n == null ? null : n * WISEREPORT_EOK;
+  };
+  const rev = col("매출액", "latest");
+  if (rev == null) return null;
+  const op = col("영업이익", "latest");
+  const ni = col("당기순이익", "latest");
+  const fcf = col("FCF", "latest");
+  const debt = col("이자발생부채", "latest") ?? col("부채총계", "latest");
+  const omRow = rows["영업이익률"]?.[latest.i];
+  const omPct = parseWiseReportNumber(omRow ?? "");
+  const shares = parseWiseReportNumber(rows["발행주식수(보통주)"]?.[latest.i] ?? "");
+  return {
+    revenueTtm: rev,
+    revenuePrior: col("매출액", "prior"),
+    operatingIncomeTtm: op,
+    netIncomeTtm: ni,
+    cash: null,
+    totalDebt: debt,
+    sharesOutstanding: shares,
+    grossMargin: null,
+    operatingMargin: omPct != null ? omPct / 100 : op != null && rev ? op / rev : null,
+    fcf,
+  };
+}
+
+export function extrasFromWiseReport(
+  html: string,
+  asOf = new Date(),
+): {
+  assets: number | null;
+  capex: number | null;
+  cfo: number | null;
+  roic: number | null;
+  opPrior: number | null;
+  omChange: number | null;
+  nm: number | null;
+  statementBasis: string | null;
+  periodType: "Annual";
+  fiscalYear: number | null;
+  debt: number | null;
+} {
+  const empty = {
+    assets: null,
+    capex: null,
+    cfo: null,
+    roic: null,
+    opPrior: null,
+    omChange: null,
+    nm: null,
+    statementBasis: null,
+    periodType: "Annual" as const,
+    fiscalYear: null,
+    debt: null,
+  };
+  const { headers, rows } = parseWiseReportTable(html);
+  const annualIdx = wiseAnnualColumns(headers, asOf);
+  const latest = annualIdx.at(-1);
+  const prior = annualIdx.at(-2);
+  if (!latest) return empty;
+  const n = (label: string, which: "latest" | "prior" = "latest") => {
+    const idx = which === "latest" ? latest.i : prior?.i;
+    if (idx == null) return null;
+    const v = parseWiseReportNumber(rows[label]?.[idx] ?? "");
+    return v == null ? null : v * WISEREPORT_EOK;
+  };
+  const pct = (label: string, which: "latest" | "prior" = "latest") => {
+    const idx = which === "latest" ? latest.i : prior?.i;
+    if (idx == null) return null;
+    const v = parseWiseReportNumber(rows[label]?.[idx] ?? "");
+    return v == null ? null : v / 100;
+  };
+  const omL = pct("영업이익률");
+  const omP = pct("영업이익률", "prior");
+  const basis = /연결/.test(latest.raw) ? "연결" : /별도/.test(latest.raw) ? "별도" : null;
+  return {
+    assets: n("자산총계"),
+    capex: n("CAPEX"),
+    cfo: n("영업활동현금흐름"),
+    roic: null,
+    opPrior: n("영업이익", "prior"),
+    omChange: omL != null && omP != null ? omL - omP : null,
+    nm: pct("순이익률"),
+    statementBasis: basis,
+    periodType: "Annual",
+    fiscalYear: latest.y,
+    debt: n("이자발생부채") ?? n("부채총계"),
+  };
+}
+
+export type NaverAnnualPayload = {
+  financeInfo?: {
+    trTitleList?: Array<{ isConsensus?: string; title?: string; key?: string }>;
+    rowList?: Array<{ title?: string; columns?: Record<string, { value?: string | null }> }>;
+  };
+};
+
+function naverAnnualYears(payload: NaverAnnualPayload, asOf: Date) {
+  const year = asOf.getUTCFullYear();
+  const titles = payload.financeInfo?.trTitleList ?? [];
+  return titles
+    .filter(
+      (t) =>
+        t.isConsensus !== "Y" &&
+        t.key != null &&
+        /^\d{6}$/.test(t.key) &&
+        t.key.endsWith("12"),
+    )
+    .map((t) => ({ key: t.key!, y: Number(t.key!.slice(0, 4)) }))
+    .filter((t) => t.y < year)
+    .sort((a, b) => a.y - b.y);
+}
+
+function naverRowValue(
+  payload: NaverAnnualPayload,
+  title: string,
+  key: string | undefined,
+): number | null {
+  if (!key) return null;
+  const row = payload.financeInfo?.rowList?.find((r) => r.title === title);
+  return parseWiseReportNumber(row?.columns?.[key]?.value ?? "");
+}
+
+/**
+ * Naver mobile annual JSON. Amounts are 억원. Consensus (isConsensus=Y) columns
+ * are ignored. Current calendar year is excluded even if marked actual.
+ */
+export function financialsFromNaverAnnual(
+  payload: NaverAnnualPayload,
+  asOf = new Date(),
+): FinancialSnapshot | null {
+  const years = naverAnnualYears(payload, asOf);
+  const latest = years.at(-1);
+  const prior = years.at(-2);
+  if (!latest) return null;
+  const rev = naverRowValue(payload, "매출액", latest.key);
+  if (rev == null) return null;
+  const op = naverRowValue(payload, "영업이익", latest.key);
+  const ni = naverRowValue(payload, "당기순이익", latest.key);
+  const omPct = naverRowValue(payload, "영업이익률", latest.key);
+  const priorRev = prior ? naverRowValue(payload, "매출액", prior.key) : null;
+  return {
+    revenueTtm: rev * WISEREPORT_EOK,
+    revenuePrior: priorRev == null ? null : priorRev * WISEREPORT_EOK,
+    operatingIncomeTtm: op == null ? null : op * WISEREPORT_EOK,
+    netIncomeTtm: ni == null ? null : ni * WISEREPORT_EOK,
+    cash: null,
+    totalDebt: null,
+    sharesOutstanding: null,
+    grossMargin: null,
+    operatingMargin: omPct == null ? (op != null && rev ? op / rev : null) : omPct / 100,
+    fcf: null,
+  };
+}
+
+export function extrasFromNaverAnnual(
+  payload: NaverAnnualPayload,
+  asOf = new Date(),
+): {
+  opPrior: number | null;
+  omChange: number | null;
+  nm: number | null;
+  pb: number | null;
+  periodType: "Annual";
+  fiscalYear: number | null;
+  statementBasis: null;
+} {
+  const years = naverAnnualYears(payload, asOf);
+  const latest = years.at(-1);
+  const prior = years.at(-2);
+  const omL = latest ? naverRowValue(payload, "영업이익률", latest.key) : null;
+  const omP = prior ? naverRowValue(payload, "영업이익률", prior.key) : null;
+  const nm = latest ? naverRowValue(payload, "순이익률", latest.key) : null;
+  const pb = latest ? naverRowValue(payload, "PBR", latest.key) : null;
+  const opP = prior ? naverRowValue(payload, "영업이익", prior.key) : null;
+  return {
+    opPrior: opP == null ? null : opP * WISEREPORT_EOK,
+    omChange: omL != null && omP != null ? omL / 100 - omP / 100 : null,
+    nm: nm == null ? null : nm / 100,
+    pb,
+    periodType: "Annual",
+    fiscalYear: latest?.y ?? null,
+    statementBasis: null,
+  };
+}
+

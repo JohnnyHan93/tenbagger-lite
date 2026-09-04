@@ -43,6 +43,13 @@ function CrossPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
+            {rows.length === 0 ? (
+              <tr>
+                <td className="px-3 py-6 text-sm text-muted" colSpan={9}>
+                  아직 엔진 결과가 없습니다. 점수를 시드하지 않습니다.
+                </td>
+              </tr>
+            ) : null}
             {rows.map((r) => (
               <tr key={r.company.id}>
                 <td className="px-3 py-3">

@@ -1,6 +1,50 @@
-# Changelog
+## v2.2 — Post-P0 research validation
+
+- RESEARCH REQUIRED explains coverage, missing X/Quality factors, NEXT RESEARCH, provider attempts
+- Research Gaps tab ranks missing fields by score impact (not a buy signal)
+- Coverage report: US vs KR by engine, adapter table, Full 100 pre-flight
+- EXECUTE_FULL_100 = NO — queue is READY, batch not started; remaining universe listed
+- KR annuals: Naver `finance/annual` (억원, consensus/current-year ignored) primary
+- WiseReport IFRS연결 first annual block only (duplicate quarterly headers no longer null the parse)
+- ROE is not used as ROIC; 연결/별도 and fiscal year recorded when present
+- Failure classification + source attempt log (no secrets)
+- Smoke 12 preserved; INOD untouched; fake demo remains 0
+
+
+
+- Production build verified
+- Smoke 12 runs the live research path: quote → filings/profile → evidence → three independent engines → DB insert
+- KR financials from WiseReport (억원 annuals); 52-week range from Yahoo chart / Naver
+- Identity overlay so empty KR sector still maps adapters (Financial / REIT / Biotech / Telecom / Cybersecurity)
+- Quality: bank leverage/ROIC not forced; REIT ordinary P/E not forced; biotech inventory/ROIC conditional
+- Evidence graph stamps tier / engines / factor targets / status / dates
+- Refresh re-runs research and inserts a new immutable snapshot; history shows score/coverage/evidence diffs
+- One engine failure no longer drops the other two
+- Full 100 auto-analysis is **not** started
+
+
+
+- Removed runtime Sample Six (Northline / Harbor / Redridge / 에코반도체장비 / 한강생활 / 서해모빌리티)
+- Library 40 no longer auto-inserts heuristic scores
+- Seeds IDT SAMPLE RESEARCH 100 as ticker / name / market / test_profile only (US 50 + KR 50, analyses = 0)
+- `npm run cleanup:demo-data` targeted FAKE_DEMO delete (no truncate)
+- Init regression: restart does not recreate fictional research
+
+## v2.1 — P0 repair
+
+- Database (Postgres / PGLite) is the operational source of truth
+- `saveFromDraft` preserves Grok X-Bagger scores, evidence, catalysts
+- Oversold N/A renormalization (no `?? 5`); OSM-v2.1
+- Quality wrong proxies removed; MFC70-v1.2
+- Evidence graph fields (tier / type / status / factor targets)
+- Immutable analysis rows; Refresh inserts a new snapshot **without** discarding Grok scores
+- Universe CSV / JSON / MD / XLSX import with rollback on error; XLSX export
+- Dashboard / company CSV · JSON · XLSX export
+- Self-contained P0 tests (no Grok-only fixtures)
+- Docs: QUALITY 70 70-row audit, data model, migration, BUILD_STATE
 
 ## v2.0 — Investment Discovery Terminal
+
 
 - Three independent engines: X-Bagger, Oversold, Quality 70
 - Coverage / confidence / N/A renormalization

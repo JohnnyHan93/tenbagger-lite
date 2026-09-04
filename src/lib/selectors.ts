@@ -9,6 +9,13 @@ export interface RankRow {
   snapshot: Snapshot;
 }
 
+export interface RosterRow {
+  rank: number | null;
+  company: Company;
+  snapshot: Snapshot | null;
+  pending: boolean;
+}
+
 export function rankCompanies(companies: Company[], snapshots: Snapshot[]): RankRow[] {
   return companies
     .map((company) => {
@@ -34,7 +41,22 @@ export function dashboardStats(companies: Company[], snapshots: Snapshot[]) {
   const oversold = latest.filter((s) => (s.oversold.opportunity ?? 0) >= 6.5 && s.oversold.valueTrap < 7).length;
   const research = latest.filter((s) => s.tags.includes("RESEARCH REQUIRED")).length;
   const stale = latest.filter((s) => Date.now() - new Date(s.asOf).getTime() > 14 * 86400000).length;
-  return { xDeep, qualityHigh, oversold, research, stale, total: latest.length };
+  const pending = companies.filter((c) => !latestSnapshot(snapshots, c.id)).length;
+  const us = companies.filter((c) => c.country !== "KR").length;
+  const kr = companies.filter((c) => c.country === "KR").length;
+  return { xDeep, qualityHigh, oversold, research, stale, total: companies.length, analyzed: latest.length, pending, us, kr };
+}
+
+export function rosterCompanies(companies: Company[], snapshots: Snapshot[]): RosterRow[] {
+  const scored = rankCompanies(companies, snapshots);
+  const scoredIds = new Set(scored.map((r) => r.company.id));
+  const pending = companies
+    .filter((c) => !scoredIds.has(c.id))
+    .sort((a, b) => a.ticker.localeCompare(b.ticker));
+  return [
+    ...scored.map((r) => ({ rank: r.rank, company: r.company, snapshot: r.snapshot, pending: false })),
+    ...pending.map((company) => ({ rank: null, company, snapshot: null, pending: true })),
+  ];
 }
 
 export function oversoldRank(companies: Company[], snapshots: Snapshot[], market: "KR" | "US") {

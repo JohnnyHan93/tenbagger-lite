@@ -1,6 +1,6 @@
 import type { DerivedMetrics } from "../metrics/derived.ts";
 
-export const OSM_VERSION = "OSM-v1.0";
+export const OSM_VERSION = "OSM-v2.1";
 
 export type OversoldCase = "A" | "B" | "C" | "D";
 
@@ -15,6 +15,7 @@ export interface OversoldResult {
   case: OversoldCase;
   peakEarnings: boolean;
   coverage: number;
+  availableWeight: number;
   confidence: "High" | "Medium" | "Low";
   reasons: {
     fundamental: string;
@@ -30,6 +31,36 @@ const W = { F: 0.4, V: 0.25, O: 0.1, R: 0.25 } as const;
 
 export function opportunityScore(f: number, v: number, o: number, r: number): number {
   return f * W.F + v * W.V + o * W.O + r * W.R;
+}
+
+/** N/A is excluded and remaining weights are renormalized. Zero is a valid score. */
+export function opportunityScorePartial(
+  f: number | null,
+  v: number | null,
+  o: number | null,
+  r: number | null,
+): { score: number | null; coverage: number; availableWeight: number; observed: number } {
+  const parts: Array<[number | null, number]> = [
+    [f, W.F],
+    [v, W.V],
+    [o, W.O],
+    [r, W.R],
+  ];
+  let observed = 0;
+  let available = 0;
+  for (const [s, w] of parts) {
+    if (s != null && Number.isFinite(s)) {
+      observed += s * w;
+      available += w;
+    }
+  }
+  if (available === 0) return { score: null, coverage: 0, availableWeight: 0, observed: 0 };
+  return {
+    score: observed / available,
+    coverage: available / (W.F + W.V + W.O + W.R),
+    availableWeight: available,
+    observed,
+  };
 }
 
 function clamp10(n: number): number {
@@ -71,18 +102,26 @@ function fundScore(m: DerivedMetrics): { score: number | null; reason: string } 
 
 function valScore(m: DerivedMetrics): { score: number | null; reason: string; peak: boolean } {
   const peak = Boolean(
-    m.om != null &&
-      m.om > 0.25 &&
-      m.revenueYoY != null &&
-      m.revenueYoY < 0 &&
-      (m.pe != null && m.pe < 8),
+    m.om != null && m.om > 0.25 && m.revenueYoY != null && m.revenueYoY < 0 && m.pe != null && m.pe < 8,
   );
-  if (m.evSales == null && m.pe == null && m.pb == null) {
-    return { score: null, reason: "밸류에이션 배수 없음. N/A.", peak };
+  const reit = m.industryGroup === "reit";
+  const bank = m.industryGroup === "financial";
+  const peUsable = !reit && !bank;
+  const evsUsable = !bank;
+  if ((evsUsable ? m.evSales : null) == null && (peUsable ? m.pe : null) == null && m.pb == null) {
+    return {
+      score: null,
+      reason: reit
+        ? "REIT: 보통 P/E 강제 없음. FFO/P/FFO 자료 없음. N/A."
+        : bank
+          ? "Financial: 제조업 EV/S·P/E 강제 없음. P/B 없음. N/A."
+          : "밸류에이션 배수 없음. N/A.",
+      peak: false,
+    };
   }
   let s = 5;
   const bits: string[] = [];
-  if (m.evSales != null) {
+  if (evsUsable && m.evSales != null) {
     bits.push(`EV/S ${m.evSales.toFixed(1)}x`);
     if (m.evSales < 2) s += 3;
     else if (m.evSales < 4) s += 2;
@@ -90,16 +129,22 @@ function valScore(m: DerivedMetrics): { score: number | null; reason: string; pe
     else if (m.evSales < 15) s -= 2;
     else s -= 3;
   }
-  if (m.pe != null) {
+  if (peUsable && m.pe != null) {
     bits.push(`P/E ${m.pe.toFixed(1)}x`);
     if (m.pe < 12) s += 2;
     else if (m.pe > 40) s -= 2;
   }
-  if (peak) {
+  if (m.pb != null && (reit || bank)) {
+    bits.push(`P/B ${m.pb.toFixed(2)}x`);
+    if (m.pb < 0.8) s += 2;
+    else if (m.pb < 1.2) s += 1;
+    else if (m.pb > 2.5) s -= 1;
+  }
+  if (peak && peUsable) {
     s -= 2;
     bits.push("Peak earnings 의심 — 저배수 ≠ 저평가");
   }
-  return { score: clamp10(s), reason: bits.join(" · "), peak };
+  return { score: clamp10(s), reason: bits.join(" · "), peak: peak && peUsable };
 }
 
 function oversoldPx(m: DerivedMetrics): { score: number | null; reason: string } {
@@ -108,7 +153,8 @@ function oversoldPx(m: DerivedMetrics): { score: number | null; reason: string }
   }
   const dd = m.drawdown52w;
   if (dd == null) {
-    const r = m.return6m ?? m.return3m ?? 0;
+    const r = m.return6m ?? m.return3m;
+    if (r == null) return { score: null, reason: "가격 낙폭 없음. N/A." };
     if (r >= 0) return { score: 1, reason: "최근 수익률 음수 아님 — 과매도 명제 약함" };
     const s = r < -0.35 ? 8 : r < -0.2 ? 6 : 4;
     return { score: s, reason: `최근 수익률 ${(r * 100).toFixed(0)}%` };
@@ -121,6 +167,15 @@ function oversoldPx(m: DerivedMetrics): { score: number | null; reason: string }
 }
 
 function riskInv(m: DerivedMetrics): { score: number | null; reason: string } {
+  if (
+    m.netDebt == null &&
+    m.cash == null &&
+    m.shareGrowth == null &&
+    m.fcf == null &&
+    m.customerConcentration == null
+  ) {
+    return { score: null, reason: "부채·현금·희석 자료 없음. N/A." };
+  }
   let s = 5;
   const bits: string[] = [];
   if (m.netDebt != null && m.cash != null) {
@@ -134,7 +189,7 @@ function riskInv(m: DerivedMetrics): { score: number | null; reason: string } {
       bits.push("순부채 존재");
     }
   } else {
-    bits.push("부채 커버리지 불명");
+    bits.push("부채 커버리지 부분");
   }
   if (m.shareGrowth != null) {
     if (m.shareGrowth > 0.15) {
@@ -200,30 +255,23 @@ export function scoreOversold(m: DerivedMetrics): OversoldResult {
   const V = valScore(m);
   const O = oversoldPx(m);
   const R = riskInv(m);
-  const parts = [F.score, V.score, O.score, R.score];
-  const present = parts.filter((x) => x != null).length;
-  const coverage = present / 4;
+  const part = opportunityScorePartial(F.score, V.score, O.score, R.score);
   const trap = trapScore(m, F.score);
-  const opportunity =
-    F.score != null && V.score != null && O.score != null && R.score != null
-      ? opportunityScore(F.score, V.score, O.score, R.score)
-      : present >= 3
-        ? opportunityScore(F.score ?? 5, V.score ?? 5, O.score ?? 5, R.score ?? 5)
-        : null;
   const status =
-    coverage < 0.7 ? "RESEARCH REQUIRED" : coverage < 1 ? "PARTIAL" : "COMPLETE";
+    part.coverage < 0.7 ? "RESEARCH REQUIRED" : part.coverage < 1 ? "PARTIAL" : "COMPLETE";
   return {
     version: OSM_VERSION,
     fundamental: F.score,
     valuation: V.score,
     oversold: O.score,
     riskInverse: R.score,
-    opportunity,
+    opportunity: part.score == null ? null : Number(part.score.toFixed(2)),
     valueTrap: trap.score,
     case: classify(F.score, O.score),
     peakEarnings: V.peak,
-    coverage,
-    confidence: coverage >= 0.9 ? "High" : coverage >= 0.7 ? "Medium" : "Low",
+    coverage: part.coverage,
+    availableWeight: part.availableWeight,
+    confidence: part.coverage >= 0.9 ? "High" : part.coverage >= 0.7 ? "Medium" : "Low",
     reasons: {
       fundamental: F.reason,
       valuation: V.reason,

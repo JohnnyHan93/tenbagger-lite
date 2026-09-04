@@ -32,6 +32,13 @@ function Page() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
+            {rows.length === 0 ? (
+              <tr>
+                <td className="px-3 py-6 text-sm text-muted" colSpan={6}>
+                  분석된 종목이 없습니다. 대시보드의 100 종목은 신원만 있고, Discover에서 ANALYZE 해야 점수가 생깁니다.
+                </td>
+              </tr>
+            ) : null}
             {rows.map((r) => (
               <tr key={r.company.id}>
                 <td className="px-3 py-3">

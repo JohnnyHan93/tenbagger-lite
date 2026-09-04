@@ -5,7 +5,7 @@ import { EngineTrio, SnapshotHeader } from "@/components/snapshot-view";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { researchTicker } from "@/lib/research/ticker";
-import { latestSnapshot, useAppStore } from "@/lib/store";
+import { latestSnapshot, useAppStore, flushPersist } from "@/lib/store";
 import type { Company } from "@/lib/types";
 import { uid } from "@/lib/utils";
 import { previewImport } from "@/lib/universe/parse";
@@ -56,6 +56,7 @@ function DiscoverPage() {
       };
       const saved = upsertCompany(company);
       const snap = saveFromDraft(saved, res.draft);
+      await flushPersist();
       setLastId(saved.id);
       void snap;
     } catch (e) {

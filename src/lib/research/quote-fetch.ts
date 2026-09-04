@@ -1,15 +1,21 @@
-import type { ResearchQuote } from "../types";
+import type { ResearchQuote, SourceAttempt } from "../types";
 import {
   currencyOf,
   emptyFinancials,
+  extrasFromNaverAnnual,
+  extrasFromWiseReport,
   extractYahooQuoteFromHtml,
   financialsFromNasdaq,
+  financialsFromNaverAnnual,
+  financialsFromWiseReport,
   parseCommaNumber,
   parseKoreanMoney,
   quoteFromYahooResult,
   type NasdaqFinancialsPayload,
+  type NaverAnnualPayload,
   type YahooResult,
 } from "./quote-parse";
+import { overlayIdentity } from "./identity";
 
 type YahooChart = {
   chart?: {
@@ -21,6 +27,8 @@ type YahooChart = {
         regularMarketPrice?: number;
         longName?: string;
         shortName?: string;
+        fiftyTwoWeekHigh?: number;
+        fiftyTwoWeekLow?: number;
       };
     }>;
   };
@@ -98,7 +106,6 @@ async function tryYahooQuotePage(ticker: string): Promise<ResearchQuote | null> 
     const html = await res.text();
     return extractYahooQuoteFromHtml(html, ticker);
   } catch {
-    // Node's default header limit rejects Yahoo's cookie jar.
     return null;
   }
 }
@@ -123,6 +130,7 @@ async function tryYahooChart(ticker: string): Promise<ResearchQuote | null> {
       sector: "",
       industry: "",
       financials: emptyFinancials(),
+      high52w: meta?.fiftyTwoWeekHigh ?? null,
     };
   } catch {
     return null;
@@ -218,6 +226,10 @@ async function tryNaver(ticker: string): Promise<ResearchQuote | null> {
     const mcap = parseKoreanMoney(mcapRow?.value ?? "");
     if (!price || !mcap) return null;
     const kosdaq = (basic.stockExchangeName ?? "").toUpperCase().includes("KOSDAQ");
+    const highRow = integ.totalInfos?.find((r) => r.code === "highPriceOf52Weeks");
+    const pbrRow = integ.totalInfos?.find((r) => r.code === "pbr");
+    const high52w = parseCommaNumber(highRow?.value ?? "");
+    const pb = parseCommaNumber((pbrRow?.value ?? "").replace(/배/g, ""));
     return {
       ticker: kosdaq ? `${code}.KQ` : `${code}.KS`,
       exchange: basic.stockExchangeName || (kosdaq ? "KOSDAQ" : "KSE"),
@@ -230,6 +242,68 @@ async function tryNaver(ticker: string): Promise<ResearchQuote | null> {
       sector: "",
       industry: "",
       financials: emptyFinancials(),
+      high52w,
+      pb,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function tryNaverAnnual(ticker: string): Promise<{
+  financials: ReturnType<typeof financialsFromNaverAnnual>;
+  extras: ReturnType<typeof extrasFromNaverAnnual>;
+} | null> {
+  const code = krCode(ticker);
+  if (!code) return null;
+  try {
+    const payload = (await fetchJson(
+      `https://m.stock.naver.com/api/stock/${code}/finance/annual`,
+    )) as NaverAnnualPayload;
+    const financials = financialsFromNaverAnnual(payload);
+    if (!financials) return null;
+    return { financials, extras: extrasFromNaverAnnual(payload) };
+  } catch {
+    return null;
+  }
+}
+
+function stampAttempt(
+  provider: string,
+  started: number,
+  status: SourceAttempt["status"],
+  notes?: string,
+  errorType?: string,
+): SourceAttempt {
+  return {
+    provider,
+    requestedAt: new Date(started).toISOString(),
+    completedAt: new Date().toISOString(),
+    status,
+    notes,
+    errorType,
+  };
+}
+
+async function tryWiseReport(ticker: string): Promise<{
+  financials: ReturnType<typeof financialsFromWiseReport>;
+  extras: ReturnType<typeof extrasFromWiseReport>;
+} | null> {
+  const code = krCode(ticker);
+  if (!code) return null;
+  try {
+    const res = await fetch(
+      `https://navercomp.wisereport.co.kr/v2/company/cF1001.aspx?cmp_cd=${code}&finGubun=MAIN`,
+      {
+        headers: { "User-Agent": UA, Accept: "text/html,*/*" },
+        signal: AbortSignal.timeout(12000),
+      },
+    );
+    if (!res.ok) return null;
+    const html = await res.text();
+    return {
+      financials: financialsFromWiseReport(html),
+      extras: extrasFromWiseReport(html),
     };
   } catch {
     return null;
@@ -244,6 +318,8 @@ function mergeQuotes(parts: Array<ResearchQuote | null>): ResearchQuote | null {
   const withName = list.find((q) => q.companyName && q.companyName !== q.ticker);
   const withFin = list.find((q) => q.financials.revenueTtm != null);
   const withSector = list.find((q) => q.sector);
+  const with52 = list.find((q) => q.high52w != null);
+  const withPb = list.find((q) => q.pb != null);
   return {
     ...base,
     companyName: withName?.companyName ?? base.companyName,
@@ -254,25 +330,107 @@ function mergeQuotes(parts: Array<ResearchQuote | null>): ResearchQuote | null {
     sector: withSector?.sector || base.sector,
     industry: withSector?.industry || base.industry,
     financials: withFin?.financials ?? base.financials,
-    country: withSector?.country || base.country,
+    country: withSector?.country || withMcap?.country || base.country,
+    high52w: with52?.high52w ?? base.high52w ?? null,
+    pb: withPb?.pb ?? base.pb ?? null,
+    extras: { ...base.extras, ...withFin?.extras, ...with52?.extras },
   };
 }
 
 export async function resolveQuote(
   ticker: string,
 ): Promise<ResearchQuote | null> {
+  const attempts: SourceAttempt[] = [];
   const api = await tryYahooQuoteSummary(ticker);
-  if (usableQuote(api)) return api;
-
-  const page = await tryYahooQuotePage(ticker);
-  if (usableQuote(page)) return page;
-
-  const nasdaq = await tryNasdaq(ticker);
-  if (usableQuote(nasdaq)) return nasdaq;
-
+  attempts.push(
+    stampAttempt("yahoo-quoteSummary", Date.now(), api ? "ok" : "empty", ticker),
+  );
+  let page: ResearchQuote | null = null;
+  let nasdaq: ResearchQuote | null = null;
+  if (!usableQuote(api) && !ticker.includes(".")) {
+    nasdaq = await tryNasdaq(ticker);
+    attempts.push(stampAttempt("nasdaq", Date.now(), nasdaq ? "ok" : "empty", ticker));
+  }
+  if (!usableQuote(api) && !usableQuote(nasdaq)) {
+    page = await tryYahooQuotePage(ticker);
+    attempts.push(stampAttempt("yahoo-html", Date.now(), page ? "ok" : "empty", ticker));
+  }
+  if (!usableQuote(api) && !usableQuote(nasdaq) && !usableQuote(page) && !ticker.includes(".")) {
+    nasdaq = nasdaq ?? (await tryNasdaq(ticker));
+  }
   const naver = await tryNaver(ticker);
-  if (usableQuote(naver)) return naver;
-
+  attempts.push(stampAttempt("naver-basic", Date.now(), naver ? "ok" : "empty", ticker));
   const chart = await tryYahooChart(ticker);
-  return mergeQuotes([page, api, nasdaq, naver, chart]);
+  attempts.push(stampAttempt("yahoo-chart", Date.now(), chart ? "ok" : "empty", ticker));
+  let merged = mergeQuotes([api, nasdaq, page, naver, chart]);
+  if (!merged) return null;
+
+  if (krCode(merged.ticker)) {
+    const annual = await tryNaverAnnual(merged.ticker);
+    attempts.push(
+      stampAttempt(
+        "naver-annual",
+        Date.now(),
+        annual?.financials ? "ok" : "empty",
+        annual?.financials ? `FY${annual.extras.fiscalYear ?? ""} 억원 annual` : "no annuals",
+      ),
+    );
+    if (annual?.financials) {
+      merged = {
+        ...merged,
+        financials: {
+          ...merged.financials,
+          ...annual.financials,
+          cash: merged.financials.cash ?? annual.financials.cash,
+          totalDebt: merged.financials.totalDebt ?? annual.financials.totalDebt,
+        },
+        pb: merged.pb ?? annual.extras.pb,
+        extras: { ...merged.extras, ...annual.extras },
+      };
+    }
+    const wr = await tryWiseReport(merged.ticker);
+    attempts.push(
+      stampAttempt(
+        "wisereport",
+        Date.now(),
+        wr?.financials ? "ok" : "empty",
+        wr?.extras.statementBasis ? `IFRS ${wr.extras.statementBasis}` : "no table",
+      ),
+    );
+    if (wr) {
+      const fin = merged.financials;
+      const w = wr.financials;
+      merged = {
+        ...merged,
+        financials: {
+          ...fin,
+          revenueTtm: fin.revenueTtm ?? w?.revenueTtm ?? null,
+          revenuePrior: fin.revenuePrior ?? w?.revenuePrior ?? null,
+          operatingIncomeTtm: fin.operatingIncomeTtm ?? w?.operatingIncomeTtm ?? null,
+          netIncomeTtm: fin.netIncomeTtm ?? w?.netIncomeTtm ?? null,
+          operatingMargin: fin.operatingMargin ?? w?.operatingMargin ?? null,
+          fcf: fin.fcf ?? w?.fcf ?? null,
+          cash: fin.cash ?? w?.cash ?? null,
+          totalDebt: fin.totalDebt ?? w?.totalDebt ?? wr.extras.debt ?? null,
+          sharesOutstanding: fin.sharesOutstanding ?? w?.sharesOutstanding ?? null,
+        },
+        extras: {
+          ...merged.extras,
+          assets: wr.extras.assets ?? merged.extras?.assets ?? null,
+          capex: wr.extras.capex ?? merged.extras?.capex ?? null,
+          cfo: wr.extras.cfo ?? merged.extras?.cfo ?? null,
+          opPrior: merged.extras?.opPrior ?? wr.extras.opPrior ?? null,
+          omChange: merged.extras?.omChange ?? wr.extras.omChange ?? null,
+          nm: merged.extras?.nm ?? wr.extras.nm ?? null,
+          statementBasis: wr.extras.statementBasis ?? merged.extras?.statementBasis ?? null,
+          periodType: merged.extras?.periodType ?? wr.extras.periodType ?? "Annual",
+          fiscalYear: merged.extras?.fiscalYear ?? wr.extras.fiscalYear ?? null,
+          roic: merged.extras?.roic ?? null,
+        },
+      };
+    }
+  }
+
+  merged.sourceAttempts = attempts;
+  return overlayIdentity(merged);
 }

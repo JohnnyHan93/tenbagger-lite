@@ -1,6 +1,14 @@
 import type { Currency } from "./types.ts";
 
 
+export function tickerKey(t: string): string {
+  return t.trim().toUpperCase().replace(/\.(KS|KQ)$/i, "");
+}
+
+export function tickersEqual(a: string, b: string): boolean {
+  return tickerKey(a) === tickerKey(b);
+}
+
 export function formatMoney(n: number | null | undefined, currency: Currency): string {
   if (n == null || !Number.isFinite(n)) return "—";
   const abs = Math.abs(n);
@@ -67,8 +75,8 @@ export function formatFactor10(n: number | null | undefined): string {
 
 export const ENGINE_TAB = {
   xbagger: { id: "x" as const, name: "X-Bagger", version: "XBG-v2.0" },
-  oversold: { id: "o" as const, name: "Oversold", version: "OSM-v1.0" },
-  quality: { id: "q" as const, name: "Quality 70", version: "MFC70-v1.1" },
+  oversold: { id: "o" as const, name: "Oversold", version: "OSM-v2.1" },
+  quality: { id: "q" as const, name: "Quality 70", version: "MFC70-v1.2" },
 };
 
 export function formatDate(iso: string): string {

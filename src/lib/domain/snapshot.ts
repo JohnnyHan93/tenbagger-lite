@@ -51,6 +51,12 @@ export interface Snapshot {
   researchProvider: string;
   tenxMath: TenxMath | null;
   tenxScenarios: TenxScenario[];
+  industryAdapter?: string;
+  sourceAttempts?: import("../types.ts").SourceAttempt[];
+  statementBasis?: string | null;
+  periodType?: string | null;
+  fiscalYear?: number | null;
+  failureClass?: string | null;
 }
 
 export interface Universe {
@@ -92,5 +98,5 @@ export interface AppSettings {
   defaultResearchMode: "auto" | "manual";
   useAi: boolean;
   researchPriorityOn: boolean;
-  qualityModel: "MFC70-v1.1" | "MFC74-v3.0";
+  qualityModel: "MFC70-v1.1" | "MFC70-v1.2" | "MFC74-v3.0";
 }

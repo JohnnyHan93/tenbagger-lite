@@ -24,11 +24,12 @@ function Page() {
               <Link to="/company/$ticker" params={{ ticker: encodeURIComponent(c.ticker) }}>
                 {displayTicker(c.ticker)}
               </Link>{" "}
-              · {e.factorCode} · {e.evidenceType}
+              · {e.factorCode} · {e.evidenceType} · {e.sourceTier ?? "TIER_3"} · {e.status ?? "ACTIVE"}
             </p>
-            <p className="mt-1 text-sm">{e.evidence}</p>
+            <p className="mt-1 text-sm">{e.statement ?? e.evidence}</p>
             <p className="mt-1 text-xs text-subtle">
-              {e.sourceName} · {e.sourceDate}
+              {e.sourceName} · {e.publishedAt ?? e.sourceDate}
+              {e.sourceUrl ? ` · ${e.sourceUrl}` : ""}
             </p>
           </div>
         ))}

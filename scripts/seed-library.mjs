@@ -1,3 +1,7 @@
+/**
+ * Opt-in research generator. NOT application bootstrap.
+ * Runtime must not import the written JSON as scored sample data.
+ */
 import { writeFileSync } from "node:fs";
 import { resolveQuote } from "../src/lib/research/quote-fetch.ts";
 import { gatherResearchPack } from "../src/lib/research/pack.ts";

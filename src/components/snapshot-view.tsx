@@ -33,6 +33,7 @@ export function SnapshotHeader({
           <h2 className="masthead mt-1 text-2xl md:text-3xl">{company.companyName}</h2>
           <p className="mt-1 text-sm text-muted">
             {company.exchange} · {company.country} · {company.sector}
+            {snapshot.industryAdapter ? ` · Adapter ${snapshot.industryAdapter}` : ""}
           </p>
         </div>
         <div className="text-right">
@@ -78,7 +79,7 @@ export function EngineTrio({
   return (
     <div className="mt-4 grid gap-3 md:grid-cols-3">
       <EngineCard
-        kicker={`${ENGINE_TAB.xbagger.name} · ${ENGINE_TAB.xbagger.version}`}
+        kicker={`${ENGINE_TAB.xbagger.name} · ${x.version ?? ENGINE_TAB.xbagger.version}`}
         title={formatXScore(x.adjustedScore)}
         sub={`Grade ${x.grade} · ${x.verdict}`}
         status={x.status}
@@ -95,7 +96,7 @@ export function EngineTrio({
         </p>
       </EngineCard>
       <EngineCard
-        kicker={`${ENGINE_TAB.oversold.name} · ${ENGINE_TAB.oversold.version}`}
+        kicker={`${ENGINE_TAB.oversold.name} · ${o.version ?? ENGINE_TAB.oversold.version}`}
         title={formatOppScore(o.opportunity)}
         sub={`Case ${o.case} · Value Trap ${o.valueTrap} / 10`}
         status={o.status}
@@ -115,7 +116,7 @@ export function EngineTrio({
         {o.peakEarnings ? <p className="mt-2 text-xs text-flag-yellow">Peak earnings flag</p> : null}
       </EngineCard>
       <EngineCard
-        kicker={`${ENGINE_TAB.quality.name} · ${ENGINE_TAB.quality.version}`}
+        kicker={`${ENGINE_TAB.quality.name} · ${q.version ?? ENGINE_TAB.quality.version}`}
         title={formatQualityScore(q.score)}
         sub={`Grade ${q.grade} · ${q.scoredCount}/${q.eligibleCount} scored`}
         status={q.status}

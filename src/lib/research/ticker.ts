@@ -16,7 +16,7 @@ import type {
   ResearchDraft,
   ResearchQuote,
 } from "../types";
-import { heuristicDraft } from "./heuristic";
+import { heuristicDraft, stampEvidence } from "./heuristic";
 import { packText, type ResearchPack } from "./pack";
 
 const GROK_PROMPT = `You are the Tenbagger / Wildcard research agent.
@@ -165,7 +165,7 @@ function mergeGrok(
 ): ResearchDraft {
   const baseH = heuristicDraft(quote, pack);
   const factorMap = new Map(baseH.factors.map((f) => [f.code, f]));
-  const evidences: Evidence[] = [...baseH.evidences];
+  const evidences: Evidence[] = [...baseH.evidences].map(stampEvidence);
   if (grok.factors) {
     for (const f of grok.factors) {
       const code = f.code as FactorCode;
@@ -191,23 +191,25 @@ function mergeGrok(
       });
       for (const e of evs) {
         if (!e.text) continue;
-        evidences.push({
-          id: `e_${Math.random().toString(36).slice(2, 9)}`,
-          factorCode: code,
-          evidence: e.text,
-          evidenceType:
-            e.type === "FACT" ||
-            e.type === "REPORTED" ||
-            e.type === "MANAGEMENT_TARGET" ||
-            e.type === "INFERENCE"
-              ? e.type
-              : "INFERENCE",
-          sourceName: e.sourceName || "Grok Research",
-          sourceUrl: e.sourceUrl || "",
-          sourceDate: e.sourceDate || new Date().toISOString().slice(0, 10),
-          confidence: typeof e.confidence === "number" ? e.confidence : 0.5,
-          createdAt: new Date().toISOString(),
-        });
+        evidences.push(
+          stampEvidence({
+            id: `e_${Math.random().toString(36).slice(2, 9)}`,
+            factorCode: code,
+            evidence: e.text,
+            evidenceType:
+              e.type === "FACT" ||
+              e.type === "REPORTED" ||
+              e.type === "MANAGEMENT_TARGET" ||
+              e.type === "INFERENCE"
+                ? e.type
+                : "INFERENCE",
+            sourceName: e.sourceName || "Grok Research",
+            sourceUrl: e.sourceUrl || "",
+            sourceDate: e.sourceDate || new Date().toISOString().slice(0, 10),
+            confidence: typeof e.confidence === "number" ? e.confidence : 0.5,
+            createdAt: new Date().toISOString(),
+          }),
+        );
       }
     }
   }
@@ -295,45 +297,61 @@ function mergeGrok(
   };
 }
 
+export async function executeResearch(input: {
+  ticker: string;
+  useAi: boolean;
+}): Promise<{ ok: true; draft: ResearchDraft } | { ok: false; error: string }> {
+  const { candidatesFor, resolveQuote } = await import("./quote-fetch.ts");
+  const { gatherResearchPack } = await import("./pack.ts");
+  const list = candidatesFor(input.ticker);
+  if (list.length === 0) return { ok: false, error: "INVALID TICKER" };
+
+  let quote: ResearchQuote | null = null;
+  for (const t of list) {
+    try {
+      quote = await resolveQuote(t);
+    } catch {
+      quote = null;
+    }
+    if (quote && quote.price) break;
+    quote = null;
+  }
+  if (!quote) return { ok: false, error: "INVALID TICKER" };
+  if (!quote.marketCap) {
+    return {
+      ok: false,
+      error: "시가총액을 확인하지 못했습니다. Manual Mode에서 직접 입력하세요.",
+    };
+  }
+
+  let pack: ResearchPack;
+  try {
+    pack = await gatherResearchPack({
+      ticker: quote.ticker,
+      companyName: quote.companyName,
+      country: quote.country,
+    });
+  } catch {
+    pack = { profile: "", website: "", wiki: "", customers: [], techClaims: [], news: [] };
+  }
+
+  const fallback = heuristicDraft(quote, pack);
+
+  if (input.useAi) {
+    try {
+      const grok = await grokResearch(quote, pack);
+      if (grok) return { ok: true, draft: mergeGrok(quote, grok, pack) };
+    } catch {
+      // provider failure: keep filings+profile draft
+    }
+  }
+  return { ok: true, draft: fallback };
+}
+
 export const researchTicker = createServerFn({ method: "POST" })
   .validator((input: { ticker: string; useAi: boolean }) => input)
   .handler(async ({ data }): Promise<
     | { ok: true; draft: ResearchDraft }
     | { ok: false; error: string }
-  > => {
-    const { candidatesFor, resolveQuote } = await import("./quote-fetch");
-    const { gatherResearchPack } = await import("./pack");
-    const list = candidatesFor(data.ticker);
-    if (list.length === 0) return { ok: false, error: "INVALID TICKER" };
+  > => executeResearch(data));
 
-    let quote: ResearchQuote | null = null;
-    for (const t of list) {
-      quote = await resolveQuote(t);
-      if (quote && quote.price) break;
-      quote = null;
-    }
-    if (!quote) return { ok: false, error: "INVALID TICKER" };
-    if (!quote.marketCap) {
-      return {
-        ok: false,
-        error: "시가총액을 확인하지 못했습니다. Manual Mode에서 직접 입력하세요.",
-      };
-    }
-
-    const pack = await gatherResearchPack({
-      ticker: quote.ticker,
-      companyName: quote.companyName,
-      country: quote.country,
-    });
-    const fallback = heuristicDraft(quote, pack);
-
-    if (data.useAi) {
-      try {
-        const grok = await grokResearch(quote, pack);
-        if (grok) return { ok: true, draft: mergeGrok(quote, grok, pack) };
-      } catch {
-        // fall through
-      }
-    }
-    return { ok: true, draft: fallback };
-  });

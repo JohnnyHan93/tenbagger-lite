@@ -1,4 +1,4 @@
-import { FACTOR_ORDER, FACTOR_META, type Confidence, type FactorCode } from "../scoring/config.ts";
+import { FACTOR_ORDER, type Confidence, type FactorCode } from "../scoring/config.ts";
 import { makeFlag } from "../risk/flags.ts";
 import {
   buildTenxMath,
@@ -21,6 +21,34 @@ import { emptyPack, type ResearchPack } from "./pack.ts";
 
 function evId(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+export function stampEvidence(e: Evidence): Evidence {
+  const tier: Evidence["sourceTier"] =
+    e.sourceTier ??
+    (/nasdaq financials|filing|10-q|10-k|wisereport|dart|ir\b/i.test(e.sourceName)
+      ? "TIER_1"
+      : /quote|profile|naver/i.test(e.sourceName)
+        ? "TIER_2"
+        : "TIER_3");
+  const engines: NonNullable<Evidence["engineTargets"]> =
+    e.engineTargets ??
+    (e.factorCode === "F8" || e.factorCode === "F7"
+      ? ["xbagger", "oversold", "quality"]
+      : e.factorCode === "F2"
+        ? ["xbagger", "quality"]
+        : ["xbagger"]);
+  return {
+    ...e,
+    statement: e.statement ?? e.evidence,
+    sourceTier: tier,
+    status: e.status ?? "ACTIVE",
+    factorTargets: e.factorTargets ?? [e.factorCode],
+    engineTargets: engines,
+    retrievedAt: e.retrievedAt ?? e.createdAt,
+    asOfDate: e.asOfDate ?? e.sourceDate,
+    publishedAt: e.publishedAt ?? e.sourceDate,
+  };
 }
 
 const GROWING =
@@ -279,8 +307,8 @@ export function heuristicDraft(
 
   let f8score: number | null = 4;
   let f8s = "적정 수준으로 보수 평가.";
-  let f10score = scoreTenxFromUpside(bull.upsideMultiple, base.upsideMultiple);
-  let tenx = makeFlag(
+  const f10score = scoreTenxFromUpside(bull.upsideMultiple, base.upsideMultiple);
+  const tenx = makeFlag(
     "TENX",
     f10score >= 6 ? "GREEN" : f10score >= 4 ? "YELLOW" : "RED",
     `Bull ${bull.upsideMultiple.toFixed(1)}x · Base ${base.upsideMultiple.toFixed(1)}x. 경로 ${tenxMath.path}.`,
@@ -528,7 +556,7 @@ export function heuristicDraft(
     ],
     quarterlyKpis: kpis,
     thesis: "",
-    evidences,
+    evidences: evidences.map(stampEvidence),
     findings,
     researchProvider: pack.profile || rev != null ? "filings+profile" : "quote+heuristic",
   };

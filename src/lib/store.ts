@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { buildSampleWorld } from "./samples.ts";
-import { runSnapshot } from "./engines/run.ts";
+import { EMPTY_SETTINGS, emptyWorkspace, identityUniverseWorkspace, mergeIdentityUniverse, stripDemoFromWorkspace } from "./bootstrap.ts";
+import { runSnapshot, runSnapshotFromDraft, snapshotToDraft } from "./engines/run.ts";
 import { parseTickerList, type UniverseTicker } from "./universe/parse.ts";
 import { uid } from "./utils.ts";
 import type { AppSettings, AuditLog, Snapshot, Universe } from "./domain/snapshot.ts";
@@ -23,11 +23,22 @@ export interface AppState {
   settings: AppSettings;
   setHydrated: (v: boolean) => void;
   seedIfEmpty: () => void;
+  seedIdentityUniverse: () => void;
+  purgeFakeDemo: () => void;
   resetSamples: () => void;
   clearAll: () => void;
   upsertCompany: (c: Company) => Company;
   saveFromQuote: (company: Company, quote: ResearchQuote, pack?: ResearchPack) => Snapshot;
   saveFromDraft: (company: Company, draft: ResearchDraft, pack?: ResearchPack) => Snapshot;
+  refreshCompany: (companyId: string) => Snapshot | null | Promise<Snapshot | null>;
+  hydrateFromDb: (data: {
+    companies: Company[];
+    snapshots: Snapshot[];
+    universes: Universe[];
+    watchlist: string[];
+    audit: AuditLog[];
+    settings?: AppSettings | null;
+  }) => void;
   overrideXFactor: (snapshotId: string, code: FactorCode, score: number, reason: string) => void;
   toggleWatch: (companyId: string) => void;
   importJson: (data: Partial<Pick<AppState, "companies" | "snapshots" | "universes" | "watchlist" | "settings">>) => void;
@@ -39,33 +50,17 @@ export interface AppState {
   archiveUniverse: (id: string) => void;
 }
 
-const emptySettings: AppSettings = {
-  defaultResearchMode: "auto",
-  useAi: true,
-  researchPriorityOn: true,
-  qualityModel: "MFC70-v1.1",
-};
+const emptySettings = EMPTY_SETTINGS;
 
-function sampleState() {
-  const world = buildSampleWorld();
+function identityState() {
+  const world = identityUniverseWorkspace(emptySettings);
   return {
     companies: world.companies,
     snapshots: world.snapshots,
-    universes: [
-      {
-        id: "u_sample",
-        name: "Sample Six (fixtures)",
-        version: 1,
-        market: "GLOBAL" as const,
-        status: "open" as const,
-        createdAt: "2026-09-03T00:00:00.000Z",
-        lockedAt: null,
-        tickers: world.companies.map((c) => ({ ticker: c.ticker, name: c.companyName })),
-      },
-    ],
-    watchlist: world.companies.map((c) => c.id),
-    audit: [] as AuditLog[],
-    settings: emptySettings,
+    universes: world.universes,
+    watchlist: world.watchlist,
+    audit: world.audit,
+    settings: world.settings ?? emptySettings,
   };
 }
 
@@ -73,20 +68,67 @@ export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       hydrated: false,
-      ...sampleState(),
+      ...emptyWorkspace(emptySettings),
+      settings: emptySettings,
       setHydrated: (v) => set({ hydrated: v }),
       seedIfEmpty: () => {
-        if (get().companies.length === 0) set(sampleState());
+        if (get().companies.length === 0) set(identityState());
+        else get().seedIdentityUniverse();
       },
-      resetSamples: () => set(sampleState()),
-      clearAll: () =>
+      seedIdentityUniverse: () => {
+        const stripped = stripDemoFromWorkspace({
+          companies: get().companies,
+          snapshots: get().snapshots,
+          universes: get().universes,
+          watchlist: get().watchlist,
+          audit: get().audit,
+          settings: get().settings,
+        });
+        const merged = mergeIdentityUniverse(stripped.next);
+        set({
+          companies: merged.companies,
+          snapshots: merged.snapshots,
+          universes: merged.universes,
+          watchlist: merged.watchlist,
+          audit: merged.audit,
+        });
+      },
+      purgeFakeDemo: () => {
+        const stripped = stripDemoFromWorkspace({
+          companies: get().companies,
+          snapshots: get().snapshots,
+          universes: get().universes,
+          watchlist: get().watchlist,
+          audit: get().audit,
+          settings: get().settings,
+        });
+        set({
+          companies: stripped.next.companies,
+          snapshots: stripped.next.snapshots,
+          universes: stripped.next.universes,
+          watchlist: stripped.next.watchlist,
+          audit: stripped.next.audit,
+        });
+      },
+      resetSamples: () => {
+        get().purgeFakeDemo();
+        get().seedIdentityUniverse();
+        void (async () => {
+          const { cleanupDemoDataFn } = await import("./persist/actions.ts");
+          await cleanupDemoDataFn();
+          await persistWorkspaceOnly();
+        })();
+      },
+      clearAll: () => {
         set({
           companies: [],
           snapshots: [],
           universes: [],
           watchlist: [],
           audit: [],
-        }),
+        });
+        void replaceWorkspaceOnServer();
+      },
       upsertCompany: (incoming) => {
         const existing = get().companies.find(
           (c) => c.ticker.toUpperCase() === incoming.ticker.toUpperCase(),
@@ -98,6 +140,10 @@ export const useAppStore = create<AppState>()(
             id: existing.id,
             createdAt: existing.createdAt,
             updatedAt: new Date().toISOString(),
+            seedTag: incoming.seedTag ?? existing.seedTag,
+            testProfile: incoming.testProfile ?? existing.testProfile,
+            sample: incoming.sample ?? existing.sample,
+            cohort: incoming.cohort ?? existing.cohort,
           };
           set({ companies: get().companies.map((c) => (c.id === existing.id ? merged : c)) });
           return merged;
@@ -114,10 +160,67 @@ export const useAppStore = create<AppState>()(
           researchPriorityOn: get().settings.researchPriorityOn,
         });
         set({ snapshots: [...get().snapshots, snap] });
+        void persistRecord(company, snap);
         return snap;
       },
       saveFromDraft: (company, draft, pack) => {
-        return get().saveFromQuote(company, draft.quote, pack);
+        void pack;
+        const snap = runSnapshotFromDraft({
+          company,
+          draft,
+          researchPriorityOn: get().settings.researchPriorityOn,
+        });
+        set({ snapshots: [...get().snapshots, snap] });
+        void persistRecord(company, snap);
+        return snap;
+      },
+      refreshCompany: (companyId) => {
+        const company = get().companies.find((c) => c.id === companyId);
+        const prev = latestSnapshot(get().snapshots, companyId);
+        if (!company || !prev) return null;
+        const fallbackClone = () => {
+          const draft = snapshotToDraft(prev, company);
+          const snap = runSnapshotFromDraft({
+            company,
+            draft,
+            asOf: new Date().toISOString(),
+            researchPriorityOn: get().settings.researchPriorityOn,
+          });
+          set({ snapshots: [...get().snapshots, snap] });
+          void persistRecord(company, snap);
+          return snap;
+        };
+        const run = async () => {
+          try {
+            const { researchTicker } = await import("./research/ticker.ts");
+            const res = await researchTicker({
+              data: { ticker: company.ticker, useAi: get().settings.useAi },
+            });
+            if (res.ok) return get().saveFromDraft(company, res.draft);
+          } catch {
+            // keep previous; still insert a new snapshot
+          }
+          return fallbackClone();
+        };
+        return run();
+      },
+      hydrateFromDb: (data) => {
+        const stripped = stripDemoFromWorkspace({
+          companies: data.companies,
+          snapshots: data.snapshots,
+          universes: data.universes,
+          watchlist: data.watchlist,
+          audit: data.audit,
+          settings: data.settings ?? get().settings,
+        });
+        set({
+          companies: stripped.next.companies,
+          snapshots: stripped.next.snapshots,
+          universes: stripped.next.universes,
+          watchlist: stripped.next.watchlist,
+          audit: stripped.next.audit,
+          settings: data.settings ? { ...get().settings, ...data.settings } : get().settings,
+        });
       },
       overrideXFactor: (snapshotId, code, score, reason) => {
         const snap = get().snapshots.find((s) => s.id === snapshotId);
@@ -176,6 +279,20 @@ export const useAppStore = create<AppState>()(
           snapshots: [...get().snapshots, next],
           audit: [...get().audit, log],
         });
+        void persistRecord(
+          get().companies.find((c) => c.id === next.companyId) ?? {
+            id: next.companyId,
+            ticker: "",
+            exchange: "",
+            companyName: "",
+            country: "",
+            sector: "",
+            industry: "",
+            createdAt: next.createdAt,
+            updatedAt: next.createdAt,
+          },
+          next,
+        );
       },
       toggleWatch: (companyId) => {
         const w = get().watchlist;
@@ -209,6 +326,12 @@ export const useAppStore = create<AppState>()(
       },
       importUniverseText: (name, market, text) => {
         const parsed = parseTickerList(text);
+        if (parsed.tickers.length === 0) {
+          throw new Error(parsed.errors[0] ?? "가져올 티커가 없습니다");
+        }
+        if (parsed.errors.length) {
+          throw new Error(`가져오기 중단: ${parsed.errors[0]}`);
+        }
         return get().createUniverse(name, market, parsed.tickers);
       },
       lockUniverse: (id) => {
@@ -234,19 +357,77 @@ export const useAppStore = create<AppState>()(
       },
     }),
     {
-      name: "idt-v2",
+      name: "idt-v21-prefs",
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({
-        companies: s.companies,
-        snapshots: s.snapshots,
-        universes: s.universes,
-        watchlist: s.watchlist,
-        audit: s.audit,
-        settings: s.settings,
-      }),
+      partialize: (s) => ({ settings: s.settings }),
     },
   ),
 );
+
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+let persistChain: Promise<void> = Promise.resolve();
+
+function workspaceDump() {
+  const s = useAppStore.getState();
+  return {
+    companies: s.companies,
+    snapshots: s.snapshots,
+    universes: s.universes,
+    watchlist: s.watchlist,
+    audit: s.audit,
+    settings: s.settings,
+  };
+}
+
+export function schedulePersist() {
+  if (typeof window === "undefined") return;
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    const s = useAppStore.getState();
+    if (!s.hydrated) return;
+    void persistWorkspaceOnly();
+  }, 800);
+}
+
+async function persistWorkspaceOnly() {
+  if (typeof window === "undefined") return;
+  const { persistWorkspaceFn } = await import("./persist/actions.ts");
+  await persistWorkspaceFn({ data: workspaceDump() });
+}
+
+function persistRecord(company: Company, snap: Snapshot) {
+  if (typeof window === "undefined") return;
+  persistChain = persistChain
+    .then(async () => {
+      const { saveCompanyFn, insertAnalysisFn } = await import("./persist/actions.ts");
+      await saveCompanyFn({ data: company });
+      await insertAnalysisFn({ data: snap });
+    })
+    .catch(() => undefined);
+}
+
+export async function flushPersist() {
+  if (typeof window === "undefined") return;
+  await persistChain;
+  const s = useAppStore.getState();
+  if (!s.hydrated) return;
+  await persistWorkspaceOnly();
+}
+
+async function replaceWorkspaceOnServer() {
+  if (typeof window === "undefined") return;
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  const { clearWorkspaceFn, persistWorkspaceFn } = await import("./persist/actions.ts");
+  await clearWorkspaceFn();
+  await persistWorkspaceFn({ data: workspaceDump() });
+}
+
+if (typeof window !== "undefined") {
+  useAppStore.subscribe(() => schedulePersist());
+}
 
 export function latestSnapshot(snapshots: Snapshot[], companyId: string): Snapshot | undefined {
   return snapshots

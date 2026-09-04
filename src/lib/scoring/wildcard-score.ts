@@ -1,6 +1,5 @@
 import { clamp } from "../utils.ts";
 import {
-  FACTOR_MAX,
   FACTOR_WEIGHT,
   GRADE_THRESHOLDS,
   HARD_GATE,

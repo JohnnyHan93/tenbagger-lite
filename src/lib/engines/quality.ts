@@ -2,7 +2,7 @@ import type { DerivedMetrics } from "../metrics/derived.ts";
 import type { Applicability, IndustryGroup } from "./industry.ts";
 import { naForGroup } from "./industry.ts";
 
-export const MFC70_VERSION = "MFC70-v1.1";
+export const MFC70_VERSION = "MFC70-v1.2";
 export const MFC74_VERSION = "MFC74-v3.0";
 
 export type FactorClass = "Core" | "Conditional" | "Diagnostic";
@@ -79,7 +79,7 @@ export const QUALITY_FACTORS: QualityFactorDef[] = [
   { id: "Q01", pillar: "Growth", name: "Revenue Growth", kind: "Core", apply: A, score: (m) => band(m.revenueYoY, [[0.3, 10], [0.15, 8], [0.08, 6], [0.03, 4], [0, 2], [-1, 0]], "YoY 매출", "revYoY") },
   { id: "Q02", pillar: "Growth", name: "3Y Revenue CAGR", kind: "Core", apply: A, score: (m) => band(m.revenueCagr3y, [[0.2, 10], [0.12, 8], [0.07, 6], [0.03, 4], [0, 2], [-1, 0]], "3Y CAGR", "cagr3") },
   { id: "Q03", pillar: "Growth", name: "OP Growth", kind: "Core", apply: A, score: (m) => band(m.opGrowth, [[0.3, 10], [0.15, 8], [0.05, 6], [0, 4], [-0.1, 2], [-9, 0]], "영업이익 성장", "opYoY") },
-  { id: "Q04", pillar: "Growth", name: "EPS Growth", kind: "Conditional", apply: A, score: (m) => band(m.niTtm != null && m.revenuePrior ? m.opGrowth : null, [[0.25, 8], [0.1, 6], [0, 4], [-9, 2]], "EPS 프록시(NI/OP)", "epsProxy") },
+  { id: "Q04", pillar: "Growth", name: "EPS Growth", kind: "Conditional", apply: A, score: () => ({ score: null, reason: "희석 EPS 시계열 없음. OP 성장으로 대체하지 않음.", calc: "epsYoY" }) },
   { id: "Q05", pillar: "Growth", name: "Growth Acceleration", kind: "Core", apply: A, score: (m) => {
     if (m.revenueYoY == null || m.revenueCagr3y == null) return { score: null, reason: "가속 비교 시계열 없음.", calc: "yoy-cagr3" };
     const d = m.revenueYoY - m.revenueCagr3y;
@@ -106,7 +106,7 @@ export const QUALITY_FACTORS: QualityFactorDef[] = [
   { id: "Q17", pillar: "Cash", name: "CFO Margin", kind: "Core", apply: A, score: (m) => band(m.cfoMargin, [[0.2, 10], [0.12, 8], [0.05, 6], [0, 4], [-9, 1]], "CFO 마진", "cfoM") },
   { id: "Q18", pillar: "Cash", name: "Cash Conversion", kind: "Core", apply: A, score: (m) => band(m.cashConversion, [[1.1, 10], [0.9, 8], [0.7, 6], [0.4, 4], [0, 2], [-9, 0]], "CFO/NI", "cc") },
   { id: "Q19", pillar: "Cash", name: "FCF Margin", kind: "Core", apply: A, score: (m) => band(m.fcfMargin, [[0.15, 10], [0.08, 8], [0.03, 6], [0, 4], [-9, 1]], "FCF 마진", "fcfM") },
-  { id: "Q20", pillar: "Cash", name: "3Y FCF", kind: "Conditional", apply: A, score: (m) => (m.fcf == null ? { score: null, reason: "3Y FCF 시계열 없음.", calc: "fcf3" } : band(m.fcf, [[1, 8], [0, 6], [-9, 2]], "최근 FCF 부호 프록시", "fcf")) },
+  { id: "Q20", pillar: "Cash", name: "3Y FCF", kind: "Conditional", apply: A, score: () => ({ score: null, reason: "3Y FCF 시계열 없음. 단년 FCF로 대체하지 않음.", calc: "fcf3" }) },
   { id: "Q21", pillar: "Cash", name: "CFO Growth", kind: "Conditional", apply: A, score: () => ({ score: null, reason: "CFO 시계열 없음.", calc: "cfoG" }) },
   { id: "Q22", pillar: "Cash", name: "Positive CFO Persistence", kind: "Core", apply: A, score: (m) => (m.cfo == null ? { score: null, reason: "CFO 없음.", calc: "cfo" } : { score: m.cfo > 0 ? 8 : 2, reason: m.cfo > 0 ? "CFO 양수" : "CFO 음수", calc: "sign" }) },
   { id: "Q23", pillar: "Cash", name: "Accrual Ratio", kind: "Diagnostic", apply: A, score: (m) => invBand(m.accrual, [[0.05, 8], [0.1, 6], [0.2, 3], [9, 1]], "발생액", "accrual") },
@@ -121,7 +121,7 @@ export const QUALITY_FACTORS: QualityFactorDef[] = [
     return invBand(m.netDebtEbitda, [[0.5, 10], [1.5, 8], [2.5, 6], [4, 3], [99, 1]], "Net debt/EBITDA", "nd/ebitda");
   } },
   { id: "Q31", pillar: "Balance Sheet", name: "Interest Coverage", kind: "Core", apply: (g) => naForGroup(g, "de"), score: (m) => band(m.interestCoverage, [[10, 10], [5, 8], [3, 6], [1.5, 3], [0, 1]], "이자보상", "intCov") },
-  { id: "Q32", pillar: "Balance Sheet", name: "Cash Interest Coverage", kind: "Conditional", apply: (g) => naForGroup(g, "de"), score: (m) => band(m.interestCoverage, [[8, 8], [3, 6], [1, 3], [0, 1]], "현금 이자보상 프록시", "cashInt") },
+  { id: "Q32", pillar: "Balance Sheet", name: "Cash Interest Coverage", kind: "Conditional", apply: (g) => naForGroup(g, "de"), score: () => ({ score: null, reason: "현금 이자보상 원자료 없음. 발생주의 이자보상으로 대체하지 않음.", calc: "cashInt" }) },
   { id: "Q33", pillar: "Balance Sheet", name: "ST Debt / Cash", kind: "Core", apply: A, score: (m) => invBand(m.stDebtToCash, [[0.3, 10], [0.7, 7], [1, 4], [99, 1]], "단기차입/현금", "st/cash") },
   { id: "Q34", pillar: "Balance Sheet", name: "Debt Concentration", kind: "Conditional", apply: A, score: () => ({ score: null, reason: "만기 분포 없음.", calc: "mat" }) },
   { id: "Q35", pillar: "Balance Sheet", name: "Debt Growth Gap", kind: "Conditional", apply: A, score: () => ({ score: null, reason: "부채 시계열 없음.", calc: "dDebt" }) },
@@ -130,10 +130,13 @@ export const QUALITY_FACTORS: QualityFactorDef[] = [
   { id: "Q38", pillar: "Capital Efficiency", name: "Incremental ROIC", kind: "Conditional", apply: (g) => naForGroup(g, "roic"), score: () => ({ score: null, reason: "증분 ROIC 없음.", calc: "iROIC" }) },
   { id: "Q39", pillar: "Capital Efficiency", name: "Asset Turnover", kind: "Core", apply: A, score: (m) => band(m.assetTurnover, [[1.5, 10], [0.9, 8], [0.5, 6], [0.25, 4], [0, 2]], "Asset Turnover", "AT") },
   { id: "Q40", pillar: "Capital Efficiency", name: "PPE Turnover", kind: "Conditional", apply: (g) => (g === "saas" || g === "financial" ? "C" : "A"), score: () => ({ score: null, reason: "PPE 없음.", calc: "ppeT" }) },
-  { id: "Q41", pillar: "Capital Efficiency", name: "Cash ROIC", kind: "Conditional", apply: A, score: (m) => band(m.roic, [[0.15, 8], [0.08, 6], [0, 3], [-9, 1]], "Cash ROIC 프록시", "croic") },
+  { id: "Q41", pillar: "Capital Efficiency", name: "Cash ROIC", kind: "Conditional", apply: A, score: () => ({ score: null, reason: "Cash ROIC 원자료 없음. 회계 ROIC로 복사하지 않음.", calc: "croic" }) },
   { id: "Q42", pillar: "Capital Efficiency", name: "CAPEX Productivity", kind: "Conditional", apply: A, score: () => ({ score: null, reason: "CAPEX 생산성 없음.", calc: "capexP" }) },
   { id: "Q43", pillar: "Reinvestment", name: "CAPEX / Revenue", kind: "Core", apply: A, score: (m) => invBand(m.capexToRev, [[0.04, 8], [0.08, 7], [0.15, 5], [0.3, 3], [9, 2]], "CAPEX/매출", "capex/rev") },
-  { id: "Q44", pillar: "Reinvestment", name: "CAPEX / CFO", kind: "Conditional", apply: A, score: () => ({ score: null, reason: "CAPEX/CFO 없음.", calc: "capex/cfo" }) },
+  { id: "Q44", pillar: "Reinvestment", name: "CAPEX / CFO", kind: "Conditional", apply: A, score: (m) => {
+    if (m.capex == null || m.cfo == null || m.cfo === 0) return { score: null, reason: "CAPEX/CFO 계산 자료 없음.", calc: "capex/cfo" };
+    return invBand(Math.abs(m.capex) / Math.abs(m.cfo), [[0.3, 8], [0.6, 6], [1, 4], [9, 2]], "CAPEX/CFO", "capex/cfo");
+  } },
   { id: "Q45", pillar: "Reinvestment", name: "PPE Growth", kind: "Conditional", apply: A, score: () => ({ score: null, reason: "PPE 성장 없음.", calc: "ppeG" }) },
   { id: "Q46", pillar: "Reinvestment", name: "R&D / Revenue", kind: "Core", apply: (g) => naForGroup(g, "rd"), score: (m) => band(m.rdToRev, [[0.12, 8], [0.06, 7], [0.03, 5], [0, 4]], "R&D/매출", "rd/rev") },
   { id: "Q47", pillar: "Reinvestment", name: "R&D Growth", kind: "Conditional", apply: (g) => naForGroup(g, "rd"), score: (m) => band(m.rdGrowth, [[0.15, 8], [0.05, 6], [0, 4], [-9, 2]], "R&D 성장", "rdG") },
@@ -143,7 +146,7 @@ export const QUALITY_FACTORS: QualityFactorDef[] = [
   { id: "Q51", pillar: "Reinvestment", name: "Contract Liability Growth", kind: "Conditional", apply: (g) => (g === "saas" ? "A" : "C"), score: () => ({ score: null, reason: "계약부채 없음.", calc: "cl" }) },
   { id: "Q52", pillar: "Shareholder", name: "Customer Concentration", kind: "Core", apply: A, score: (m) => invBand(m.customerConcentration, [[0.15, 9], [0.3, 6], [0.5, 3], [9, 1]], "고객 집중", "conc") },
   { id: "Q53", pillar: "Shareholder", name: "Share Count Growth", kind: "Core", apply: A, score: (m) => invBand(m.shareGrowth, [[0.01, 10], [0.04, 7], [0.1, 4], [9, 1]], "주식수 증가", "shares") },
-  { id: "Q54", pillar: "Shareholder", name: "3Y Dilution", kind: "Core", apply: A, score: (m) => invBand(m.shareGrowth, [[0.03, 8], [0.08, 5], [0.2, 2], [9, 1]], "희석 프록시", "dil3") },
+  { id: "Q54", pillar: "Shareholder", name: "3Y Dilution", kind: "Core", apply: A, score: () => ({ score: null, reason: "3Y 주식수 시계열 없음. 1Y 희석으로 대체하지 않음.", calc: "dil3" }) },
   { id: "Q55", pillar: "Shareholder", name: "Potential Dilution", kind: "Conditional", apply: A, score: () => ({ score: null, reason: "옵션/전환사채 없음.", calc: "potDil" }) },
   { id: "Q56", pillar: "Shareholder", name: "EPS vs NI Gap", kind: "Diagnostic", apply: A, score: () => ({ score: null, reason: "희석 EPS 공시 없음.", calc: "epsGap" }) },
   { id: "Q57", pillar: "Shareholder", name: "External Funding Dependence", kind: "Core", apply: A, score: (m) => {
@@ -177,7 +180,7 @@ function ratioSafe(a: number | null, b: number | null): number | null {
 export function scoreQuality(m: DerivedMetrics): QualityResult {
   const factors: QualityFactorResult[] = QUALITY_FACTORS.map((def) => {
     const applicability = def.apply(m.industryGroup);
-    if (applicability === "N") {
+    if (applicability === "N" || applicability === "R") {
       return {
         id: def.id,
         pillar: def.pillar,
@@ -189,8 +192,11 @@ export function scoreQuality(m: DerivedMetrics): QualityResult {
         weightedScore: null,
         coverage: 0,
         confidence: "Low",
-        reason: "업종 N/A — 분모에서 제외",
-        calculation: "industry N",
+        reason:
+          applicability === "R"
+            ? "업종 대체 지표 없음. 제조업 공식을 강제하지 않음. N/A."
+            : "업종 N/A — 분모에서 제외",
+        calculation: applicability === "R" ? "industry R" : "industry N",
         status: "NA",
       };
     }
@@ -213,7 +219,9 @@ export function scoreQuality(m: DerivedMetrics): QualityResult {
     };
   });
 
-  const eligible = factors.filter((f) => f.kind !== "Diagnostic" && f.applicability !== "N");
+  const eligible = factors.filter(
+    (f) => f.kind !== "Diagnostic" && f.applicability !== "N" && f.applicability !== "R",
+  );
   const scored = eligible.filter((f) => f.score != null);
   const coverage = eligible.length ? scored.length / eligible.length : 0;
   const mean =
@@ -257,3 +265,18 @@ export function scoreQuality(m: DerivedMetrics): QualityResult {
 export function assertSeventyFactors(): number {
   return QUALITY_FACTORS.length;
 }
+
+export type QualityImplStatus = "IMPLEMENTED" | "MANUAL_ONLY" | "N/A_BY_DESIGN";
+
+const MANUAL = new Set([
+  "Q04", "Q07", "Q08", "Q20", "Q21", "Q28", "Q29", "Q32", "Q34", "Q35",
+  "Q38", "Q40", "Q41", "Q42", "Q45", "Q49", "Q51", "Q54", "Q55", "Q56",
+  "Q58", "Q59", "Q60", "Q61", "Q62", "Q63", "Q64", "Q65", "Q66", "Q67", "Q68", "Q69",
+]);
+
+export function qualityImplStatus(id: string, kind: FactorClass): QualityImplStatus {
+  if (MANUAL.has(id)) return "MANUAL_ONLY";
+  if (kind === "Diagnostic" && MANUAL.has(id)) return "MANUAL_ONLY";
+  return "IMPLEMENTED";
+}
+
