@@ -4,6 +4,6 @@ export const LAST_VERIFIED_BUILD = {
   lint: "PASS" as const,
   tests: "PASS" as const,
   productionBuild: "PASS" as const,
-  commitSha: "eb0067c91c53233c4d25709c219dea0523a12f76",
-  verifiedAt: "2026-09-04T13:00:00.000Z",
+  commitSha: "65e301929e157a74ec222d8cc5b437edea08f96d",
+  verifiedAt: "2026-09-04T05:10:00.000Z",
 };
