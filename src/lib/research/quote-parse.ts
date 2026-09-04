@@ -106,7 +106,9 @@ export function emptyFinancials(): FinancialSnapshot {
     sharesOutstanding: null,
     grossMargin: null,
     operatingMargin: null,
+    cfo: null,
     fcf: null,
+    fcfSource: null,
   };
 }
 
@@ -125,7 +127,9 @@ export function financialsFromYahoo(r: YahooResult): FinancialSnapshot {
     sharesOutstanding: rawNumber(r.defaultKeyStatistics?.sharesOutstanding),
     grossMargin: rawNumber(fin?.grossMargins),
     operatingMargin: opm,
+    cfo: null,
     fcf: rawNumber(fin?.freeCashflow),
+    fcfSource: rawNumber(fin?.freeCashflow) != null ? "REPORTED" : null,
   };
 }
 
@@ -315,6 +319,19 @@ export function financialsFromNasdaq(
     "Short-Term Debt / Current Portion of Long-Term Debt",
   );
   const ocf = nasdaqRow(cf, "Net Cash Flow-Operating");
+  const capex =
+    nasdaqRow(cf, "Capital Expenditures").latest ??
+    nasdaqRow(cf, "Capital Expenditure").latest;
+  const cfo = ocf.latest;
+  const reportedFcf = nasdaqRow(cf, "Free Cash Flow").latest;
+  const fcf =
+    reportedFcf != null
+      ? reportedFcf
+      : cfo != null && capex != null
+        ? cfo - Math.abs(capex)
+        : null;
+  const fcfSource: FinancialSnapshot["fcfSource"] =
+    reportedFcf != null ? "REPORTED" : fcf != null ? "CFO_MINUS_CAPEX" : null;
   const cashNow =
     cash.latest == null && sti.latest == null
       ? null
@@ -341,7 +358,9 @@ export function financialsFromNasdaq(
     sharesOutstanding: null,
     grossMargin: gpm,
     operatingMargin: opm,
-    fcf: ocf.latest,
+    cfo,
+    fcf,
+    fcfSource,
   };
 }
 
@@ -423,10 +442,14 @@ export function financialsFromWiseReport(
   const op = col("영업이익", "latest");
   const ni = col("당기순이익", "latest");
   const fcf = col("FCF", "latest");
+  const cfo = col("영업활동현금흐름", "latest");
+  const capex = col("CAPEX", "latest");
   const debt = col("이자발생부채", "latest") ?? col("부채총계", "latest");
   const omRow = rows["영업이익률"]?.[latest.i];
   const omPct = parseWiseReportNumber(omRow ?? "");
   const shares = parseWiseReportNumber(rows["발행주식수(보통주)"]?.[latest.i] ?? "");
+  const derivedFcf =
+    fcf != null ? fcf : cfo != null && capex != null ? cfo - Math.abs(capex) : null;
   return {
     revenueTtm: rev,
     revenuePrior: col("매출액", "prior"),
@@ -437,7 +460,9 @@ export function financialsFromWiseReport(
     sharesOutstanding: shares,
     grossMargin: null,
     operatingMargin: omPct != null ? omPct / 100 : op != null && rev ? op / rev : null,
-    fcf,
+    cfo,
+    fcf: derivedFcf,
+    fcfSource: fcf != null ? "REPORTED" : derivedFcf != null ? "CFO_MINUS_CAPEX" : null,
   };
 }
 
@@ -566,7 +591,9 @@ export function financialsFromNaverAnnual(
     sharesOutstanding: null,
     grossMargin: null,
     operatingMargin: omPct == null ? (op != null && rev ? op / rev : null) : omPct / 100,
+    cfo: null,
     fcf: null,
+    fcfSource: null,
   };
 }
 

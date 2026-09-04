@@ -38,7 +38,7 @@ Never put secrets in `VITE_` vars.
 
 1. Discover → ticker → ANALYZE. Quote + filings pack → three engines. Results save to the DB immediately (not localStorage).
 2. Open the company page. X-Bagger, Oversold, Quality sit side by side. Refresh inserts a new snapshot; history is immutable.
-3. IDT SAMPLE RESEARCH 100 is identity-only (50 US / 50 KR). Smoke 12 is the first live research batch. Full 100 is not auto-run.
+3. IDT SAMPLE RESEARCH 100 is identity-only (50 US / 50 KR). Smoke 12 is the first live research batch. Full 100 executor is implemented and **locked** (`EXECUTE_FULL_100 = NO`).
 2. Open the company page. X-Bagger, Oversold, Quality sit side by side.
 3. N/A is not zero. Coverage and confidence are shown separately.
 4. Override a factor: original snapshot stays, a new one is appended.

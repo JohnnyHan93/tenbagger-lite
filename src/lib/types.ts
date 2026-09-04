@@ -145,7 +145,9 @@ export interface FinancialSnapshot {
   sharesOutstanding: number | null;
   grossMargin: number | null;
   operatingMargin: number | null;
+  cfo: number | null;
   fcf: number | null;
+  fcfSource?: "REPORTED" | "CFO_MINUS_CAPEX" | null;
 }
 
 export interface Analysis {

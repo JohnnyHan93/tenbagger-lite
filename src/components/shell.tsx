@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_KICKER, APP_SHORT } from "@/lib/brand";
+import { PersistBanner } from "@/components/persist-banner";
 
 const NAV = [
   { to: "/", label: "대시보드", icon: LayoutDashboard },
@@ -58,6 +59,7 @@ function NavLink({
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh bg-bg text-fg">
+      <PersistBanner />
       <aside className="fixed inset-y-0 left-0 hidden w-56 flex-col border-r border-border bg-surface px-3 py-5 md:flex">
         <Link to="/" className="mb-8 px-3">
           <div className="masthead text-xl leading-tight text-fg">{APP_SHORT}</div>

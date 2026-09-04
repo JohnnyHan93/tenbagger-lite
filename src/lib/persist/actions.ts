@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import type { WorkspaceDump } from "./repo.ts";
 import type { Snapshot } from "../domain/snapshot.ts";
 import type { Company } from "../types.ts";
+import type { AnalysisJobUpdate } from "./repo.ts";
 
 export const loadWorkspaceFn = createServerFn({ method: "GET" }).handler(async () => {
   const { loadWorkspace } = await import("./repo.ts");
@@ -32,6 +33,21 @@ export const insertAnalysisFn = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+export const saveAnalysisTransactionFn = createServerFn({ method: "POST" })
+  .validator(
+    (input: {
+      company: Company;
+      snapshot: Snapshot;
+      researchRunId?: string;
+      job?: AnalysisJobUpdate;
+    }) => input,
+  )
+  .handler(async ({ data }) => {
+    const { saveAnalysisTransaction } = await import("./repo.ts");
+    await saveAnalysisTransaction(data);
+    return { ok: true as const };
+  });
+
 export const clearWorkspaceFn = createServerFn({ method: "POST" }).handler(async () => {
   const { clearWorkspace } = await import("./repo.ts");
   await clearWorkspace();
@@ -42,3 +58,116 @@ export const cleanupDemoDataFn = createServerFn({ method: "POST" }).handler(asyn
   const { cleanupDemoData } = await import("./repo.ts");
   return cleanupDemoData();
 });
+
+export const recoverStaleRunsFn = createServerFn({ method: "POST" }).handler(async () => {
+  const { recoverAllStaleJobs } = await import("./queue.ts");
+  const recovered = await recoverAllStaleJobs();
+  return { recovered };
+});
+
+export const livePreflightFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { loadWorkspace } = await import("./repo.ts");
+  const { runLivePreflight } = await import("../research/preflight.ts");
+  const ws = await loadWorkspace();
+  return runLivePreflight({ companies: ws.companies, snapshots: ws.snapshots });
+});
+
+export const queueStateFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { listResearchRuns, listJobsForRun, activeFull100Run, queueTablesReady } = await import("./queue.ts");
+  const ready = await queueTablesReady();
+  if (!ready) {
+    return { ready: false as const, run: null, jobs: [] as QueueJobDto[], runs: [] as QueueRunDto[] };
+  }
+  const run = await activeFull100Run();
+  const jobs = run ? await listJobsForRun(run.id) : [];
+  const runs = await listResearchRuns();
+  return {
+    ready: true as const,
+    run: run ? toRunDto(run) : null,
+    jobs: jobs.map(toJobDto),
+    runs: runs.map(toRunDto),
+  };
+});
+
+type QueueRunDto = {
+  id: string;
+  status: string;
+  type: string;
+  totalJobs: number;
+  completedJobs: number;
+  failedJobs: number;
+};
+
+type QueueJobDto = {
+  id: string;
+  ticker: string;
+  status: string;
+  attemptCount: number;
+  failureClass: string | null;
+  lastError: string | null;
+};
+
+function toRunDto(run: {
+  id: string;
+  status: string;
+  type: string;
+  totalJobs: number;
+  completedJobs: number;
+  failedJobs: number;
+}): QueueRunDto {
+  return {
+    id: run.id,
+    status: run.status,
+    type: run.type,
+    totalJobs: run.totalJobs,
+    completedJobs: run.completedJobs,
+    failedJobs: run.failedJobs,
+  };
+}
+
+function toJobDto(job: {
+  id: string;
+  ticker: string;
+  status: string;
+  attemptCount: number;
+  failureClass: string | null;
+  lastError: string | null;
+}): QueueJobDto {
+  return {
+    id: job.id,
+    ticker: job.ticker,
+    status: job.status,
+    attemptCount: job.attemptCount,
+    failureClass: job.failureClass,
+    lastError: job.lastError,
+  };
+}
+
+export const startFull100Fn = createServerFn({ method: "POST" }).handler(async () => {
+  const { startFull100Research } = await import("../research/runner.ts");
+  return startFull100Research();
+});
+
+export const pauseFull100Fn = createServerFn({ method: "POST" })
+  .validator((input: { runId: string }) => input)
+  .handler(async ({ data }) => {
+    const { pauseResearchRun } = await import("../research/runner.ts");
+    await pauseResearchRun(data.runId);
+    return { ok: true as const };
+  });
+
+export const resumeFull100Fn = createServerFn({ method: "POST" })
+  .validator((input: { runId: string }) => input)
+  .handler(async ({ data }) => {
+    const { resumeResearchRun } = await import("../research/runner.ts");
+    await resumeResearchRun(data.runId);
+    return { ok: true as const };
+  });
+
+export const cancelFull100Fn = createServerFn({ method: "POST" })
+  .validator((input: { runId: string }) => input)
+  .handler(async ({ data }) => {
+    const { cancelResearchRun } = await import("../research/runner.ts");
+    await cancelResearchRun(data.runId);
+    return { ok: true as const };
+  });

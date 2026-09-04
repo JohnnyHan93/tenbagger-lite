@@ -30,6 +30,12 @@ export function HydrateGate({ children }: { children: ReactNode }) {
             settings: s.settings,
           },
         });
+        try {
+          const { recoverStaleRunsFn } = await import("@/lib/persist/actions");
+          await recoverStaleRunsFn();
+        } catch {
+          /* queue tables may be applying; do not start Full 100 */
+        }
       } catch {
         useAppStore.getState().purgeFakeDemo();
         useAppStore.getState().seedIfEmpty();

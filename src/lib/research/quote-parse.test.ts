@@ -216,5 +216,8 @@ describe("financialsFromNasdaq", () => {
     assert.equal(fin.operatingIncomeTtm, -633_715_000);
     assert.equal(fin.cash, 1_030_865_000 + 1_361_291_000);
     assert.ok(fin.grossMargin != null && fin.grossMargin > 0.4);
+    assert.equal(fin.cfo, -283_187_000);
+    assert.equal(fin.fcf, null);
+    assert.equal(fin.fcfSource, null);
   });
 });

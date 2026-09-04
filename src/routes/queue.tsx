@@ -1,12 +1,32 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageTitle, SafetyNote } from "@/components/shell";
 import { buildQueue } from "@/lib/engines/run";
 import { displayTicker, formatPct } from "@/lib/format";
 import { buildCoverageReport } from "@/lib/research/coverage-report";
 import { buildUniverseJobs, EXECUTE_FULL_100, preflight } from "@/lib/research/jobs";
+import { LAST_VERIFIED_BUILD } from "@/lib/research/verified-build";
 import { SAMPLE_RESEARCH_100 } from "@/lib/sample-research-100";
 import { latestSnapshot, useAppStore } from "@/lib/store";
+import type { LivePreflightResult } from "@/lib/research/preflight";
+
+type QueueRunDto = {
+  id: string;
+  status: string;
+  type: string;
+  totalJobs: number;
+  completedJobs: number;
+  failedJobs: number;
+};
+
+type QueueJobDto = {
+  id: string;
+  ticker: string;
+  status: string;
+  attemptCount: number;
+  failureClass: string | null;
+  lastError: string | null;
+};
 
 export const Route = createFileRoute("/queue")({ component: Page });
 
@@ -24,6 +44,35 @@ function Page() {
   const flight = useMemo(() => preflight(companies, snapshots), [companies, snapshots]);
   const jobs = useMemo(() => buildUniverseJobs(companies, snapshots), [companies, snapshots]);
   const remaining = jobs.filter((j) => j.status === "NOT_RESEARCHED");
+  const [live, setLive] = useState<LivePreflightResult | null>(null);
+  const [run, setRun] = useState<QueueRunDto | null>(null);
+  const [runJobs, setRunJobs] = useState<QueueJobDto[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { livePreflightFn, queueStateFn } = await import("@/lib/persist/actions");
+        const [p, q] = await Promise.all([livePreflightFn(), queueStateFn()]);
+        if (cancelled) return;
+        setLive(p);
+        setRun(q.run);
+        setRunJobs(q.jobs);
+      } catch {
+        if (!cancelled) setLive(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [companies, snapshots]);
+
+  const researching = runJobs.filter((j) => j.status === "RESEARCHING");
+  const failed = runJobs.filter((j) => j.status === "FAILED").length;
+  const partial = runJobs.filter((j) => j.status === "PARTIAL").length;
+  const required = runJobs.filter((j) => j.status === "RESEARCH_REQUIRED").length;
+  const complete = runJobs.filter((j) => j.status === "COMPLETE" || j.status === "PARTIAL" || j.status === "RESEARCH_REQUIRED").length;
+  const sha = LAST_VERIFIED_BUILD.commitSha.slice(0, 7);
 
   return (
     <>
@@ -31,25 +80,51 @@ function Page() {
       <section className="mb-4 rounded-[var(--radius-lg)] bg-surface p-4 shadow-[var(--shadow-border)]">
         <p className="font-mono text-[0.625rem] tracking-widest text-sage uppercase">Full 100</p>
         <p className="mt-2 text-sm">
-          상태 <span className="font-mono">READY</span> · 실행 플래그{" "}
+          상태 <span className="font-mono">LOCKED</span> · 실행기{" "}
+          <span className="font-mono">READY</span> · 플래그{" "}
           <span className="font-mono">EXECUTE_FULL_100 = NO</span>
         </p>
         <p className="mt-1 text-sm text-muted">
-          유니버스 분석 {flight.researchedUniverse} / 100 · 남은 {flight.remaining} · 유니버스 밖 Smoke{" "}
-          {flight.extraResearched}. 기존 12건은 유지한다. 대량 리서치는 채팅에서 명시하기 전에는 시작하지 않는다.
+          Explicit authorization required. 유니버스 분석 {flight.researchedUniverse} / 100 · 남은{" "}
+          {flight.remaining} · 유니버스 밖 Smoke {flight.extraResearched}. 기존 12건은 유지한다.
         </p>
+        {run ? (
+          <p className="mt-2 font-mono text-xs text-muted">
+            Run {run.id} · {run.status} · {complete}/{run.totalJobs} · 실패 {failed} · Partial {partial} · RR {required}
+            {researching[0] ? ` · 조사중 ${displayTicker(researching[0].ticker)} retry ${researching[0].attemptCount}/3` : ""}
+          </p>
+        ) : (
+          <p className="mt-2 font-mono text-xs text-subtle">Run 없음 · 97 remaining · 시작하지 않음</p>
+        )}
         <p className="mt-2 text-xs text-subtle">
-          비용 안전: 남은 {flight.remaining}종 × (시세 + 재무 공시). 동시성 2–4. 플래그{" "}
-          <span className="font-mono">{EXECUTE_FULL_100 ? "YES" : "NO"}</span> · 유료 배치 미시작.
+          동시성 3 (2–4). 재시도 429/timeout. Resume RESEARCHING→QUEUED. 유료 배치 미시작.
         </p>
-        <ul className="mt-3 grid gap-1 font-mono text-xs text-muted md:grid-cols-2">
-          <li>P0 tests {flight.p0Tests ? "PASS" : "WAIT"}</li>
-          <li>Build {flight.productionBuild ? "PASS" : "WAIT"}</li>
-          <li>Universe 100 {flight.universe100 ? "PASS" : "FAIL"}</li>
-          <li>Smoke retained {flight.smoke12Retained ? "PASS" : "FAIL"}</li>
-          <li>Fake demo {flight.fakeDemoZero ? "0" : "PRESENT"}</li>
-          <li>기존 분석 보존 {flight.existingPreserved ? "PASS" : "FAIL"}</li>
-        </ul>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <ul className="grid gap-1 font-mono text-xs text-muted">
+            <li className="text-[0.625rem] tracking-widest text-sage uppercase">LIVE CHECK</li>
+            <li>DB {(live?.dbAvailable ?? false) ? "PASS" : "WAIT"}</li>
+            <li>Universe 100 {flight.universe100 ? "PASS" : "FAIL"}</li>
+            <li>US50/KR50 {live?.us50 && live?.kr50 ? "PASS" : flight.universe100 ? "PASS" : "FAIL"}</li>
+            <li>Fake demo {flight.fakeDemoZero ? "0" : "PRESENT"}</li>
+            <li>기존 분석 보존 {flight.existingPreserved ? "PASS" : "WAIT"}</li>
+            <li>Queue tables {live?.queuePersistence ? "PASS" : "WAIT"}</li>
+            <li>활성 충돌 {live?.noActiveConflict === false ? "YES" : "NONE"}</li>
+            <li>EXECUTE_FULL_100 NO</li>
+          </ul>
+          <ul className="grid gap-1 font-mono text-xs text-muted">
+            <li className="text-[0.625rem] tracking-widest text-sage uppercase">LAST VERIFIED BUILD</li>
+            <li>Typecheck {LAST_VERIFIED_BUILD.typecheck} · {sha}</li>
+            <li>Lint {LAST_VERIFIED_BUILD.lint} · {sha}</li>
+            <li>Tests {LAST_VERIFIED_BUILD.tests} · {sha}</li>
+            <li>Production Build {LAST_VERIFIED_BUILD.productionBuild} · {sha}</li>
+            <li className="text-subtle">{LAST_VERIFIED_BUILD.verifiedAt}</li>
+          </ul>
+        </div>
+        {!EXECUTE_FULL_100 ? (
+          <p className="mt-3 rounded-[var(--radius-md)] bg-elevated px-3 py-2 text-xs text-muted">
+            FULL 100 LOCKED — Explicit authorization required
+          </p>
+        ) : null}
       </section>
 
       <section className="mb-4 overflow-x-auto rounded-[var(--radius-lg)] bg-surface shadow-[var(--shadow-border)]">

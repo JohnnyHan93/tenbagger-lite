@@ -41,6 +41,7 @@ describe("xbagger coverage", () => {
       sharesOutstanding: 1e8,
       grossMargin: 0.6,
       operatingMargin: 0.1,
+      cfo: 1e7,
       fcf: 1e7,
     });
     const r = scoreXBagger({

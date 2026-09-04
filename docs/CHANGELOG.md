@@ -1,4 +1,16 @@
+## v2.3 — Pre-Full100 hardening
+
+- FinancialSnapshot: independent `cfo` / `fcf` (`fcfSource` provenance). Nasdaq OCF → CFO. Derived metrics never fall back across the two.
+- Quality 70: CFO factors N/A without CFO; FCF factors N/A without FCF. Q41 still not a copy of ROIC.
+- `saveAnalysisTransaction()` — company + analysis + evidence + optional job in one BEGIN/COMMIT; rollback on evidence/job failure.
+- Persist status IDLE / SAVING / SAVED / SAVE_FAILED with retry. Critical writes are not swallowed.
+- Durable `research_runs` / `research_jobs` (migration 0003). Recover RESEARCHING → QUEUED on boot. Does not auto-start.
+- Batch runner: concurrency 3 (2–4), retry 429/timeout, pause/cancel, one snapshot per job. `EXECUTE_FULL_100 = false` → `FULL100_EXECUTION_DISABLED`.
+- Preflight: LIVE vs LAST VERIFIED. No hardcoded live PASS.
+- GitHub Actions CI: typecheck, lint, test, build on PGLite. No paid research.
+
 ## v2.2 — Post-P0 research validation
+
 
 - RESEARCH REQUIRED explains coverage, missing X/Quality factors, NEXT RESEARCH, provider attempts
 - Research Gaps tab ranks missing fields by score impact (not a buy signal)

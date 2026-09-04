@@ -29,6 +29,7 @@ function dummyDraft(over: Partial<ResearchDraft> = {}): ResearchDraft {
         sharesOutstanding: 100_000_000,
         grossMargin: 0.7,
         operatingMargin: 0.1,
+        cfo: null,
         fcf: 4_000_000,
       },
     },

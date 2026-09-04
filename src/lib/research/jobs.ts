@@ -2,6 +2,7 @@ import { SAMPLE_RESEARCH_100 } from "../sample-research-100.ts";
 import type { Company } from "../types.ts";
 import type { Snapshot } from "../domain/snapshot.ts";
 import { researchStatusOf } from "./coverage-report.ts";
+import { LAST_VERIFIED_BUILD } from "./verified-build.ts";
 
 function latestOf(snapshots: Snapshot[], companyId: string): Snapshot | undefined {
   return snapshots
@@ -10,6 +11,9 @@ function latestOf(snapshots: Snapshot[], companyId: string): Snapshot | undefine
 }
 
 export const EXECUTE_FULL_100 = false;
+export const FULL100_EXECUTION_DISABLED = "FULL100_EXECUTION_DISABLED";
+export const MAX_JOB_ATTEMPTS = 3;
+export const DEFAULT_CONCURRENCY = 3;
 
 export type JobStatus =
   | "NOT_RESEARCHED"
@@ -60,16 +64,36 @@ export interface PreflightResult {
   researchedUniverse: number;
   extraResearched: number;
   notes: string[];
+  p0TestsKind: "LAST_VERIFIED";
+  productionBuildKind: "LAST_VERIFIED";
+  dbAvailableKind: "LIVE";
+  queuePersistenceKind: "LIVE";
+  verifiedCommitSha: string;
+  verifiedAt: string;
 }
 
 export function classifyQuoteFailure(message: string): FailureClass {
   const m = message.toLowerCase();
+  if (/identity|invalid ticker|unsupported security|conflict/.test(m)) return "IDENTITY_FAILURE";
   if (/timeout|abort/.test(m)) return "TIMEOUT";
   if (/rate|429/.test(m)) return "RATE_LIMITED";
-  if (/시가총액|quote|invalid ticker/.test(m)) return "QUOTE_PROVIDER_FAILURE";
+  if (/5\d\d|network|econnreset|fetch failed/.test(m)) return "QUOTE_PROVIDER_FAILURE";
+  if (/시가총액|quote/.test(m)) return "QUOTE_PROVIDER_FAILURE";
   if (/llm|grok|xai/.test(m)) return "LLM_FAILURE";
-  if (/db|persist|sql/.test(m)) return "DATABASE_FAILURE";
+  if (/db|persist|sql|database/.test(m)) return "DATABASE_FAILURE";
+  if (/schema|validation/.test(m)) return "ENGINE_FAILURE";
   return "UNKNOWN";
+}
+
+export function isRetryableFailure(cls: FailureClass): boolean {
+  return (
+    cls === "RATE_LIMITED" ||
+    cls === "TIMEOUT" ||
+    cls === "QUOTE_PROVIDER_FAILURE" ||
+    cls === "DATABASE_FAILURE" ||
+    cls === "LLM_FAILURE" ||
+    cls === "UNKNOWN"
+  );
 }
 
 export function buildUniverseJobs(companies: Company[], snapshots: Snapshot[]): ResearchJob[] {
@@ -92,6 +116,16 @@ export function buildUniverseJobs(companies: Company[], snapshots: Snapshot[]): 
   });
 }
 
+export function remainingUniverseJobs(companies: Company[], snapshots: Snapshot[]): ResearchJob[] {
+  return buildUniverseJobs(companies, snapshots).filter((j) => j.status === "NOT_RESEARCHED");
+}
+
+export function countFakeDemo(companies: Company[]): number {
+  return companies.filter((c) =>
+    /northline|harbor|redridge|에코반도체장비|한강생활|서해모빌리티/i.test(c.companyName),
+  ).length;
+}
+
 export function preflight(companies: Company[], snapshots: Snapshot[]): PreflightResult {
   const jobs = buildUniverseJobs(companies, snapshots);
   const researchedUniverse = jobs.filter((j) => j.status !== "NOT_RESEARCHED").length;
@@ -101,28 +135,38 @@ export function preflight(companies: Company[], snapshots: Snapshot[]): Prefligh
     if (universeTickers.has(c.ticker.toUpperCase())) return false;
     return Boolean(latestOf(snapshots, c.id));
   }).length;
-  const fake = companies.filter((c) =>
-    /northline|harbor|redridge|에코반도체장비|한강생활|서해모빌리티/i.test(c.companyName),
-  ).length;
+  const fake = countFakeDemo(companies);
   const notes: string[] = [];
   if (remaining > 0) notes.push(`유니버스 미분석 ${remaining}종목. Full 100은 명시 지시 후에만 실행.`);
   if (extraResearched > 0) notes.push(`유니버스 밖 Smoke 분석 ${extraResearched}건은 유지한다.`);
   if (!EXECUTE_FULL_100) notes.push("EXECUTE_FULL_100 = NO");
-  const ready = SAMPLE_RESEARCH_100.length === 100 && fake === 0;
+  notes.push(
+    `Typecheck/Lint/Tests/Build = LAST VERIFIED ${LAST_VERIFIED_BUILD.commitSha.slice(0, 7)} @ ${LAST_VERIFIED_BUILD.verifiedAt}`,
+  );
+  const universe100 = SAMPLE_RESEARCH_100.length === 100;
+  const fakeDemoZero = fake === 0;
+  const existingPreserved = researchedUniverse >= 3;
+  const smoke12Retained = extraResearched + researchedUniverse >= 12;
   return {
-    p0Tests: true,
-    productionBuild: true,
-    dbAvailable: true,
-    universe100: SAMPLE_RESEARCH_100.length === 100,
-    smoke12Retained: extraResearched + researchedUniverse >= 12,
-    fakeDemoZero: fake === 0,
-    queuePersistence: true,
-    existingPreserved: true,
+    p0Tests: LAST_VERIFIED_BUILD.tests === "PASS",
+    productionBuild: LAST_VERIFIED_BUILD.productionBuild === "PASS",
+    dbAvailable: false,
+    universe100,
+    smoke12Retained,
+    fakeDemoZero,
+    queuePersistence: false,
+    existingPreserved,
     executeFull100: EXECUTE_FULL_100,
-    ready,
+    ready: false,
     remaining,
     researchedUniverse,
     extraResearched,
     notes,
+    p0TestsKind: "LAST_VERIFIED",
+    productionBuildKind: "LAST_VERIFIED",
+    dbAvailableKind: "LIVE",
+    queuePersistenceKind: "LIVE",
+    verifiedCommitSha: LAST_VERIFIED_BUILD.commitSha,
+    verifiedAt: LAST_VERIFIED_BUILD.verifiedAt,
   };
 }

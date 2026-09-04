@@ -13,8 +13,12 @@ import { scoreXBagger } from "./engines/xbagger.ts";
 import { strategyTags, researchPriority } from "./engines/matrix.ts";
 import { scoreLenses } from "./engines/lenses.ts";
 
+export type PersistStatus = "IDLE" | "SAVING" | "SAVED" | "SAVE_FAILED";
+
 export interface AppState {
   hydrated: boolean;
+  persistStatus: PersistStatus;
+  persistError: string | null;
   companies: Company[];
   snapshots: Snapshot[];
   universes: Universe[];
@@ -48,6 +52,7 @@ export interface AppState {
   lockUniverse: (id: string) => void;
   unlockUniverse: (id: string) => void;
   archiveUniverse: (id: string) => void;
+  retryPersist: () => void;
 }
 
 const emptySettings = EMPTY_SETTINGS;
@@ -68,6 +73,8 @@ export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       hydrated: false,
+      persistStatus: "IDLE",
+      persistError: null,
       ...emptyWorkspace(emptySettings),
       settings: emptySettings,
       setHydrated: (v) => set({ hydrated: v }),
@@ -355,6 +362,9 @@ export const useAppStore = create<AppState>()(
           universes: get().universes.map((u) => (u.id === id ? { ...u, status: "archived" } : u)),
         });
       },
+      retryPersist: () => {
+        retryPersist();
+      },
     }),
     {
       name: "idt-v21-prefs",
@@ -366,6 +376,7 @@ export const useAppStore = create<AppState>()(
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 let persistChain: Promise<void> = Promise.resolve();
+let lastFailed: { company: Company; snap: Snapshot } | null = null;
 
 function workspaceDump() {
   const s = useAppStore.getState();
@@ -395,15 +406,31 @@ async function persistWorkspaceOnly() {
   await persistWorkspaceFn({ data: workspaceDump() });
 }
 
+function setPersistState(status: PersistStatus, error: string | null = null) {
+  useAppStore.setState({ persistStatus: status, persistError: error });
+}
+
 function persistRecord(company: Company, snap: Snapshot) {
   if (typeof window === "undefined") return;
-  persistChain = persistChain
-    .then(async () => {
-      const { saveCompanyFn, insertAnalysisFn } = await import("./persist/actions.ts");
-      await saveCompanyFn({ data: company });
-      await insertAnalysisFn({ data: snap });
-    })
-    .catch(() => undefined);
+  persistChain = persistChain.then(async () => {
+    setPersistState("SAVING");
+    try {
+      const { saveAnalysisTransactionFn } = await import("./persist/actions.ts");
+      await saveAnalysisTransactionFn({ data: { company, snapshot: snap } });
+      lastFailed = null;
+      setPersistState("SAVED");
+    } catch (err) {
+      lastFailed = { company, snap };
+      const message = err instanceof Error ? err.message : String(err);
+      setPersistState("SAVE_FAILED", message);
+    }
+  });
+}
+
+export function retryPersist() {
+  if (!lastFailed) return;
+  const { company, snap } = lastFailed;
+  persistRecord(company, snap);
 }
 
 export async function flushPersist() {

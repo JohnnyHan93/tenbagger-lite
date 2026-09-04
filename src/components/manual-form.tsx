@@ -28,6 +28,7 @@ const emptyQuote = (): ResearchQuote => ({
     sharesOutstanding: null,
     grossMargin: null,
     operatingMargin: null,
+    cfo: null,
     fcf: null,
   },
 });

@@ -2,6 +2,26 @@
 
 Canonical count: **70**. Duplicate IDs: **none**. Wrong proxies: **0**. Missing: **0**.
 
+## v2.3 CFO / FCF integrity
+
+`FinancialSnapshot.cfo` and `FinancialSnapshot.fcf` are independent. Nasdaq `Net Cash Flow-Operating` maps to **cfo**, never **fcf**. Derived metrics never use `cfo ?? fcf`. Missing CFO ⇒ CFO factors N/A. Missing FCF ⇒ FCF factors N/A. Coverage may fall versus mixed-proxy snapshots; that is correct.
+
+| Factor | Uses | If missing |
+|---|---|---|
+| Q17 CFO Margin | CFO | N/A |
+| Q18 Cash Conversion | CFO / NI | N/A |
+| Q22 Positive CFO Persistence | CFO | N/A |
+| Q44 CAPEX / CFO | CAPEX and CFO | N/A |
+| Q19 FCF Margin | FCF | N/A |
+| Q24 FCF vs NI | FCF | N/A |
+| Q57 External funding | FCF | N/A |
+| Q20 3Y FCF | MANUAL_ONLY | N/A (not 1Y FCF) |
+| Q21 CFO Growth | MANUAL_ONLY | N/A |
+| Q32 Cash Interest Coverage | MANUAL_ONLY | N/A |
+| Q41 Cash ROIC | MANUAL_ONLY | not a copy of ROIC |
+
+Wrong Proxy remains **0** after this repair.
+
 | Status | Count |
 |---|---|
 | IMPLEMENTED | 38 |

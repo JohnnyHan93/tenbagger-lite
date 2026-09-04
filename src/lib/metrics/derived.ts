@@ -83,8 +83,9 @@ export function deriveMetrics(input: {
   const revenueYoY = x.revenueYoY ?? change(f.revenueTtm, f.revenuePrior);
   const om = x.om ?? f.operatingMargin ?? ratio(f.operatingIncomeTtm, f.revenueTtm);
   const nm = x.nm ?? ratio(f.netIncomeTtm, f.revenueTtm);
-  const fcfMargin = x.fcfMargin ?? ratio(f.fcf, f.revenueTtm);
-  const cfo = x.cfo ?? f.fcf;
+  const cfo = x.cfo ?? f.cfo ?? null;
+  const fcf = x.fcf ?? f.fcf ?? null;
+  const fcfMargin = x.fcfMargin ?? ratio(fcf, f.revenueTtm);
   const cfoMargin = x.cfoMargin ?? ratio(cfo, f.revenueTtm);
   const cashConversion = x.cashConversion ?? ratio(cfo, f.netIncomeTtm);
   const netDebt =
@@ -113,7 +114,7 @@ export function deriveMetrics(input: {
     nm,
     gmChange: x.gmChange ?? null,
     omChange: x.omChange ?? null,
-    fcf: f.fcf,
+    fcf,
     cfo,
     fcfMargin,
     cfoMargin,

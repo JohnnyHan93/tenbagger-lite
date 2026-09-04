@@ -1,4 +1,4 @@
-import { getSql } from "../db.ts";
+import { getSql, type Sql } from "../db.ts";
 import {
   isAutoSeededHeuristicSnapshot,
   isFakeDemoCompany,
@@ -9,7 +9,8 @@ import {
   type DemoUniverseLike,
 } from "../demo.ts";
 import type { Snapshot, Universe, AuditLog, AppSettings } from "../domain/snapshot.ts";
-import type { Company } from "../types.ts";
+import type { Company, FinancialSnapshot } from "../types.ts";
+import type { ResearchJobRow } from "./queue.ts";
 
 export interface WorkspaceDump {
   companies: Company[];
@@ -22,6 +23,31 @@ export interface WorkspaceDump {
 
 function asJson(v: unknown): string {
   return JSON.stringify(v);
+}
+
+function parse<T>(row: T | string): T {
+  return typeof row === "string" ? (JSON.parse(row) as T) : row;
+}
+
+function normalizeFinancials(f: FinancialSnapshot | undefined | null): FinancialSnapshot {
+  return {
+    revenueTtm: f?.revenueTtm ?? null,
+    revenuePrior: f?.revenuePrior ?? null,
+    operatingIncomeTtm: f?.operatingIncomeTtm ?? null,
+    netIncomeTtm: f?.netIncomeTtm ?? null,
+    cash: f?.cash ?? null,
+    totalDebt: f?.totalDebt ?? null,
+    sharesOutstanding: f?.sharesOutstanding ?? null,
+    grossMargin: f?.grossMargin ?? null,
+    operatingMargin: f?.operatingMargin ?? null,
+    cfo: f?.cfo ?? null,
+    fcf: f?.fcf ?? null,
+    fcfSource: f?.fcfSource ?? null,
+  };
+}
+
+function normalizeSnapshot(s: Snapshot): Snapshot {
+  return { ...s, financials: normalizeFinancials(s.financials) };
 }
 
 export async function loadWorkspace(): Promise<WorkspaceDump> {
@@ -37,11 +63,9 @@ export async function loadWorkspace(): Promise<WorkspaceDump> {
   );
   const kv = await sql.query<{ value: AppSettings | string }>("select value from app_kv where key = $1", ["settings"]);
 
-  const parse = <T,>(row: T | string): T => (typeof row === "string" ? (JSON.parse(row) as T) : row);
-
   return {
     companies: companies.map((r) => parse(r.payload)),
-    snapshots: analyses.map((r) => parse(r.payload)),
+    snapshots: analyses.map((r) => normalizeSnapshot(parse(r.payload))),
     universes: universes.map((r) => parse(r.payload)),
     watchlist: watch.map((r) => r.company_id),
     audit: logs.map((r) => parse(r.payload)),
@@ -49,9 +73,9 @@ export async function loadWorkspace(): Promise<WorkspaceDump> {
   };
 }
 
-export async function saveCompany(company: Company): Promise<void> {
-  const sql = await getSql();
-  await sql.query(
+export async function saveCompany(company: Company, sql?: Sql): Promise<void> {
+  const db = sql ?? (await getSql());
+  await db.query(
     `insert into companies (id, ticker, exchange, company_name, country, sector, industry, cohort, sample, created_at, updated_at, payload)
      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb)
      on conflict (id) do update set
@@ -82,21 +106,9 @@ export async function saveCompany(company: Company): Promise<void> {
   );
 }
 
-export async function insertAnalysis(snap: Snapshot, researchRunId?: string): Promise<void> {
-  const sql = await getSql();
-  const versions = {
-    xbagger: snap.xbagger.version,
-    oversold: snap.oversold.version,
-    quality: snap.quality.version,
-  };
-  await sql.query(
-    `insert into analyses (id, company_id, as_of, created_at, research_run_id, model_versions, payload)
-     values ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb)
-     on conflict (id) do nothing`,
-    [snap.id, snap.companyId, snap.asOf, snap.createdAt, researchRunId ?? null, asJson(versions), asJson(snap)],
-  );
+async function insertEvidenceRows(tx: Sql, snap: Snapshot): Promise<void> {
   for (const ev of snap.evidence ?? []) {
-    await sql.query(
+    await tx.query(
       `insert into evidences (id, company_id, analysis_id, ticker, title, statement, evidence_type, source_tier, source_name, source_url, published_at, retrieved_at, as_of_date, confidence, factor_targets, engine_targets, status, payload)
        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16::jsonb,$17,$18::jsonb)
        on conflict (id) do nothing`,
@@ -122,6 +134,65 @@ export async function insertAnalysis(snap: Snapshot, researchRunId?: string): Pr
       ],
     );
   }
+}
+
+export async function insertAnalysis(snap: Snapshot, researchRunId?: string, sql?: Sql): Promise<void> {
+  const run = async (tx: Sql) => {
+    const versions = {
+      xbagger: snap.xbagger.version,
+      oversold: snap.oversold.version,
+      quality: snap.quality.version,
+    };
+    await tx.query(
+      `insert into analyses (id, company_id, as_of, created_at, research_run_id, model_versions, payload)
+       values ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb)
+       on conflict (id) do nothing`,
+      [snap.id, snap.companyId, snap.asOf, snap.createdAt, researchRunId ?? null, asJson(versions), asJson(snap)],
+    );
+    await insertEvidenceRows(tx, snap);
+  };
+  if (sql) {
+    await run(sql);
+    return;
+  }
+  const db = await getSql();
+  await db.transaction(run);
+}
+
+export interface AnalysisJobUpdate {
+  id: string;
+  patch: Partial<
+    Pick<
+      ResearchJobRow,
+      | "status"
+      | "attemptCount"
+      | "failureClass"
+      | "provider"
+      | "lastError"
+      | "queuedAt"
+      | "startedAt"
+      | "completedAt"
+      | "payload"
+    >
+  >;
+}
+
+export async function saveAnalysisTransaction(input: {
+  company: Company;
+  snapshot: Snapshot;
+  researchRunId?: string;
+  job?: AnalysisJobUpdate;
+  sql?: Sql;
+}): Promise<void> {
+  const db = input.sql ?? (await getSql());
+  await db.transaction(async (tx) => {
+    await saveCompany(input.company, tx);
+    await insertAnalysis(input.snapshot, input.researchRunId, tx);
+    if (input.job) {
+      const { updateResearchJob } = await import("./queue.ts");
+      await updateResearchJob(input.job.id, input.job.patch, tx);
+    }
+  });
 }
 
 export async function saveUniverse(u: Universe): Promise<void> {

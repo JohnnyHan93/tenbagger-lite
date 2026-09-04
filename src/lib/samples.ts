@@ -45,6 +45,7 @@ function fin(p: Partial<FinancialSnapshot>): FinancialSnapshot {
     sharesOutstanding: null,
     grossMargin: null,
     operatingMargin: null,
+    cfo: null,
     fcf: null,
     ...p,
   };
