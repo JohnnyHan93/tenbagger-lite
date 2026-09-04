@@ -139,7 +139,36 @@ Tests:            PASS
 Production Build: PASS
 ```
 
-GitHub Actions 는 이 커밋 푸시 후 확인한다. LAST VERIFIED 는 Actions 가 초록이 된 SHA 만 가리킨다.
+GitHub Actions (authoritative):
+
+```text
+Fresh GitHub checkout:
+PASS (Grok skill tests skipped; VITE_AUTH_ENABLED isolated)
+
+npm ci:
+PASS
+
+Typecheck:
+PASS
+
+Lint:
+PASS
+
+Tests:
+PASS
+
+Build:
+PASS
+
+GitHub Actions:
+SUCCESS
+  run: 33847524248
+  sha: 7ebab6957328af5d616dccc6e3bee28993b4b608
+  url: https://github.com/JohnnyHan93/tenbagger-lite/actions/runs/33847524248
+  completed: 2026-09-04T07:12:32Z
+```
+
+Steps on that run: checkout → setup-node → npm ci → typecheck → lint → test → build. All SUCCESS.
 
 ---
 
@@ -155,6 +184,8 @@ EXECUTE_FULL_100 = NO
 FULL 100 NOT STARTED
 
 REMAINING = 97
+
+GITHUB CI = GREEN
 ```
 
 다음 단계는 v2.4 Full 100 통제 실행이다. 별도 지시 없이 플래그를 켜지 않는다.
@@ -179,6 +210,21 @@ REMAINING = 97
 - [x] INOD preserved
 - [x] Fake demo remains 0
 - [x] all regression tests pass
-- [ ] GitHub Actions is green — filled after the run
-- [ ] LAST VERIFIED references a genuinely green SHA — filled after the run
+- [x] GitHub Actions is green
+- [x] LAST VERIFIED references a genuinely green SHA
 - [x] Full100 was not actually executed
+
+---
+
+## COMMIT
+
+| 항목 | 값 |
+|---|---|
+| Repository | [JohnnyHan93/tenbagger-lite](https://github.com/JohnnyHan93/tenbagger-lite) |
+| Branch | `main` |
+| Preflight commit | [`7ebab6957328af5d616dccc6e3bee28993b4b608`](https://github.com/JohnnyHan93/tenbagger-lite/commit/7ebab6957328af5d616dccc6e3bee28993b4b608) |
+| GitHub Actions | [run 33847524248](https://github.com/JohnnyHan93/tenbagger-lite/actions/runs/33847524248) SUCCESS |
+| LAST VERIFIED | `7ebab69` source=`github-actions` @ 2026-09-04T07:12:32.000Z |
+| 시크릿 | `.env` 및 API/DB 키 미포함. `AGENTS.md` / `.grok/skills/` 미커밋 |
+
+LAST VERIFIED 는 GitHub Actions 가 성공한 SHA 만 가리킨다. 이 커밋은 그 SHA 를 기록할 뿐이며, LAST VERIFIED 자체는 검증된 `7ebab69` 를 유지한다.
