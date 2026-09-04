@@ -16,6 +16,7 @@ import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as EvidenceRouteImport } from './routes/evidence'
 import { Route as HandoffRouteImport } from './routes/handoff'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as OversoldRouteImport } from './routes/oversold'
 import { Route as QualityRouteImport } from './routes/quality'
 import { Route as QueueRouteImport } from './routes/queue'
@@ -24,6 +25,7 @@ import { Route as UniverseRouteImport } from './routes/universe'
 import { Route as WatchlistRouteImport } from './routes/watchlist'
 import { Route as XbaggerRouteImport } from './routes/xbagger'
 import { Route as CompanyTickerRouteImport } from './routes/company.$ticker'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -58,6 +60,11 @@ const HandoffRoute = HandoffRouteImport.update({
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OversoldRoute = OversoldRouteImport.update({
@@ -100,6 +107,11 @@ const CompanyTickerRoute = CompanyTickerRouteImport.update({
   path: '/company/$ticker',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -109,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/evidence': typeof EvidenceRoute
   '/handoff': typeof HandoffRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
   '/oversold': typeof OversoldRoute
   '/quality': typeof QualityRoute
   '/queue': typeof QueueRoute
@@ -117,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/watchlist': typeof WatchlistRoute
   '/xbagger': typeof XbaggerRoute
   '/company/$ticker': typeof CompanyTickerRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -126,6 +140,7 @@ export interface FileRoutesByTo {
   '/evidence': typeof EvidenceRoute
   '/handoff': typeof HandoffRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
   '/oversold': typeof OversoldRoute
   '/quality': typeof QualityRoute
   '/queue': typeof QueueRoute
@@ -134,6 +149,7 @@ export interface FileRoutesByTo {
   '/watchlist': typeof WatchlistRoute
   '/xbagger': typeof XbaggerRoute
   '/company/$ticker': typeof CompanyTickerRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -144,6 +160,7 @@ export interface FileRoutesById {
   '/evidence': typeof EvidenceRoute
   '/handoff': typeof HandoffRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
   '/oversold': typeof OversoldRoute
   '/quality': typeof QualityRoute
   '/queue': typeof QueueRoute
@@ -152,6 +169,7 @@ export interface FileRoutesById {
   '/watchlist': typeof WatchlistRoute
   '/xbagger': typeof XbaggerRoute
   '/company/$ticker': typeof CompanyTickerRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -163,6 +181,7 @@ export interface FileRouteTypes {
     | '/evidence'
     | '/handoff'
     | '/history'
+    | '/login'
     | '/oversold'
     | '/quality'
     | '/queue'
@@ -171,6 +190,7 @@ export interface FileRouteTypes {
     | '/watchlist'
     | '/xbagger'
     | '/company/$ticker'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -180,6 +200,7 @@ export interface FileRouteTypes {
     | '/evidence'
     | '/handoff'
     | '/history'
+    | '/login'
     | '/oversold'
     | '/quality'
     | '/queue'
@@ -188,6 +209,7 @@ export interface FileRouteTypes {
     | '/watchlist'
     | '/xbagger'
     | '/company/$ticker'
+    | '/api/auth/$'
   id:
     | '__root__'
     | '/'
@@ -197,6 +219,7 @@ export interface FileRouteTypes {
     | '/evidence'
     | '/handoff'
     | '/history'
+    | '/login'
     | '/oversold'
     | '/quality'
     | '/queue'
@@ -205,6 +228,7 @@ export interface FileRouteTypes {
     | '/watchlist'
     | '/xbagger'
     | '/company/$ticker'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -215,6 +239,7 @@ export interface RootRouteChildren {
   EvidenceRoute: typeof EvidenceRoute
   HandoffRoute: typeof HandoffRoute
   HistoryRoute: typeof HistoryRoute
+  LoginRoute: typeof LoginRoute
   OversoldRoute: typeof OversoldRoute
   QualityRoute: typeof QualityRoute
   QueueRoute: typeof QueueRoute
@@ -223,6 +248,7 @@ export interface RootRouteChildren {
   WatchlistRoute: typeof WatchlistRoute
   XbaggerRoute: typeof XbaggerRoute
   CompanyTickerRoute: typeof CompanyTickerRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -274,6 +300,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/oversold': {
@@ -332,6 +365,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CompanyTickerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -343,6 +383,7 @@ const rootRouteChildren: RootRouteChildren = {
   EvidenceRoute: EvidenceRoute,
   HandoffRoute: HandoffRoute,
   HistoryRoute: HistoryRoute,
+  LoginRoute: LoginRoute,
   OversoldRoute: OversoldRoute,
   QualityRoute: QualityRoute,
   QueueRoute: QueueRoute,
@@ -351,6 +392,7 @@ const rootRouteChildren: RootRouteChildren = {
   WatchlistRoute: WatchlistRoute,
   XbaggerRoute: XbaggerRoute,
   CompanyTickerRoute: CompanyTickerRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

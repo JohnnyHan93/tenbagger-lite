@@ -1,3 +1,10 @@
+## v2.4.2 — Production auth wall
+
+- Deployed builds require a signed-in operator before hydrating the investment workspace.
+- Better Auth schema is applied via `migrations/0001_auth.sql` (verbatim copy of `migrations/auth/0001_auth.sql`).
+- `authMiddleware` protects persist/research server functions. Unsigned sessions cannot call `researchTicker` or load/save the workspace.
+- Existing research tables stay unowned (single-operator workspace). No Full 100 rerun. `EXECUTE_FULL_100` and `V24_OPERATOR_ENABLED` remain false.
+
 ## v2.4.1 — Sticky identity column
 
 - Ranking tables show **company name / ticker** stacked in two lines, narrow column.

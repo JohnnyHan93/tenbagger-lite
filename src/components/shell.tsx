@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { APP_KICKER, APP_SHORT } from "@/lib/brand";
 import { PersistBanner } from "@/components/persist-banner";
+import { UserButton } from "@/lib/auth/gates";
 
 const NAV = [
   { to: "/", label: "대시보드", icon: LayoutDashboard },
@@ -72,6 +73,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <NavLink key={item.to} {...item} />
           ))}
         </nav>
+        <div className="mt-4 border-t border-border px-1 pt-4">
+          <UserButton />
+        </div>
         <p className="px-3 pt-4 font-mono text-[0.625rem] leading-relaxed text-subtle">
           세 엔진 점수는 합치지 않는다. Research Priority는 매수 신호가 아니다.
         </p>
@@ -84,13 +88,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             투자발견
           </div>
         </Link>
-        <Link
-          to="/settings"
-          className="flex size-11 items-center justify-center rounded-[var(--radius-md)] text-muted"
-          aria-label="설정"
-        >
-          <Settings className="size-4" strokeWidth={1.75} />
-        </Link>
+        <div className="flex items-center gap-2">
+          <div className="max-w-[11rem] overflow-hidden">
+            <UserButton />
+          </div>
+          <Link
+            to="/settings"
+            className="flex size-11 items-center justify-center rounded-[var(--radius-md)] text-muted"
+            aria-label="설정"
+          >
+            <Settings className="size-4" strokeWidth={1.75} />
+          </Link>
+        </div>
       </header>
 
       <main className="pb-24 md:ml-56 md:pb-10">
