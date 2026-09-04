@@ -7,7 +7,7 @@
 - `syncRunProgress`: `completed_jobs` = COMPLETE+PARTIAL+RESEARCH_REQUIRED; `failed_jobs` = FAILED; remaining 0 → run COMPLETE + `completed_at`.
 - Pause / cancel / resume read `research_runs.status` from DB. Process restart recovers RESEARCHING → QUEUED.
 - Preflight: no hardcoded `providerConfig = true` / `executorReady = true`. LIVE HTTP probe (Yahoo AAPL + Naver 005930). Queue LIVE CHECK shows UNKNOWN when live is missing — not PASS.
-- GitHub CI portable: Grok-only brand/og tests skip when `.grok/skills` / `AGENTS.md` are absent. `npm run test:grok-platform` kept for the builder.
+- GitHub CI portable: Grok-only brand/og tests skip when `.grok/skills` / `AGENTS.md` are absent. Gate-identity tests isolate `VITE_AUTH_ENABLED` so auth-off CI does not fail closed. `npm run test:grok-platform` kept for the builder.
 - Full 100 still **not started**.
 
 ## v2.3 — Pre-Full100 hardening

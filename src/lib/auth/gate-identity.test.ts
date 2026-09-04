@@ -1,4 +1,4 @@
-import { describe, it } from "node:test";
+import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { generateKeyPairSync, type KeyObject } from "node:crypto";
 import { SignJWT, exportJWK, type JWK } from "jose";
@@ -210,7 +210,20 @@ describe("verifyGateIdentityToken", () => {
   });
 });
 
+function isolateViteAuthFlag() {
+  let prev: string | undefined;
+  before(() => {
+    prev = process.env.VITE_AUTH_ENABLED;
+    delete process.env.VITE_AUTH_ENABLED;
+  });
+  after(() => {
+    if (prev === undefined) delete process.env.VITE_AUTH_ENABLED;
+    else process.env.VITE_AUTH_ENABLED = prev;
+  });
+}
+
 describe("gateIdentityFromHeaders", () => {
+  isolateViteAuthFlag();
   it("verifies the header token end to end and fails closed without it", async () => {
     const key = await makeKey("k1");
     const { fetchImpl } = staticJwks([key.jwk]);
@@ -378,6 +391,7 @@ describe("gateIdentityFromHeaders", () => {
 });
 
 describe("gateIdentityEnabled", () => {
+  isolateViteAuthFlag();
   it("is enabled by default with no gate env vars", () => {
     delete process.env.GROK_PROJECT_ID;
     delete process.env.GROK_GATE_ORIGIN;
