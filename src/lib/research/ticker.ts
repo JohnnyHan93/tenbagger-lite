@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware } from "../auth/middleware.ts";
+
 import { FACTOR_ORDER, FACTOR_META, snapEvenScore, type FactorCode } from "../scoring/config";
 import { makeFlag, defaultFlags } from "../risk/flags";
 import {
@@ -352,8 +352,8 @@ export async function executeResearch(input: {
 
 export const researchTicker = createServerFn({ method: "POST" })
   .validator((input: { ticker: string; useAi: boolean }) => input)
-  .middleware([authMiddleware])
   .handler(async ({ data }): Promise<
+
     | { ok: true; draft: ResearchDraft }
     | { ok: false; error: string }
   > => executeResearch(data));

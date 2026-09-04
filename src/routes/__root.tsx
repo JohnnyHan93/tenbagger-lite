@@ -1,9 +1,7 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
-import { SignInGate } from "@/lib/auth/gates";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { HydrateGate } from "@/components/hydrate";
-import { SignInScreen } from "@/components/sign-in-screen";
 import { AppShell } from "@/components/shell";
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/brand";
 import appCss from "../styles.css?url";
@@ -43,13 +41,11 @@ function Root() {
       <body className="bg-bg text-fg">
         <PreviewHostBridge />
         <AuthProvider>
-          <SignInGate fallback={<SignInScreen />}>
-            <HydrateGate>
-              <AppShell>
-                <Outlet />
-              </AppShell>
-            </HydrateGate>
-          </SignInGate>
+          <HydrateGate>
+            <AppShell>
+              <Outlet />
+            </AppShell>
+          </HydrateGate>
         </AuthProvider>
         <Scripts />
       </body>

@@ -1,12 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware } from "../auth/middleware.ts";
 import type { WorkspaceDump } from "./repo.ts";
 import type { Snapshot } from "../domain/snapshot.ts";
 import type { Company } from "../types.ts";
 import type { AnalysisJobUpdate } from "./repo.ts";
 
 export const loadWorkspaceFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
   .handler(async () => {
     const { loadWorkspace } = await import("./repo.ts");
     return loadWorkspace();
@@ -14,7 +12,6 @@ export const loadWorkspaceFn = createServerFn({ method: "GET" })
 
 export const persistWorkspaceFn = createServerFn({ method: "POST" })
   .validator((input: WorkspaceDump) => input)
-  .middleware([authMiddleware])
   .handler(async ({ data }) => {
     const { persistWorkspace } = await import("./repo.ts");
     await persistWorkspace(data);
@@ -23,7 +20,6 @@ export const persistWorkspaceFn = createServerFn({ method: "POST" })
 
 export const saveCompanyFn = createServerFn({ method: "POST" })
   .validator((input: Company) => input)
-  .middleware([authMiddleware])
   .handler(async ({ data }) => {
     const { saveCompany } = await import("./repo.ts");
     await saveCompany(data);
@@ -32,7 +28,6 @@ export const saveCompanyFn = createServerFn({ method: "POST" })
 
 export const insertAnalysisFn = createServerFn({ method: "POST" })
   .validator((input: Snapshot) => input)
-  .middleware([authMiddleware])
   .handler(async ({ data }) => {
     const { insertAnalysis } = await import("./repo.ts");
     await insertAnalysis(data);
@@ -48,7 +43,6 @@ export const saveAnalysisTransactionFn = createServerFn({ method: "POST" })
       job?: AnalysisJobUpdate;
     }) => input,
   )
-  .middleware([authMiddleware])
   .handler(async ({ data }) => {
     const { saveAnalysisTransaction } = await import("./repo.ts");
     await saveAnalysisTransaction(data);
@@ -56,7 +50,6 @@ export const saveAnalysisTransactionFn = createServerFn({ method: "POST" })
   });
 
 export const clearWorkspaceFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
   .handler(async () => {
     const { clearWorkspace } = await import("./repo.ts");
     await clearWorkspace();
@@ -64,14 +57,12 @@ export const clearWorkspaceFn = createServerFn({ method: "POST" })
   });
 
 export const cleanupDemoDataFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
   .handler(async () => {
     const { cleanupDemoData } = await import("./repo.ts");
     return cleanupDemoData();
   });
 
 export const recoverStaleRunsFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
   .handler(async () => {
     const { recoverAllStaleJobs } = await import("./queue.ts");
     const recovered = await recoverAllStaleJobs();
@@ -79,7 +70,6 @@ export const recoverStaleRunsFn = createServerFn({ method: "POST" })
   });
 
 export const livePreflightFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
   .handler(async () => {
     const { loadWorkspace } = await import("./repo.ts");
     const { runLivePreflight } = await import("../research/preflight.ts");
@@ -93,7 +83,6 @@ export const livePreflightFn = createServerFn({ method: "GET" })
   });
 
 export const queueStateFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
   .handler(async () => {
     const { listResearchRuns, listJobsForRun, activeFull100Run, queueTablesReady } = await import("./queue.ts");
     const ready = await queueTablesReady();
@@ -166,7 +155,6 @@ function toJobDto(job: {
 }
 
 export const startFull100Fn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
   .handler(async () => {
     const { startFull100FromWorkspace } = await import("../research/production.ts");
     return startFull100FromWorkspace();
@@ -174,7 +162,6 @@ export const startFull100Fn = createServerFn({ method: "POST" })
 
 export const processFull100ChunkFn = createServerFn({ method: "POST" })
   .validator((input: { runId: string; useAi?: boolean }) => input)
-  .middleware([authMiddleware])
   .handler(async ({ data }) => {
     const { processFull100Chunk, createProductionDeps } = await import("../research/production.ts");
     const result = await processFull100Chunk(data.runId, {
@@ -198,7 +185,6 @@ export const processFull100ChunkFn = createServerFn({ method: "POST" })
 
 export const pauseFull100Fn = createServerFn({ method: "POST" })
   .validator((input: { runId: string }) => input)
-  .middleware([authMiddleware])
   .handler(async ({ data }) => {
     const { pauseResearchRun } = await import("../research/runner.ts");
     await pauseResearchRun(data.runId);
@@ -207,7 +193,6 @@ export const pauseFull100Fn = createServerFn({ method: "POST" })
 
 export const resumeFull100Fn = createServerFn({ method: "POST" })
   .validator((input: { runId: string }) => input)
-  .middleware([authMiddleware])
   .handler(async ({ data }) => {
     const { resumeResearchRun } = await import("../research/runner.ts");
     await resumeResearchRun(data.runId);
@@ -216,7 +201,6 @@ export const resumeFull100Fn = createServerFn({ method: "POST" })
 
 export const cancelFull100Fn = createServerFn({ method: "POST" })
   .validator((input: { runId: string }) => input)
-  .middleware([authMiddleware])
   .handler(async ({ data }) => {
     const { cancelResearchRun } = await import("../research/runner.ts");
     await cancelResearchRun(data.runId);
@@ -224,7 +208,6 @@ export const cancelFull100Fn = createServerFn({ method: "POST" })
   });
 
 export const full100DumpFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
   .handler(async () => {
     const { collectFull100Dump } = await import("./checkpoint.ts");
     const dump = await collectFull100Dump(false);
@@ -242,7 +225,6 @@ export const full100DumpFn = createServerFn({ method: "GET" })
   });
 
 export const full100CheckpointFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
   .handler(async () => {
     const { writeCheckpoint } = await import("./checkpoint.ts");
     const path = await writeCheckpoint();
@@ -250,7 +232,6 @@ export const full100CheckpointFn = createServerFn({ method: "POST" })
   });
 
 export const full100ReportFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
   .handler(async () => {
     const { loadWorkspace } = await import("./repo.ts");
     const { buildFull100Report } = await import("../research/full100-report.ts");
@@ -259,7 +240,6 @@ export const full100ReportFn = createServerFn({ method: "GET" })
   });
 
 export const v24StartFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
   .handler(async () => {
     const { v24Start } = await import("../research/v24-operator.ts");
     return v24Start();
@@ -267,7 +247,6 @@ export const v24StartFn = createServerFn({ method: "POST" })
 
 export const v24ChunkFn = createServerFn({ method: "POST" })
   .validator((input: { runId: string }) => input)
-  .middleware([authMiddleware])
   .handler(async ({ data }) => {
     const { v24Chunk } = await import("../research/v24-operator.ts");
     const result = await v24Chunk(data.runId);
@@ -289,7 +268,6 @@ export const v24ChunkFn = createServerFn({ method: "POST" })
 
 export const v24ResearchOneFn = createServerFn({ method: "POST" })
   .validator((input: { ticker: string }) => input)
-  .middleware([authMiddleware])
   .handler(async ({ data }) => {
     const { v24ResearchOne } = await import("../research/v24-operator.ts");
     return v24ResearchOne(data.ticker);

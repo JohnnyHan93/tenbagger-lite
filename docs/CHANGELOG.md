@@ -1,3 +1,9 @@
+## v2.4.3 — Auth wall removed
+
+- Sign-in is off. Google / X 버튼을 누르지 않아도 앱이 바로 열린다.
+- `SignInGate` and `authMiddleware` removed from the product path. Workspace load/save and ticker research no longer require a session.
+- `VITE_AUTH_ENABLED=false`. Full 100 stays locked (`EXECUTE_FULL_100` / `V24_OPERATOR_ENABLED` remain false).
+
 ## v2.4.2 — Production auth wall
 
 - Deployed builds require a signed-in operator before hydrating the investment workspace.
