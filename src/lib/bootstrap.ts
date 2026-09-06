@@ -99,6 +99,110 @@ export function stripDemoFromWorkspace(dump: WorkspaceSlice): {
   };
 }
 
+function mergeCompanyFields(kept: Company, other: Company): Company {
+  return {
+    ...other,
+    ...kept,
+    id: kept.id,
+    createdAt: kept.createdAt <= other.createdAt ? kept.createdAt : other.createdAt,
+    updatedAt: kept.updatedAt >= other.updatedAt ? kept.updatedAt : other.updatedAt,
+    sector: kept.sector || other.sector,
+    industry: kept.industry || other.industry,
+    exchange: kept.exchange || other.exchange,
+    companyName: kept.companyName || other.companyName,
+    country: kept.country || other.country,
+    seedTag: kept.seedTag ?? other.seedTag,
+    testProfile: kept.testProfile ?? other.testProfile,
+    sample: Boolean(kept.sample && other.sample),
+  };
+}
+
+/**
+ * Union two workspaces. Same ticker keeps the company id that already has
+ * analyses. Snapshots/watchlist ids are remapped. Never drops a researched name
+ * just because the other side is an identity-only shell.
+ */
+export function mergeWorkspaces(local: WorkspaceSlice, remote: WorkspaceSlice): WorkspaceSlice {
+  const allSnaps = [...local.snapshots, ...remote.snapshots];
+  const snapCount = (companyId: string) => allSnaps.filter((s) => s.companyId === companyId).length;
+  const byTicker = new Map<string, Company>();
+  const idRemap = new Map<string, string>();
+
+  for (const c of [...local.companies, ...remote.companies]) {
+    const key = c.ticker.trim().toUpperCase();
+    if (!key) continue;
+    const prev = byTicker.get(key);
+    if (!prev) {
+      byTicker.set(key, c);
+      continue;
+    }
+    if (prev.id === c.id) {
+      byTicker.set(key, mergeCompanyFields(prev, c));
+      continue;
+    }
+    const keepPrev = snapCount(prev.id) >= snapCount(c.id);
+    const kept = keepPrev ? prev : c;
+    const dropped = keepPrev ? c : prev;
+    idRemap.set(dropped.id, kept.id);
+    byTicker.set(key, mergeCompanyFields(kept, dropped));
+  }
+
+  const remapId = (id: string) => idRemap.get(id) ?? id;
+  const seenSnap = new Set<string>();
+  const snapshots: Snapshot[] = [];
+  for (const snap of allSnaps) {
+    if (seenSnap.has(snap.id)) continue;
+    seenSnap.add(snap.id);
+    snapshots.push({ ...snap, companyId: remapId(snap.companyId) });
+  }
+
+  const universeById = new Map<string, Universe>();
+  for (const u of [...remote.universes, ...local.universes]) {
+    const prev = universeById.get(u.id);
+    if (!prev) {
+      universeById.set(u.id, u);
+      continue;
+    }
+    const tickers = [...prev.tickers];
+    const seen = new Set(tickers.map((t) => t.ticker.toUpperCase()));
+    for (const t of u.tickers) {
+      const k = t.ticker.toUpperCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      tickers.push(t);
+    }
+    universeById.set(u.id, {
+      ...prev,
+      ...u,
+      tickers,
+      version: Math.max(prev.version, u.version),
+      lockedAt: u.lockedAt ?? prev.lockedAt,
+    });
+  }
+
+  const keepIds = new Set([...byTicker.values()].map((c) => c.id));
+  const watchSeen = new Set<string>();
+  const watchlist: string[] = [];
+  for (const id of [...local.watchlist, ...remote.watchlist]) {
+    const mapped = remapId(id);
+    if (!keepIds.has(mapped) || watchSeen.has(mapped)) continue;
+    watchSeen.add(mapped);
+    watchlist.push(mapped);
+  }
+
+  const auditById = new Map<string, AuditLog>();
+  for (const a of [...remote.audit, ...local.audit]) auditById.set(a.id, a);
+
+  return {
+    companies: [...byTicker.values()],
+    snapshots,
+    universes: [...universeById.values()],
+    watchlist,
+    audit: [...auditById.values()],
+    settings: { ...EMPTY_SETTINGS, ...remote.settings, ...local.settings },
+  };
+}
+
 export function mergeIdentityUniverse(dump: WorkspaceSlice): WorkspaceSlice {
   const byTicker = new Map(dump.companies.map((c) => [c.ticker.toUpperCase(), c]));
   const companies = [...dump.companies];

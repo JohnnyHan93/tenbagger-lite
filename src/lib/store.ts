@@ -368,8 +368,39 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "idt-v21-prefs",
-      storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ settings: s.settings }),
+      storage: createJSONStorage(() => ({
+        getItem: (name) => localStorage.getItem(name),
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, value);
+          } catch {
+            try {
+              const parsed = JSON.parse(value) as { state?: { snapshots?: Array<{ evidence?: unknown }>; audit?: unknown } };
+              const state = parsed.state ?? {};
+              const slim = JSON.stringify({
+                ...parsed,
+                state: {
+                  ...state,
+                  snapshots: (state.snapshots ?? []).map((s) => ({ ...s, evidence: [] })),
+                  audit: [],
+                },
+              });
+              localStorage.setItem(name, slim);
+            } catch {
+              /* keep last good cache */
+            }
+          }
+        },
+        removeItem: (name) => localStorage.removeItem(name),
+      })),
+      partialize: (s) => ({
+        companies: s.companies,
+        snapshots: s.snapshots,
+        universes: s.universes,
+        watchlist: s.watchlist,
+        audit: s.audit,
+        settings: s.settings,
+      }),
     },
   ),
 );

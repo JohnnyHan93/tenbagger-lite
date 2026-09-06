@@ -9,6 +9,7 @@ import {
 import {
   identityUniverseWorkspace,
   mergeIdentityUniverse,
+  mergeWorkspaces,
   stripDemoFromWorkspace,
 } from "../bootstrap.ts";
 import { SAMPLE_RESEARCH_100, sampleResearch100Stats } from "../sample-research-100.ts";
@@ -280,5 +281,67 @@ describe("database cleanup is targeted", () => {
     assert.equal(seeded.snapshots.length, 0);
     const evidence = seeded.snapshots.reduce((n, s) => n + (s.evidence?.length ?? 0), 0);
     assert.equal(evidence, 0);
+  });
+});
+
+describe("mergeWorkspaces keeps researched tickers", () => {
+  it("keeps a local search when the server is an identity-only shell", () => {
+    const ident = identityUniverseWorkspace();
+    const searched = {
+      id: "c_local_tsla",
+      ticker: "TSLA",
+      exchange: "NASDAQ",
+      companyName: "Tesla",
+      country: "US",
+      sector: "Consumer Cyclical",
+      industry: "Auto",
+      createdAt: "2026-09-07T00:00:00.000Z",
+      updatedAt: "2026-09-07T00:00:00.000Z",
+    };
+    const snap = runSnapshotFromDraft({
+      company: searched,
+      draft: grokDraft(),
+      asOf: "2026-09-07T00:00:00.000Z",
+    });
+    const local = {
+      companies: [searched],
+      snapshots: [{ ...snap, companyId: searched.id }],
+      universes: [],
+      watchlist: [searched.id],
+      audit: [],
+      settings: ident.settings,
+    };
+    const merged = mergeWorkspaces(local, ident);
+    assert.ok(merged.companies.some((c) => c.ticker === "TSLA"));
+    assert.equal(merged.snapshots.length, 1);
+    const tsla = merged.companies.find((c) => c.ticker === "TSLA")!;
+    assert.equal(merged.snapshots[0]!.companyId, tsla.id);
+    assert.ok(merged.watchlist.includes(tsla.id));
+  });
+
+  it("does not drop INOD analysis when server uses a different company id", () => {
+    const ident = identityUniverseWorkspace();
+    const innodIdent = ident.companies.find((c) => c.ticker === "INOD")!;
+    const localInnod = { ...innodIdent, id: "c_local_inod" };
+    const snap = runSnapshotFromDraft({
+      company: localInnod,
+      draft: grokDraft(),
+      asOf: "2026-09-07T00:00:00.000Z",
+    });
+    const merged = mergeWorkspaces(
+      {
+        companies: [localInnod],
+        snapshots: [{ ...snap, companyId: localInnod.id }],
+        universes: [],
+        watchlist: [localInnod.id],
+        audit: [],
+        settings: ident.settings,
+      },
+      ident,
+    );
+    const innod = merged.companies.find((c) => c.ticker === "INOD")!;
+    assert.equal(merged.snapshots.length, 1);
+    assert.equal(merged.snapshots[0]!.companyId, innod.id);
+    assert.equal(sampleResearch100Stats(merged.companies).total, 100);
   });
 });

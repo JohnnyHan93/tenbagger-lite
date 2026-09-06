@@ -1,3 +1,9 @@
+## v2.4.4 — Searched tickers persist across reloads
+
+- Browser keeps companies, snapshots, watchlist, and universes (not settings only).
+- Boot merges the local cache with the server workspace so an empty/ephemeral deploy DB cannot wipe researched names.
+- Same ticker with two ids keeps the id that already has analyses.
+
 ## v2.4.3 — Auth wall removed
 
 - Sign-in is off. Google / X 버튼을 누르지 않아도 앱이 바로 열린다.
