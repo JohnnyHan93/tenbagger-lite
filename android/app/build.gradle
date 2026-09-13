@@ -9,9 +9,9 @@ android {
     defaultConfig {
         applicationId "kr.johnny.idt"
         minSdk 26
-        targetSdk 35
-        versionCode 245
-        versionName "2.4.5"
+        targetSdk 34
+        versionCode 246
+        versionName "2.4.6"
         resValue "string", "app_live_url", "https://tenbagger-lite.vercel.app/"
     }
 
@@ -21,12 +21,16 @@ android {
             storePassword "idtfold6"
             keyAlias "idt"
             keyPassword "idtfold6"
+            enableV1Signing true
+            enableV2Signing true
+            enableV3Signing true
         }
     }
 
     buildTypes {
         release {
             minifyEnabled false
+            debuggable false
             signingConfig signingConfigs.release
         }
         debug {
@@ -37,5 +41,11 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
     }
 }

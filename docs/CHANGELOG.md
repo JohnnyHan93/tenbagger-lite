@@ -1,3 +1,8 @@
+## v2.4.6 — Fold6 install fix
+
+- Re-signed APK (v2+v3). Public download on the live site so the phone does not save a GitHub login page as an APK.
+- Wi-Fi feature is optional. Empty native-lib metadata removed.
+
 ## v2.4.5 — Galaxy Z Fold6 APK
 
 - Android app wraps the live IDT site. When Wi-Fi or mobile data is on, quotes, filings, and analysis load from the network.

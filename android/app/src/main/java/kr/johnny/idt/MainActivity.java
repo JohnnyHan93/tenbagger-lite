@@ -46,7 +46,7 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " IDT-Fold6/2.4.5");
+        s.setUserAgentString(s.getUserAgentString() + " IDT-Fold6/2.4.6");
 
         web.setBackgroundColor(0xFF0C0D0B);
         web.setWebChromeClient(new WebChromeClient());
