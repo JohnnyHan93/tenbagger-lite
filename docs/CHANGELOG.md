@@ -1,3 +1,9 @@
+## v2.4.5 — Galaxy Z Fold6 APK
+
+- Android app wraps the live IDT site. When Wi-Fi or mobile data is on, quotes, filings, and analysis load from the network.
+- Fold6: unlocked orientation, resizable activity, cover/inner screen, display cutout.
+- Offline banner in the app; saved tickers remain readable without a connection.
+
 ## v2.4.4 — Searched tickers persist across reloads
 
 - Browser keeps companies, snapshots, watchlist, and universes (not settings only).

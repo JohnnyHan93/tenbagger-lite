@@ -12,6 +12,12 @@ attachments/
 !.env.example
 .DS_Store
 *.local
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/keystore/*.jks
+android/**/*.apk
 AGENTS.md
 startup.sh
 .grok/skills/

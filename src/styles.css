@@ -41,12 +41,14 @@
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    padding: 0;
   }
 
   html,
   body,
   #app {
     min-height: 100%;
+    min-height: 100dvh;
     background: var(--color-bg);
     color: var(--color-fg);
   }

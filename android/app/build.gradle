@@ -1,0 +1,41 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "kr.johnny.idt"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "kr.johnny.idt"
+        minSdk 26
+        targetSdk 35
+        versionCode 245
+        versionName "2.4.5"
+        resValue "string", "app_live_url", "https://tenbagger-lite.vercel.app/"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file("../keystore/idt-release.jks")
+            storePassword "idtfold6"
+            keyAlias "idt"
+            keyPassword "idtfold6"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+        debug {
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
