@@ -11,6 +11,7 @@ import {
 import type { Snapshot, Universe, AuditLog, AppSettings } from "../domain/snapshot.ts";
 import type { Company, FinancialSnapshot } from "../types.ts";
 import type { ResearchJobRow } from "./queue.ts";
+import { assertDurablePersist } from "./durable.ts";
 
 export interface WorkspaceDump {
   companies: Company[];
@@ -74,6 +75,7 @@ export async function loadWorkspace(): Promise<WorkspaceDump> {
 }
 
 export async function saveCompany(company: Company, sql?: Sql): Promise<void> {
+  if (!sql) assertDurablePersist();
   const db = sql ?? (await getSql());
   await db.query(
     `insert into companies (id, ticker, exchange, company_name, country, sector, industry, cohort, sample, created_at, updated_at, payload)
@@ -137,6 +139,7 @@ async function insertEvidenceRows(tx: Sql, snap: Snapshot): Promise<void> {
 }
 
 export async function insertAnalysis(snap: Snapshot, researchRunId?: string, sql?: Sql): Promise<void> {
+  if (!sql) assertDurablePersist();
   const run = async (tx: Sql) => {
     const versions = {
       xbagger: snap.xbagger.version,
@@ -184,6 +187,7 @@ export async function saveAnalysisTransaction(input: {
   job?: AnalysisJobUpdate;
   sql?: Sql;
 }): Promise<void> {
+  assertDurablePersist();
   const db = input.sql ?? (await getSql());
   await db.transaction(async (tx) => {
     await saveCompany(input.company, tx);
@@ -193,6 +197,10 @@ export async function saveAnalysisTransaction(input: {
       await updateResearchJob(input.job.id, input.job.patch, tx);
     }
   });
+  const found = await db.query<{ id: string }>("select id from analyses where id = $1", [input.snapshot.id]);
+  if (!found.length) {
+    throw new Error(`SAVE_UNVERIFIED: analysis ${input.snapshot.id} missing after commit`);
+  }
 }
 
 export async function saveUniverse(u: Universe): Promise<void> {
@@ -258,6 +266,7 @@ export async function insertAudit(log: AuditLog): Promise<void> {
 }
 
 export async function persistWorkspace(dump: WorkspaceDump): Promise<void> {
+  assertDurablePersist();
   for (const c of dump.companies) await saveCompany(c);
   for (const s of dump.snapshots) await insertAnalysis(s);
   for (const u of dump.universes) await saveUniverse(u);
@@ -267,6 +276,7 @@ export async function persistWorkspace(dump: WorkspaceDump): Promise<void> {
 }
 
 export async function clearWorkspace(): Promise<void> {
+  assertDurablePersist();
   const sql = await getSql();
   await sql.query("delete from universe_members");
   await sql.query("delete from universes");
