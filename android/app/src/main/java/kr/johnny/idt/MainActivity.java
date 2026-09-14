@@ -9,6 +9,7 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.os.Bundle;
 import android.view.View;
+import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -17,7 +18,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
-    static final String APP_URL = "https://tenbagger-lite.vercel.app/";
+    static final String APP_URL = "https://idt.grok.me/";
 
     private WebView web;
     private View offline;
@@ -46,7 +47,11 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " IDT-Fold6/2.4.6");
+        s.setUserAgentString(s.getUserAgentString() + " IDT-Fold6/2.4.7");
+
+        CookieManager cookies = CookieManager.getInstance();
+        cookies.setAcceptCookie(true);
+        cookies.setAcceptThirdPartyCookies(web, true);
 
         web.setBackgroundColor(0xFF0C0D0B);
         web.setWebChromeClient(new WebChromeClient());
@@ -55,8 +60,10 @@ public class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String host = request.getUrl().getHost();
                 if (host == null) return true;
-                boolean ours = host.endsWith("tenbagger-lite.vercel.app")
-                    || host.endsWith("vercel.app")
+                boolean ours = host.endsWith("idt.grok.me")
+                    || host.endsWith("grok.me")
+                    || host.endsWith("grok.com")
+                    || host.endsWith("x.ai")
                     || host.endsWith("google.com")
                     || host.endsWith("gstatic.com")
                     || host.endsWith("googleapis.com");
@@ -66,6 +73,7 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 everLoaded = true;
+                CookieManager.getInstance().flush();
                 if (online) offline.setVisibility(View.GONE);
             }
 
