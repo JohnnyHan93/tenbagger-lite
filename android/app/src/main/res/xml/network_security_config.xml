@@ -6,7 +6,9 @@
         </trust-anchors>
     </base-config>
     <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">tenbagger-lite.vercel.app</domain>
-        <domain includeSubdomains="true">vercel.app</domain>
+        <domain includeSubdomains="true">idt.grok.me</domain>
+        <domain includeSubdomains="true">grok.me</domain>
+        <domain includeSubdomains="true">grok.com</domain>
+        <domain includeSubdomains="true">x.ai</domain>
     </domain-config>
 </network-security-config>

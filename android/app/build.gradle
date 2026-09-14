@@ -10,9 +10,9 @@ android {
         applicationId "kr.johnny.idt"
         minSdk 26
         targetSdk 34
-        versionCode 246
-        versionName "2.4.6"
-        resValue "string", "app_live_url", "https://tenbagger-lite.vercel.app/"
+        versionCode 247
+        versionName "2.4.7"
+        resValue "string", "app_live_url", "https://idt.grok.me/"
     }
 
     signingConfigs {
