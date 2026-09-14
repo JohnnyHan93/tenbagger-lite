@@ -6,6 +6,7 @@ import { uid } from "../utils.ts";
 import {
   EXECUTE_FULL_100,
   FULL100_EXECUTION_DISABLED,
+  FULL100_EPHEMERAL,
   PREFLIGHT_FAILED,
   DEFAULT_CONCURRENCY,
   classifyQuoteFailure,
@@ -19,7 +20,7 @@ import type { ResearchRunRow } from "../persist/queue.ts";
 import type { AnalysisJobUpdate, WorkspaceDump } from "../persist/repo.ts";
 import type { QuoteProviderHealth } from "./provider-health.ts";
 
-export { PREFLIGHT_FAILED, FULL100_EXECUTION_DISABLED };
+export { PREFLIGHT_FAILED, FULL100_EXECUTION_DISABLED, FULL100_EPHEMERAL };
 
 export const DEFAULT_CHUNK_SIZE = DEFAULT_CONCURRENCY;
 
@@ -135,6 +136,12 @@ export async function startFull100FromWorkspace(opts?: {
   if (!(opts?.executeEnabled ?? EXECUTE_FULL_100)) {
     return { ok: false, error: FULL100_EXECUTION_DISABLED };
   }
+  if (!opts?.executeEnabled) {
+    const { persistIsDurable } = await import("../persist/durable.ts");
+    if (!persistIsDurable()) {
+      return { ok: false, error: FULL100_EPHEMERAL };
+    }
+  }
   const loadWorkspace = opts?.loadWorkspace ?? (await import("../persist/repo.ts")).loadWorkspace;
   const ws = await loadWorkspace();
   const { probeQuoteProviders } = await import("./provider-health.ts");
@@ -178,6 +185,12 @@ export async function processFull100Chunk(
 }> {
   if (!(opts?.executeEnabled ?? EXECUTE_FULL_100)) {
     return { ok: false, processed: [], run: null, skipped: FULL100_EXECUTION_DISABLED };
+  }
+  if (!opts?.executeEnabled) {
+    const { persistIsDurable } = await import("../persist/durable.ts");
+    if (!persistIsDurable()) {
+      return { ok: false, processed: [], run: null, skipped: FULL100_EPHEMERAL };
+    }
   }
   const q = await import("../persist/queue.ts");
   const run = await q.getResearchRun(runId);

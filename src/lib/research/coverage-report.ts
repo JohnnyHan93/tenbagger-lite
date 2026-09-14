@@ -3,7 +3,7 @@ import type { Snapshot } from "../domain/snapshot.ts";
 
 function latestOf(snapshots: Snapshot[], companyId: string): Snapshot | undefined {
   return snapshots
-    .filter((s) => s.companyId === companyId)
+    .filter((s) => s && s.companyId === companyId && s.xbagger && s.oversold && s.quality)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
 }
 
@@ -51,6 +51,7 @@ function median(xs: number[]): number {
 
 export function buildCoverageReport(companies: Company[], snapshots: Snapshot[]): CoverageReport {
   const rows = companies
+    .filter((c) => c && c.id && c.ticker)
     .map((c) => ({ c, s: latestOf(snapshots, c.id) }))
     .filter((r): r is { c: Company; s: Snapshot } => Boolean(r.s));
   const us = rows.filter((r) => r.c.country !== "KR");

@@ -8,12 +8,15 @@ type Health = {
   durable: boolean;
   companies: number;
   analyses: number;
+  production?: boolean;
 };
 
 export function PersistBanner() {
   const status = useAppStore((s) => s.persistStatus);
   const error = useAppStore((s) => s.persistError);
   const retry = useAppStore((s) => s.retryPersist);
+  const localCompanies = useAppStore((s) => s.companies.length);
+  const localAnalyses = useAppStore((s) => s.snapshots.length);
   const [health, setHealth] = useState<Health | null>(null);
 
   useEffect(() => {
@@ -30,7 +33,7 @@ export function PersistBanner() {
     };
   }, [status]);
 
-  const ephemeral = health && !health.durable;
+  const ephemeral = Boolean(health?.production && !health.durable);
   const failed = status === "SAVE_FAILED";
   if (!failed && !ephemeral) return null;
 
@@ -41,21 +44,22 @@ export function PersistBanner() {
     >
       {failed ? (
         <>
-          <p className="font-medium">저장 실패</p>
-          <p className="mt-1 text-xs text-muted">분석 결과가 DB에 저장되지 않았습니다. 다시 시도하십시오.</p>
+          <p className="font-medium">서버 저장 실패</p>
+          <p className="mt-1 text-xs text-muted">
+            이 화면의 숫자는 이 기기에만 있습니다. 서버에는 아직 안 남았습니다.
+          </p>
           {error ? <p className="mt-1 font-mono text-[0.65rem] text-subtle">{error}</p> : null}
           <Button variant="danger" size="sm" className="mt-2" onClick={() => retry()}>
-            다시 시도
+            서버에 다시 저장
           </Button>
         </>
       ) : (
         <>
-          <p className="font-medium">서버 DB가 휘발성입니다</p>
+          <p className="font-medium">이 화면은 이 기기 저장입니다</p>
           <p className="mt-1 text-xs text-muted">
-            현재 백엔드 {health?.backend}. Production에는 Neon `DATABASE_URL`이 있어야 분석이 남습니다. 호스팅 Vercel 프로젝트 환경변수를 확인하십시오.
-          </p>
-          <p className="mt-1 font-mono text-[0.65rem] text-subtle">
-            companies {health?.companies ?? 0} · analyses {health?.analyses ?? 0}
+            유니버스 {localCompanies} · 분석 {localAnalyses}은 폰/브라우저에 있습니다. 서버 DB는
+            비어 있습니다 (companies {health?.companies ?? 0} · analyses {health?.analyses ?? 0}).
+            앱을 지우거나 다른 기기에서는 보이지 않습니다.
           </p>
         </>
       )}

@@ -88,6 +88,7 @@ export interface QualityCriteria {
   gradeThresholds: { S: number; A: number; B: number; C: number; D: number };
   coverage: { researchBelow: number; partialBelow: number };
   redFlag: { redScoreMax: number; yellowHits: number; redHits: number };
+  /** Factor id → band steps. Missing ids keep the built-in formula. */
   bands: Record<string, BandStep[]>;
 }
 

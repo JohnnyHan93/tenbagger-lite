@@ -107,7 +107,9 @@ function Dashboard() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {rows.map((r) => (
+            {rows.map((r) => {
+              if (!r.company?.ticker) return null;
+              return (
               <tr key={r.company.id} className="hover:bg-elevated/50">
                 <td className={FREEZE_COL}>
                   <CompanyTicker ticker={r.company.ticker} name={r.company.companyName} />
@@ -118,7 +120,7 @@ function Dashboard() {
                     <span className="mt-0.5 block text-[0.625rem] tracking-wide">{r.company.testProfile}</span>
                   ) : null}
                 </td>
-                {r.snapshot ? (
+                {r.snapshot?.xbagger && r.snapshot.oversold && r.snapshot.quality ? (
                   <>
                     <td className="px-3 py-3 text-right font-mono tabular-nums">
                       {formatXScore(r.snapshot.xbagger.adjustedScore)}
@@ -146,7 +148,8 @@ function Dashboard() {
                   </>
                 )}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

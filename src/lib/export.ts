@@ -1,8 +1,10 @@
-import { displayTicker, formatDate } from "./format.ts";
+import { displayTicker, formatDate, tickersEqual } from "./format.ts";
 import { latestSnapshot } from "./store.ts";
 import type { Snapshot } from "./domain/snapshot.ts";
 import type { Company } from "./types.ts";
 import type { Universe } from "./domain/snapshot.ts";
+import { SAMPLE_RESEARCH_100 } from "./sample-research-100.ts";
+import { researchStatusOf } from "./research/coverage-report.ts";
 
 function csvEscape(v: string | number | boolean | null | undefined): string {
   const s = v == null ? "" : String(v);
@@ -35,7 +37,7 @@ export function exportMatrixCsv(companies: Company[], snapshots: Snapshot[]) {
     "X Grade",
     "10x",
     "Oversold 0-10",
-    "Value Trap 1-10",
+    "Value Trap 0-10",
     "Quality 70 0-100",
     "Quality Grade",
     "Coverage",
@@ -80,6 +82,59 @@ export function exportFullBackup(payload: unknown) {
   downloadText("idt-backup.json", JSON.stringify(payload, null, 2), "application/json");
 }
 
+export function exportCriteriaPack(pack: unknown) {
+  downloadText("idt-criteria.json", JSON.stringify(pack, null, 2), "application/json");
+}
+
+export function exportFull100Csv(companies: Company[], snapshots: Snapshot[]) {
+  const headers = [
+    "Ticker",
+    "Company",
+    "Market",
+    "Status",
+    "X-Bagger 0-100",
+    "X Grade",
+    "Oversold 0-10",
+    "Value Trap 0-10",
+    "Quality 70 0-100",
+    "Quality Grade",
+    "Coverage",
+    "Provider",
+    "AsOf",
+  ];
+  const rows = SAMPLE_RESEARCH_100.map((ident) => {
+    const c =
+      companies.find((x) => tickersEqual(x.ticker, ident.ticker)) ??
+      companies.find((x) => x.ticker.replace(/\.(KS|KQ)$/i, "") === ident.ticker.replace(/\.(KS|KQ)$/i, ""));
+    const s = c ? latestSnapshot(snapshots, c.id) : undefined;
+    return [
+      displayTicker(ident.ticker),
+      c?.companyName ?? ident.companyName,
+      ident.country,
+      s ? researchStatusOf(s) : "NOT_RESEARCHED",
+      s ? s.xbagger.adjustedScore : "",
+      s?.xbagger.grade ?? "",
+      s?.oversold.opportunity ?? "",
+      s?.oversold.valueTrap ?? "",
+      s?.quality.score ?? "",
+      s?.quality.grade ?? "",
+      s ? Math.round(s.overallCoverage * 100) : "",
+      s?.researchProvider ?? "",
+      s ? formatDate(s.asOf) : "",
+    ];
+  });
+  downloadText("idt-full100.csv", toCsv(headers, rows), "text/csv;charset=utf-8");
+}
+
+export async function exportFull100Json(companies: Company[], snapshots: Snapshot[]) {
+  const { buildFull100Report } = await import("./research/full100-report.ts");
+  downloadText(
+    "idt-full100-report.json",
+    JSON.stringify(buildFull100Report(companies, snapshots), null, 2),
+    "application/json",
+  );
+}
+
 export function exportMatrixXlsx(companies: Company[], snapshots: Snapshot[]) {
   const rows: string[][] = [
     [
@@ -87,7 +142,7 @@ export function exportMatrixXlsx(companies: Company[], snapshots: Snapshot[]) {
       "Company",
       "X-Bagger 0-100",
       "Oversold 0-10",
-      "Value Trap 1-10",
+      "Value Trap 0-10",
       "Quality 70 0-100",
       "Coverage",
       "Tags",

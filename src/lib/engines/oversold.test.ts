@@ -6,7 +6,7 @@ import { QUALITY_FACTORS, scoreQuality } from "./quality.ts";
 import { scoreXBagger } from "./xbagger.ts";
 import { applyCoverage, weightedObserved } from "./coverage.ts";
 import { parseTickerList } from "../universe/parse.ts";
-import { defaultScenarios } from "../tenx/calculator.ts";
+import { buildScenario, buildTenxMath } from "../tenx/calculator.ts";
 
 describe("oversold formula", () => {
   it("Opp = 0.40F + 0.25V + 0.10O + 0.25R", () => {
@@ -31,7 +31,36 @@ describe("xbagger coverage", () => {
   });
 
   it("hard gate FAIL forces F", () => {
-    const d = defaultScenarios(1e9, {
+    const tiny = {
+      bear: buildScenario({
+        scenario: "BEAR",
+        revenue: 1e8,
+        operatingMargin: 0.1,
+        netMargin: 0.05,
+        multipleType: "EV_SALES",
+        multipleValue: 1,
+        currentMarketCap: 1e9,
+      }),
+      base: buildScenario({
+        scenario: "BASE",
+        revenue: 1e8,
+        operatingMargin: 0.1,
+        netMargin: 0.05,
+        multipleType: "EV_SALES",
+        multipleValue: 1.2,
+        currentMarketCap: 1e9,
+      }),
+      bull: buildScenario({
+        scenario: "BULL",
+        revenue: 1e8,
+        operatingMargin: 0.1,
+        netMargin: 0.05,
+        multipleType: "EV_SALES",
+        multipleValue: 1.5,
+        currentMarketCap: 1e9,
+      }),
+    };
+    const math = buildTenxMath(1e9, {
       revenueTtm: 1e8,
       revenuePrior: 8e7,
       operatingIncomeTtm: 1e7,
@@ -43,7 +72,7 @@ describe("xbagger coverage", () => {
       operatingMargin: 0.1,
       cfo: 1e7,
       fcf: 1e7,
-    });
+    }, [tiny.bear, tiny.base, tiny.bull]);
     const r = scoreXBagger({
       factors: [
         { code: "F1", score: 8, reason: "tam" },
@@ -57,12 +86,13 @@ describe("xbagger coverage", () => {
         { code: "F9", score: 8, reason: "k" },
         { code: "F10", score: 2, reason: "math fail" },
       ],
-      tenxMath: null,
-      tenxScenarios: [d.bear, d.base, d.bull],
+      tenxMath: math,
+      tenxScenarios: [tiny.bear, tiny.base, tiny.bull],
       tenxFeasibility: "LOW",
     });
     assert.equal(r.grade, "F");
     assert.equal(r.gates.tenx, "FAIL");
+    assert.ok((r.factors.find((f) => f.code === "F10")?.score ?? 10) < 6);
   });
 });
 

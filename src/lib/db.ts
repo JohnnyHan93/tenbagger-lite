@@ -173,22 +173,33 @@ async function createPgliteSql(): Promise<Sql> {
   // passes serialized on a global chain so concurrent callers never
   // double-apply.
   const migrate = async (): Promise<void> => {
-    let migrations: Record<string, string>;
+    let migrations: Record<string, string> = {};
     if (typeof import.meta.glob === "function") {
       migrations = import.meta.glob("/migrations/*.sql", {
         query: "?raw",
         import: "default",
         eager: true,
       }) as Record<string, string>;
-    } else {
+    }
+    if (Object.keys(migrations).length === 0) {
       const { readdir, readFile } = await import("node:fs/promises");
       const { dirname, join } = await import("node:path");
       const { fileURLToPath } = await import("node:url");
-      const dir = join(dirname(fileURLToPath(import.meta.url)), "../../migrations");
-      migrations = {};
-      for (const name of await readdir(dir)) {
-        if (!name.endsWith(".sql")) continue;
-        migrations[`/migrations/${name}`] = await readFile(join(dir, name), "utf8");
+      const candidates = [
+        join(process.cwd(), "migrations"),
+        join(dirname(fileURLToPath(import.meta.url)), "../../migrations"),
+      ];
+      for (const dir of candidates) {
+        try {
+          const names = await readdir(dir);
+          for (const name of names) {
+            if (!name.endsWith(".sql")) continue;
+            migrations[`/migrations/${name}`] = await readFile(join(dir, name), "utf8");
+          }
+          if (Object.keys(migrations).length) break;
+        } catch {
+          /* try next candidate */
+        }
       }
     }
     const doneRows = await pg.query<{ name: string }>(

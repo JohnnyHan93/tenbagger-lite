@@ -100,6 +100,7 @@ function baseDraft(): ResearchDraft {
     redFlags: [],
     tenxScenarios: (() => {
       const d = defaultScenarios(1e9, fin);
+      if (!d) throw new Error("fixture must have revenue");
       return [d.bear, d.base, d.bull];
     })(),
     catalysts: ["C1"],
@@ -363,6 +364,7 @@ describe("10x math", () => {
       revenueTtm: 1e8,
       revenuePrior: 8e7,
     });
+    assert.ok(s);
     assert.ok(s.bear.revenue < s.base.revenue);
     assert.ok(s.base.revenue < s.bull.revenue);
   });

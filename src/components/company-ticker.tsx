@@ -13,25 +13,27 @@ export function CompanyTicker({
   name,
   linked = true,
 }: {
-  ticker: string;
-  name: string;
+  ticker?: string | null;
+  name?: string | null;
   linked?: boolean;
 }) {
+  const code = ticker?.trim() ?? "";
+  const label = name?.trim() || displayTicker(code) || "—";
   const inner = (
     <>
-      <span className="block truncate text-xs leading-tight text-fg">{name || displayTicker(ticker)}</span>
+      <span className="block truncate text-xs leading-tight text-fg">{label}</span>
       <span className="mt-0.5 block truncate font-mono text-[0.625rem] leading-tight tracking-wide text-sage">
-        {displayTicker(ticker)}
+        {displayTicker(code) || "—"}
       </span>
     </>
   );
-  if (!linked) {
+  if (!linked || !code) {
     return <span className="block min-w-0">{inner}</span>;
   }
   return (
     <Link
       to="/company/$ticker"
-      params={{ ticker: encodeURIComponent(ticker) }}
+      params={{ ticker: encodeURIComponent(code) }}
       className="block min-w-0"
     >
       {inner}

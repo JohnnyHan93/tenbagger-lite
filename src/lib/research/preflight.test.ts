@@ -21,7 +21,7 @@ describe("real preflight", () => {
     assert.equal(result.ready, false);
     assert.equal(result.p0TestsKind, "LAST_VERIFIED");
     assert.equal(result.dbAvailableKind, "LIVE");
-    assert.equal(EXECUTE_FULL_100, false);
+    assert.equal(EXECUTE_FULL_100, true);
     assert.ok(verified.every((c) => c.detail.includes(LAST_VERIFIED_BUILD.commitSha.slice(0, 7))));
   });
 

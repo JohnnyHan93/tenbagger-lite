@@ -6,6 +6,14 @@ export const COVERAGE_RULE = {
   heavyPenalty: 7,
 } as const;
 
+export type CoverageRule = {
+  noPenalty: number;
+  mild: number;
+  research: number;
+  mildPenalty: number;
+  heavyPenalty: number;
+};
+
 export function weightedObserved(items: Array<{ score: number | null; weight: number }>): {
   observed: number;
   available: number;
@@ -28,23 +36,30 @@ export function weightedObserved(items: Array<{ score: number | null; weight: nu
   return { observed, available, totalWeight, normalized, coverage };
 }
 
-export function coveragePenalty(coverage: number): { penalty: number; researchRequired: boolean } {
-  if (coverage < COVERAGE_RULE.research) return { penalty: 0, researchRequired: true };
-  if (coverage < COVERAGE_RULE.mild) return { penalty: COVERAGE_RULE.heavyPenalty, researchRequired: false };
-  if (coverage < COVERAGE_RULE.noPenalty) return { penalty: COVERAGE_RULE.mildPenalty, researchRequired: false };
+export function coveragePenalty(
+  coverage: number,
+  rule: CoverageRule = COVERAGE_RULE,
+): { penalty: number; researchRequired: boolean } {
+  if (coverage < rule.research) return { penalty: 0, researchRequired: true };
+  if (coverage < rule.mild) return { penalty: rule.heavyPenalty, researchRequired: false };
+  if (coverage < rule.noPenalty) return { penalty: rule.mildPenalty, researchRequired: false };
   return { penalty: 0, researchRequired: false };
 }
 
-export function applyCoverage(normalized: number, coverage: number): {
+export function applyCoverage(
+  normalized: number,
+  coverage: number,
+  rule: CoverageRule = COVERAGE_RULE,
+): {
   adjusted: number;
   penalty: number;
   status: "COMPLETE" | "PARTIAL" | "RESEARCH REQUIRED";
 } {
-  const { penalty, researchRequired } = coveragePenalty(coverage);
+  const { penalty, researchRequired } = coveragePenalty(coverage, rule);
   if (researchRequired) {
     return { adjusted: normalized, penalty: 0, status: "RESEARCH REQUIRED" };
   }
   const adjusted = Math.max(0, normalized - penalty);
-  const status = coverage >= COVERAGE_RULE.noPenalty ? "COMPLETE" : "PARTIAL";
+  const status = coverage >= rule.noPenalty ? "COMPLETE" : "PARTIAL";
   return { adjusted, penalty, status };
 }

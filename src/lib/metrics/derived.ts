@@ -56,6 +56,10 @@ export interface DerivedMetrics {
   industryGroup: IndustryGroup;
   high52w: number | null;
   price: number;
+  investedCapital?: number | null;
+  goingConcernEvidence?: boolean;
+  series?: import("../types.ts").FinancialSeries | null;
+  liquidityStress?: boolean;
 }
 
 export function ratio(a: number | null | undefined, b: number | null | undefined): number | null {
@@ -155,5 +159,12 @@ export function deriveMetrics(input: {
     industryGroup: input.industryGroup,
     high52w: x.high52w ?? null,
     price: input.price,
+    investedCapital: x.investedCapital ?? null,
+    goingConcernEvidence: Boolean(x.goingConcernEvidence),
+    series: x.series ?? null,
+    liquidityStress: Boolean(
+      (f.cash != null && f.cash < 0) ||
+        ((fcf ?? 0) < 0 && f.cash != null && f.cash < Math.abs(fcf ?? 0)),
+    ),
   };
 }

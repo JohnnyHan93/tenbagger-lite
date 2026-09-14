@@ -17,7 +17,7 @@ export const persistHealthFn = createServerFn({ method: "GET" }).handler(async (
   } catch {
     /* health must still return the backend */
   }
-  return { backend, durable: persistIsDurable(), companies, analyses };
+  return { backend, durable: persistIsDurable(), companies, analyses, production: process.env.VERCEL_ENV === "production" };
 });
 
 export const loadWorkspaceFn = createServerFn({ method: "GET" })
@@ -31,6 +31,14 @@ export const persistWorkspaceFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { persistWorkspace } = await import("./repo.ts");
     await persistWorkspace(data);
+    return { ok: true as const };
+  });
+
+export const saveSettingsFn = createServerFn({ method: "POST" })
+  .validator((input: import("../domain/snapshot.ts").AppSettings) => input)
+  .handler(async ({ data }) => {
+    const { saveSettings } = await import("./repo.ts");
+    await saveSettings(data);
     return { ok: true as const };
   });
 
@@ -288,4 +296,28 @@ export const v24ResearchOneFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { v24ResearchOne } = await import("../research/v24-operator.ts");
     return v24ResearchOne(data.ticker);
+  });
+
+export const smoke12StatusFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { smoke12Status } = await import("../research/smoke12.ts");
+  return smoke12Status();
+});
+
+export const smoke12OneFn = createServerFn({ method: "POST" })
+  .validator((input: { ticker: string; force?: boolean }) => input)
+  .handler(async ({ data }) => {
+    const { smoke12ResearchOne } = await import("../research/smoke12.ts");
+    return smoke12ResearchOne(data.ticker, { force: data.force, useAi: true });
+  });
+
+export const full100StatusFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { full100Status } = await import("../research/full100.ts");
+  return full100Status();
+});
+
+export const full100OneFn = createServerFn({ method: "POST" })
+  .validator((input: { ticker: string; force?: boolean }) => input)
+  .handler(async ({ data }) => {
+    const { full100ResearchOne } = await import("../research/full100.ts");
+    return full100ResearchOne(data.ticker, { force: data.force, useAi: true });
   });

@@ -29,9 +29,9 @@ Identity universe: 100 names, US 50 / KR 50. Sample100 analyses = 100 (3 preserv
 
 | Model | Version | Status |
 |---|---|---|
-| X-Bagger Discovery | XBG-v2.0 | Locked |
-| Oversold Opportunity | OSM-v2.1 | N/A renormalization; REIT skips ordinary P/E |
-| Quality 70 | MFC70-v1.2 | Bank leverage/ROIC not forced; biotech inventory/ROIC conditional; CFO≠FCF |
+| X-Bagger Discovery | XBG-v2.1 | Tenx math F10; evidence-aware gates |
+| Oversold Opportunity | OSM-v2.2 | Trap 0–10; incomplete Case; REIT skips ordinary P/E |
+| Quality 70 | MFC70-v1.3 | Q37 IC only; Q70 evidence only; FinancialSeries |
 | Investor Lenses | LENS-v1.0 | Overlay |
 
 ## v2.4 Full 100

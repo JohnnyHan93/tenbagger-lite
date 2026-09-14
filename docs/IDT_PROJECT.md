@@ -28,7 +28,9 @@
 - 게시 접근이 **나만**이면 밖에서는 `Continue with Grok`만 보인다. 홈화면에서 바로 열려면 **링크 있는 사람**으로 바꾼다.
 - 폰에 깔린 **IDT 2.4.6 APK**는 여전히 `tenbagger-lite.vercel.app`이다. 소스만 2.4.7(`idt.grok.me`)로 바꿔 두었고, 서명 APK는 이 환경에서 다시 빌드하지 않았다. 크롬 바로가기로 대체하는 쪽이 맞다.
 - GitHub에 코드를 올려도 `idt.grok.me`는 자동 배포되지 않는다. 이 주소는 **Grok 앱 빌더에서 다시 게시**해야 바뀐다.
-- Sample100(US50/KR50)은 **신원만**. Full 100 일괄 실행은 잠금 (`EXECUTE_FULL_100 = false`).
+- Sample100 Full 100은 **이 Neon에서 1회 실행 후 잠금** (`EXECUTE_FULL_100 = false`). 이미 있는 스냅샷은 건너뛴다. 유니버스 밖 Smoke는 유지.
+- Queue → Full 100 결과에서 CSV/JSON 내보내기. 점수는 합치지 않는다.
+- Smoke 12는 Queue에서 따로 돈다. Neon일 때만 저장. PGLite 미리보기에서는 거부.
 - 기준 JSON 내보내기/적용은 설정 화면에 있다. **한 번 더 게시**해야 `idt.grok.me`에 그 화면이 나온다.
 
 ---
@@ -39,9 +41,9 @@
 
 | 엔진 | 버전 | 질문 | 점수 |
 |---|---|---|---|
-| X-Bagger (Tenbagger / Wildcard) | XBG-v2.0 | 시총이 실제 경로로 5–10배가 될 수 있는가 | 0–100, 등급 S–F, 하드게이트 |
-| Oversold | OSM-v2.1 | 싼가, 망가진 것인가 | Opp 0–10 = 0.40F+0.25V+0.10O+0.25R, Value Trap은 별도 |
-| Quality 70 | MFC70-v1.2 | 공시 기준으로 지속 가능한 사업인가 | 0–100, 70 팩터. MFC74는 실험·혼합 금지 |
+| X-Bagger (Tenbagger / Wildcard) | XBG-v2.1 | 시총이 실제 경로로 5–10배가 될 수 있는가 | 0–100, 등급 S–F, 하드게이트 |
+| Oversold | OSM-v2.2 | 싼가, 망가진 것인가 | Opp 0–10 = 0.40F+0.25V+0.10O+0.25R, Value Trap 0–10은 별도 |
+| Quality 70 | MFC70-v1.3 | 공시 기준으로 지속 가능한 사업인가 | 0–100, 70 팩터. MFC74는 실험·혼합 금지 |
 
 부가:
 
@@ -111,7 +113,7 @@ flowchart TD
 - Oversold 가중치(합 1), 펀더멘털/밸류/낙폭/리스크/트랩 숫자
 - Quality70 등급·커버리지·레드플래그, Q밴드 (`engines.quality70.bands`)
 
-적용하면 `app_kv` settings + 기기 설정에 남고, **다음 ANALYZE**부터 쓠다.
+적용하면 `app_kv` settings + 기기 설정에 남고, **다음 ANALYZE**부터 쓴다.
 
 ### B. 코드 (게시 필요)
 
@@ -172,7 +174,8 @@ GitHub만 pull → 수정 → push 해서는 `idt.grok.me`가 안 바뀐다.
 | analysis_change_logs | 오버라이드 기록 |
 | watchlist | 관심 |
 | app_kv | settings (기준 팩 포함) |
-| research_runs / research_jobs | Full 100용. 지금은 실행 잠금 |
+| research_runs / research_jobs | Full 100 큐 테이블. 이번 배치는 Smoke 12와 같은 순차 저장 경로를 씀 |
+
 
 ---
 
@@ -183,18 +186,18 @@ GitHub만 pull → 수정 → push 해서는 `idt.grok.me`가 안 바뀐다.
 | `DATABASE_URL` | 서버, 게시 시 플랫폼 주입 | Neon. 직접 붙여 넣지 않음 |
 | `XAI_API_KEY` | 서버 | 선택 Grok 오버레이. 없어도 앱은 돈다 |
 | `VITE_AUTH_ENABLED` | `false` | 로그인 없음 |
-| `EXECUTE_FULL_100` | 코드 잠금 `false` | 100종목 일괄 분석 금지 |
+| `EXECUTE_FULL_100` | 코드 허가 `false` | Full 100 1회 실행 후 잠금. 다시 열려면 명시 요청 |
 | `IDT_ALLOW_EPHEMERAL` | 예외 플래그 | 프로덕션 pglite 허용. 켜지 말 것 |
 
 비밀은 `VITE_`에 넣지 않는다.
 
-브랜드: 제목 `IDT 투자발견`, 공유 카드 `public/og.jpg` (1200×630), X 배너 `public/x-banner.jpg` (1200×264). 카드는 빌드에 들어가므로 **게시 이후 카드만 바꾸었으면 다시 게시**.
+브랜드: 제목 `IDT 투자발견`, 공유 카드 `public/og.jpg` (1200×630), X 배너 `public/x-banner.jpg` (1200×264). 카드는 빌드에 들어가므로 **게시 이후 카드만 바꿨으면 다시 게시**.
 
 ---
 
 ## Android (참고만)
 
-패키지 `kr.johnny.idt`. 2.4.6은 `https://tenbagger-lite.vercel.app/`. GitHub 2.4.7은 `https://idt.grok.me/`. 키스토어는 리포에 없음. **크롬 홈화면을 주 진입점으로 쓠다.**
+패키지 `kr.johnny.idt`. 2.4.6은 `https://tenbagger-lite.vercel.app/`. GitHub 2.4.7은 `https://idt.grok.me/`. 키스토어는 리포에 없음. **크롬 홈화면을 주 진입점으로 쓴다.**
 
 ---
 
@@ -229,7 +232,11 @@ GitHub만 pull → 수정 → push 해서는 `idt.grok.me`가 안 바뀐다.
 | [CHANGELOG.md](CHANGELOG.md) | 변경 기록 |
 | [COMPLETION_v2.4.md](COMPLETION_v2.4.md) / [COMPLETION_v2.4_PRODUCTION.md](COMPLETION_v2.4_PRODUCTION.md) | v2.4 완료 기록 |
 
-코드 기준 팩: `src/lib/engines/criteria/` (`idt-criteria-v1`).
+코드 기준 팩: `src/lib/engines/criteria/` (`idt-criteria-v1`, runtime **CRITERIA-v1**).
+
+적용 경로: Settings JSON → `parseCriteriaPack` → `setActiveCriteria` + `app_kv` settings → `run.ts`가 `getCriteria()`를 세 엔진에 전달. 새 스냅샷에 `criteria: { schema, overlayId, versions, hash }`를 저장. 과거 스냅샷은 다시 계산하지 않는다.
+
+엔진 버전: XBG-v2.1 (F10 = Tenx math, synthetic 매출 없음) · OSM-v2.2 (Trap 0 허용, incomplete Case) · MFC70-v1.3 (Q37 IC only, Q70 evidence only, FinancialSeries).
 
 ---
 
@@ -242,6 +249,6 @@ GitHub만 pull → 수정 → push 해서는 `idt.grok.me`가 안 바뀐다.
 | 사이트에 기능 반영 | Publish (`idt.grok.me`) |
 | GitHub 백업 | `JohnnyHan93/tenbagger-lite` (자동 배포 아님) |
 | 분석이 안 남음 | `idt.grok.me`인지 확인. 예전 vercel/APK면 폰 캐시만 남음 |
-| 100종목 일괄 | 잠금. 풀려면 명시 요청 |
+| 100종목 일괄 | 잠금 (`EXECUTE_FULL_100 = false`). 풀려면 명시 요청 |
 
 문의는 이 대화에 하면 된다. 기준 JSON과 코드 변경 모두 여기서 받는다.

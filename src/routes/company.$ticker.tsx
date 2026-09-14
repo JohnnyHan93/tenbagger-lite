@@ -218,6 +218,11 @@ function CompanyPage() {
             <p className="mb-3 font-mono text-xs text-muted">
               {ENGINE_TAB.xbagger.name} {ENGINE_TAB.xbagger.version} · 총점 {formatXScore(snap.xbagger.adjustedScore)} ·
               Grade {snap.xbagger.grade}
+              {snap.criteria ? ` · ${snap.criteria.hash}` : ""}
+            </p>
+            <p className="mb-3 font-mono text-[0.625rem] text-subtle">
+              Trust {snap.xbagger.gates.trust} · Survival {snap.xbagger.gates.survival} · 10x {snap.xbagger.gates.tenx} ·
+              Customer {snap.xbagger.gates.customer} · F10 math {snap.xbagger.f10MathComplete ? "complete" : "N/A"}
             </p>
             <TenxBlock snapshot={snap} />
             <div className="mt-4">
@@ -266,11 +271,15 @@ function CompanyPage() {
           <>
             <p className="mb-3 text-sm text-muted">
               {ENGINE_TAB.oversold.name} {ENGINE_TAB.oversold.version} · Opp {formatOppScore(snap.oversold.opportunity)}{" "}
-              · Case {snap.oversold.case}
+              · Case {snap.oversold.case ?? "—"} ({snap.oversold.caseStatus ?? "—"}) · Trap {snap.oversold.valueTrap} / 10
             </p>
             <p className="mb-3 font-mono text-xs text-subtle">
-              Opp = 0.40×Fundamental + 0.25×Valuation + 0.10×Oversold + 0.25×Risk Inverse. Value Trap은 별도 1–10.
+              Opp = 0.40×Fundamental + 0.25×Valuation + 0.10×Oversold + 0.25×Risk Inverse. Value Trap은 별도 0–10.
+              Peak {snap.oversold.peakEarningsLevel ?? (snap.oversold.peakEarnings ? "POSSIBLE" : "NONE")}.
             </p>
+            {snap.oversold.valueTrap >= 7 ? (
+              <p className="mb-3 text-xs text-grade-d">VALUE TRAP RISK — Opportunity 숫자는 바꾸지 않습니다.</p>
+            ) : null}
             <FactorRows
               rows={[
                 { id: "FUND", name: "Fundamental 40%", score: snap.oversold.fundamental, reason: snap.oversold.reasons.fundamental },
@@ -288,6 +297,21 @@ function CompanyPage() {
               {ENGINE_TAB.quality.name} {ENGINE_TAB.quality.version} · {formatQualityScore(snap.quality.score)} · Grade{" "}
               {snap.quality.grade}
             </p>
+            <p className="mb-3 font-mono text-xs text-subtle">
+              Core {snap.quality.coreCoverage != null ? `${Math.round(snap.quality.coreCoverage * 100)}%` : "—"} · Cond{" "}
+              {snap.quality.conditionalCoverage != null ? `${Math.round(snap.quality.conditionalCoverage * 100)}%` : "—"}{" "}
+              · redFlag {snap.quality.redFlag}
+              {snap.quality.operationalFlags?.length ? ` · ${snap.quality.operationalFlags.join(", ")}` : ""}
+            </p>
+            {(() => {
+              const nas = snap.quality.factors.filter((f) => f.score == null && f.kind === "Core" && f.applicability === "A").slice(0, 4);
+              if (!nas.length) return null;
+              return (
+                <p className="mb-3 text-xs text-muted">
+                  주요 Core N/A: {nas.map((f) => `${f.id} ${f.missingReason ?? "MISSING_FIELD"}`).join(" · ")}
+                </p>
+              );
+            })()}
             <div className="mb-4 grid gap-2 md:grid-cols-3">
               {snap.quality.pillars.map((p) => (
                 <div key={p.pillar} className="rounded-[var(--radius-md)] bg-surface p-3 shadow-[var(--shadow-border)]">

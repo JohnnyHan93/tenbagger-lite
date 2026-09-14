@@ -74,9 +74,9 @@ export function formatFactor10(n: number | null | undefined): string {
 }
 
 export const ENGINE_TAB = {
-  xbagger: { id: "x" as const, name: "X-Bagger", version: "XBG-v2.0" },
-  oversold: { id: "o" as const, name: "Oversold", version: "OSM-v2.1" },
-  quality: { id: "q" as const, name: "Quality 70", version: "MFC70-v1.2" },
+  xbagger: { id: "x" as const, name: "X-Bagger", version: "XBG-v2.1" },
+  oversold: { id: "o" as const, name: "Oversold", version: "OSM-v2.2" },
+  quality: { id: "q" as const, name: "Quality 70", version: "MFC70-v1.3" },
 };
 
 export function formatDate(iso: string): string {
@@ -93,6 +93,6 @@ export function signedChange(n: number): string {
   return String(n);
 }
 
-export function displayTicker(ticker: string): string {
-  return ticker.replace(/\.(KS|KQ|N|O|L)$/i, "");
+export function displayTicker(ticker: string | null | undefined): string {
+  return (ticker ?? "").replace(/\.(KS|KQ|N|O|L)$/i, "");
 }

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { financialsFromNaverAnnual, financialsFromWiseReport, extrasFromNaverAnnual, extrasFromWiseReport } from "./quote-parse.ts";
 import { buildResearchGaps } from "./gaps.ts";
-import { buildUniverseJobs, EXECUTE_FULL_100, preflight } from "./jobs.ts";
+import { buildUniverseJobs, preflight } from "./jobs.ts";
 import { SAMPLE_RESEARCH_100 } from "../sample-research-100.ts";
 import type { Snapshot } from "../domain/snapshot.ts";
 import type { Company } from "../types.ts";
@@ -165,13 +165,12 @@ describe("research gaps", () => {
 
 describe("full 100 queue readiness", () => {
   it("does not auto-execute and counts remaining universe members", () => {
-    assert.equal(EXECUTE_FULL_100, false);
     assert.equal(SAMPLE_RESEARCH_100.length, 100);
     const jobs = buildUniverseJobs([], []);
     assert.equal(jobs.length, 100);
     assert.ok(jobs.every((j) => j.status === "NOT_RESEARCHED"));
     const flight = preflight([], []);
-    assert.equal(flight.executeFull100, false);
+    assert.equal(flight.executeFull100, true);
     assert.equal(flight.remaining, 100);
   });
 });

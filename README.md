@@ -12,9 +12,9 @@ Shared research pack (price, filings, evidence, derived metrics) feeds three ind
 
 | Engine | Version | Question |
 |---|---|---|
-| X-Bagger / Wildcard | XBG-v2.0 | Can this market cap become 5–10x on a real path? |
-| Oversold Opportunity | OSM-v2.1 | Cheap, or broken? |
-| Quality 70 | MFC70-v1.2 | Is this a durable business on disclosure? |
+| X-Bagger / Wildcard | XBG-v2.1 | Can this market cap become 5–10x on a real path? |
+| Oversold Opportunity | OSM-v2.2 | Cheap, or broken? |
+| Quality 70 | MFC70-v1.3 | Is this a durable business on disclosure? |
 
 Research Priority is optional and is **not** an investment grade.
 
@@ -40,7 +40,7 @@ Never put secrets in `VITE_` vars.
 
 1. Discover → ticker → ANALYZE. Quote + filings pack → three engines. Results save to the DB immediately (not localStorage).
 2. Open the company page. X-Bagger, Oversold, Quality sit side by side. Refresh inserts a new snapshot; history is immutable.
-3. IDT SAMPLE RESEARCH 100 is identity-only (50 US / 50 KR). Smoke 12 is the first live research batch. Full 100 executor is implemented and **locked** (`EXECUTE_FULL_100 = NO`).
+3. IDT SAMPLE RESEARCH 100 is identity + live batch. Smoke 12 ran first. Full 100 is **authorized** (`EXECUTE_FULL_100 = YES`) and writes only on Neon. Existing snapshots are skipped.
 4. N/A is not zero. Coverage and confidence are shown separately.
 5. Override a factor: original snapshot stays, a new one is appended.
 6. Universe Manager: CSV / JSON / MD / XLSX, dry-run, import, lock, export.
@@ -62,9 +62,9 @@ Production note (2026-09-14): the live site can show Sample100 identities with *
 
 ## Models
 
-- XBG-v2.0 locked
-- OSM-v2.1 — `Opp = 0.40F + 0.25V + 0.10O + 0.25R`, N/A renormalized (not 5, not 0). Value Trap separate
-- MFC70-v1.2 canonical. MFC74-v3.0 listed as experimental, never mixed into 70.
+- XBG-v2.1 — F10 from Tenx math only; no synthetic revenue
+- OSM-v2.2 — `Opp = 0.40F + 0.25V + 0.10O + 0.25R`, N/A renormalized (not 5, not 0). Value Trap 0–10 separate
+- MFC70-v1.3 canonical. MFC74-v3.0 listed as experimental, never mixed into 70.
 - LENS-v1.0 overlay. Not added to Quality.
 
 ## Testing

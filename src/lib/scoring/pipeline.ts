@@ -77,7 +77,7 @@ export function materializeAnalysis(
   let scenarios = draft.tenxScenarios;
   if (scenarios.length < 2) {
     const d = defaultScenarios(draft.quote.marketCap, draft.quote.financials);
-    scenarios = [d.bear, d.base, d.bull];
+    scenarios = d ? [d.bear, d.base, d.bull] : [];
   }
   const feasibility =
     draft.tenxFeasibility || feasibilityFromMath(scenarios, f10, tenxRed);

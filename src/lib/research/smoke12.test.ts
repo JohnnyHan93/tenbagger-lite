@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { EXECUTE_FULL_100 } from "./jobs.ts";
 import { V24_OPERATOR_ENABLED } from "./v24-operator.ts";
 import { persistIsDurable } from "../persist/durable.ts";
 import {
@@ -26,8 +25,7 @@ describe("Smoke 12 gate", () => {
     assert.ok(extra.includes("196170.KQ"));
   });
 
-  it("does not unlock Full 100", () => {
-    assert.equal(EXECUTE_FULL_100, false);
+  it("does not unlock the v2.4 queue operator", () => {
     assert.equal(V24_OPERATOR_ENABLED, false);
   });
 

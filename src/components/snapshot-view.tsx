@@ -51,6 +51,12 @@ export function SnapshotHeader({
       {company.sample ? (
         <p className="mt-4 text-xs text-flag-yellow">SAMPLE FIXTURE — 실전 분석이 아닙니다.</p>
       ) : null}
+      {snapshot.criteria ? (
+        <p className="mt-3 font-mono text-[0.625rem] text-subtle">
+          criteria {snapshot.criteria.overlayId} · {snapshot.criteria.hash} · {snapshot.criteria.versions.xbagger} /{" "}
+          {snapshot.criteria.versions.oversold} / {snapshot.criteria.versions.quality70}
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -92,13 +98,16 @@ export function EngineTrio({
           <FeasibilityBadge value={x.tenxFeasibility} />
         </div>
         <p className="mt-3 font-mono text-xs text-muted">
-          10x {x.gates.tenx} · Survival {x.gates.survival} · Coverage {Math.round(x.coverage * 100)}%
+          Trust {x.gates.trust} · Survival {x.gates.survival} · 10x {x.gates.tenx} · Customer {x.gates.customer}
+        </p>
+        <p className="mt-1 font-mono text-[0.625rem] text-subtle">
+          F10 math {x.f10MathComplete ? "complete" : "N/A"} · Coverage {Math.round(x.coverage * 100)}%
         </p>
       </EngineCard>
       <EngineCard
         kicker={`${ENGINE_TAB.oversold.name} · ${o.version ?? ENGINE_TAB.oversold.version}`}
         title={formatOppScore(o.opportunity)}
-        sub={`Case ${o.case} · Value Trap ${o.valueTrap} / 10`}
+        sub={`Case ${o.case ?? "—"} · ${o.caseStatus ?? ""} · Trap ${o.valueTrap} / 10`}
         status={o.status}
         ticker={ticker}
         onPick={onPick ? () => onPick("o") : undefined}
@@ -111,9 +120,13 @@ export function EngineTrio({
           {formatFactor10(o.riskInverse)}
         </p>
         {o.valueTrap >= 7 ? (
-          <p className="mt-2 text-xs text-grade-d">Value Trap {o.valueTrap} / 10 — 합산하지 않음</p>
-        ) : null}
-        {o.peakEarnings ? <p className="mt-2 text-xs text-flag-yellow">Peak earnings flag</p> : null}
+          <p className="mt-2 text-xs text-grade-d">VALUE TRAP RISK · {o.valueTrap} / 10 — Opp에 합산하지 않음</p>
+        ) : (
+          <p className="mt-2 text-xs text-muted">Value Trap {o.valueTrap} / 10</p>
+        )}
+        <p className="mt-1 text-xs text-flag-yellow">
+          Peak earnings {o.peakEarningsLevel ?? (o.peakEarnings ? "POSSIBLE" : "NONE")}
+        </p>
       </EngineCard>
       <EngineCard
         kicker={`${ENGINE_TAB.quality.name} · ${q.version ?? ENGINE_TAB.quality.version}`}
@@ -128,7 +141,12 @@ export function EngineTrio({
           <FlagBadge status={q.redFlag === "UNKNOWN" ? "YELLOW" : q.redFlag} />
         </div>
         <p className="mt-3 font-mono text-xs text-muted">
-          Diagnostic 미합산 · Coverage {Math.round(q.coverage * 100)}%
+          Core {q.coreCoverage != null ? `${Math.round(q.coreCoverage * 100)}%` : "—"} · Cond{" "}
+          {q.conditionalCoverage != null ? `${Math.round(q.conditionalCoverage * 100)}%` : "—"}
+        </p>
+        <p className="mt-1 font-mono text-[0.625rem] text-subtle">
+          Diagnostic 미합산 · {q.operationalFlags?.includes("LIQUIDITY_STRESS") ? "LIQUIDITY_STRESS · " : ""}
+          Coverage {Math.round(q.coverage * 100)}%
         </p>
       </EngineCard>
     </div>

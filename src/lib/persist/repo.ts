@@ -65,9 +65,15 @@ export async function loadWorkspace(): Promise<WorkspaceDump> {
   const kv = await sql.query<{ value: AppSettings | string }>("select value from app_kv where key = $1", ["settings"]);
 
   return {
-    companies: companies.map((r) => parse(r.payload)),
-    snapshots: analyses.map((r) => normalizeSnapshot(parse(r.payload))),
-    universes: universes.map((r) => parse(r.payload)),
+    companies: companies.map((r) => parse(r.payload)).filter((c): c is Company => Boolean(c && c.id && c.ticker)),
+    snapshots: analyses
+      .map((r) => {
+        const s = parse(r.payload);
+        if (!s?.id || !s.companyId) return null;
+        return normalizeSnapshot(s);
+      })
+      .filter((s): s is Snapshot => Boolean(s)),
+    universes: universes.map((r) => parse(r.payload)).filter((u): u is Universe => Boolean(u && u.id)),
     watchlist: watch.map((r) => r.company_id),
     audit: logs.map((r) => parse(r.payload)),
     settings: kv[0] ? parse(kv[0].value) : null,
@@ -218,7 +224,8 @@ export async function saveUniverse(u: Universe): Promise<void> {
     [u.id, u.name, u.version, u.market, u.status, u.createdAt, u.lockedAt, asJson(u)],
   );
   await sql.query("delete from universe_members where universe_id = $1", [u.id]);
-  for (const t of u.tickers) {
+  for (const t of u.tickers ?? []) {
+    if (!t?.ticker) continue;
     await sql.query(
       "insert into universe_members (universe_id, ticker, name) values ($1,$2,$3) on conflict do nothing",
       [u.id, t.ticker, t.name ?? null],

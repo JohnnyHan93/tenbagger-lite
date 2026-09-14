@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { EMPTY_SETTINGS, emptyWorkspace, identityUniverseWorkspace, mergeIdentityUniverse, stripDemoFromWorkspace } from "./bootstrap.ts";
+import { EMPTY_SETTINGS, emptyWorkspace, identityUniverseWorkspace, mergeIdentityUniverse, stripDemoFromWorkspace, cleanWorkspace } from "./bootstrap.ts";
 import { runSnapshot, runSnapshotFromDraft, snapshotToDraft } from "./engines/run.ts";
 import { parseTickerList, type UniverseTicker } from "./universe/parse.ts";
 import { uid } from "./utils.ts";
@@ -12,6 +12,8 @@ import { emptyPack } from "./research/pack.ts";
 import { scoreXBagger } from "./engines/xbagger.ts";
 import { strategyTags, researchPriority } from "./engines/matrix.ts";
 import { scoreLenses } from "./engines/lenses.ts";
+import { criteriaProvenance, getCriteria, resetActiveCriteria, setActiveCriteria } from "./engines/criteria/index.ts";
+import type { CriteriaPack } from "./engines/criteria/types.ts";
 
 export type PersistStatus = "IDLE" | "SAVING" | "SAVED" | "SAVE_FAILED";
 
@@ -53,6 +55,8 @@ export interface AppState {
   unlockUniverse: (id: string) => void;
   archiveUniverse: (id: string) => void;
   retryPersist: () => void;
+  applyCriteriaPack: (pack: CriteriaPack) => void;
+  resetCriteriaPack: () => void;
 }
 
 const emptySettings = EMPTY_SETTINGS;
@@ -228,6 +232,9 @@ export const useAppStore = create<AppState>()(
           audit: stripped.next.audit,
           settings: data.settings ? { ...get().settings, ...data.settings } : get().settings,
         });
+        const pack = data.settings?.criteriaPack;
+        if (pack) setActiveCriteria(pack);
+        else resetActiveCriteria();
       },
       overrideXFactor: (snapshotId, code, score, reason) => {
         const snap = get().snapshots.find((s) => s.id === snapshotId);
@@ -237,6 +244,7 @@ export const useAppStore = create<AppState>()(
             ? { ...f, score, reason: `Override: ${reason}`, status: "OVERRIDE" as const, confidence: "High" as const }
             : { code: f.code, score: f.score, reason: f.reason, confidence: f.confidence, evidenceIds: f.evidenceIds, override: f.status === "OVERRIDE" },
         );
+        const pack = getCriteria();
         const x = scoreXBagger({
           factors: snap.xbagger.factors.map((f) => ({
             code: f.code,
@@ -249,7 +257,9 @@ export const useAppStore = create<AppState>()(
           tenxMath: snap.xbagger.tenxMath,
           tenxScenarios: snap.xbagger.tenxScenarios,
           tenxFeasibility: snap.xbagger.tenxFeasibility,
-        });
+          trustFail: snap.xbagger.gates.trust === "FAIL",
+          trustSignals: snap.xbagger.trustSignals,
+        }, pack.engines.xbagger);
         const lenses = scoreLenses({ m: snap.derived, x, o: snap.oversold, q: snap.quality });
         const tags = strategyTags(x, snap.oversold, snap.quality);
         const rp = researchPriority({
@@ -268,6 +278,7 @@ export const useAppStore = create<AppState>()(
           tags,
           researchPriority: rp?.score ?? null,
           researchPriorityParts: rp?.parts ?? null,
+          criteria: criteriaProvenance(pack),
         };
         const log: AuditLog = {
           id: uid("aud"),
@@ -316,7 +327,44 @@ export const useAppStore = create<AppState>()(
           settings: { ...get().settings, ...data.settings },
         });
       },
-      updateSettings: (s) => set({ settings: { ...get().settings, ...s } }),
+      updateSettings: (s) => {
+        const next = { ...get().settings, ...s };
+        if ("criteriaPack" in s) {
+          if (s.criteriaPack) setActiveCriteria(s.criteriaPack);
+          else resetActiveCriteria();
+        }
+        set({ settings: next });
+      },
+      applyCriteriaPack: (pack) => {
+        const applied: CriteriaPack = { ...pack, appliedAt: new Date().toISOString() };
+        setActiveCriteria(applied);
+        const settings = { ...get().settings, criteriaPack: applied };
+        set({
+          settings,
+          audit: [
+            ...get().audit,
+            {
+              id: uid("log"),
+              engine: "xbagger",
+              modelVersion: applied.engines.xbagger.version,
+              factorId: "CRITERIA",
+              snapshotId: "",
+              oldValue: null,
+              newValue: null,
+              reason: `기준 적용: ${applied.title} (${applied.overlayId})`,
+              userOverride: true,
+              timestamp: applied.appliedAt ?? new Date().toISOString(),
+            },
+          ],
+        });
+        void import("./persist/actions.ts").then(({ saveSettingsFn }) => saveSettingsFn({ data: settings }));
+      },
+      resetCriteriaPack: () => {
+        resetActiveCriteria();
+        const settings = { ...get().settings, criteriaPack: null };
+        set({ settings });
+        void import("./persist/actions.ts").then(({ saveSettingsFn }) => saveSettingsFn({ data: settings }));
+      },
       createUniverse: (name, market, tickers) => {
         const u: Universe = {
           id: uid("u"),
@@ -401,6 +449,32 @@ export const useAppStore = create<AppState>()(
         audit: s.audit,
         settings: s.settings,
       }),
+      merge: (persistedState, currentState) => {
+        const p = (persistedState ?? {}) as Partial<AppState>;
+        const cleaned = cleanWorkspace({
+          companies: p.companies ?? currentState.companies,
+          snapshots: p.snapshots ?? currentState.snapshots,
+          universes: p.universes ?? currentState.universes,
+          watchlist: p.watchlist ?? currentState.watchlist,
+          audit: p.audit ?? currentState.audit,
+          settings: p.settings ?? currentState.settings,
+        });
+        return {
+          ...currentState,
+          ...p,
+          companies: cleaned.companies,
+          snapshots: cleaned.snapshots,
+          universes: cleaned.universes,
+          watchlist: cleaned.watchlist,
+          audit: cleaned.audit,
+          settings: (cleaned.settings ?? currentState.settings) as AppState["settings"],
+        };
+      },
+      onRehydrateStorage: () => (state) => {
+        const pack = state?.settings?.criteriaPack;
+        if (pack) setActiveCriteria(pack);
+        else resetActiveCriteria();
+      },
     },
   ),
 );

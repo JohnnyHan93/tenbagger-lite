@@ -3,12 +3,12 @@ import { makeFlag } from "../risk/flags.ts";
 import {
   buildTenxMath,
   defaultScenarios,
+  f10FromMath,
   feasibilityFromMath,
   requiredEvSalesFor10x,
   requiredNetIncomeFor10x,
   requiredPeFor10x,
   requiredRevenueFor10x,
-  scoreTenxFromUpside,
 } from "../tenx/calculator.ts";
 import { formatMoney, formatPct } from "../format.ts";
 import type {
@@ -86,9 +86,10 @@ export function heuristicDraft(
   const runwayYears = burn > 0 && cash > 0 ? cash / burn : null;
   const blob = `${pack.profile}\n${pack.wiki}\n${quote.sector}\n${quote.industry}`;
   const growingTheme = GROWING.test(blob);
-  const requiredRev = requiredRevenueFor10x(marketCap, "EV_SALES", 8, 0.12);
-  const { bear, base, bull } = defaultScenarios(marketCap || 1, financials);
-  const tenxMath = buildTenxMath(marketCap || 1, financials, [bear, base, bull]);
+  const requiredRev = marketCap > 0 ? requiredRevenueFor10x(marketCap, "EV_SALES", 8, 0.12) : null;
+  const scenarios = defaultScenarios(marketCap, financials);
+  const tenxScenarios = scenarios ? [scenarios.bear, scenarios.base, scenarios.bull] : [];
+  const tenxMath = buildTenxMath(marketCap, financials, tenxScenarios);
 
   let f2: Row = {
     score: null,
@@ -157,6 +158,7 @@ export function heuristicDraft(
     };
   }
 
+
   let f3: Row = {
     score: null,
     summary: "마진 데이터 없음. N/A.",
@@ -224,7 +226,7 @@ export function heuristicDraft(
     /purchase order|\brepeat\b|production contract|양산|수주/i.test(n.title),
   );
   let f6: Row = {
-    score: rev && rev > 0 ? 4 : pack.customers.length ? 4 : 2,
+    score: pack.customers.length ? 4 : rev && rev > 0 ? 4 : 2,
     summary: pack.customers.length
       ? `공개 고객: ${pack.customers.join(", ")}. Repeat PO 미확인.`
       : rev && rev > 0
@@ -307,11 +309,12 @@ export function heuristicDraft(
 
   let f8score: number | null = 4;
   let f8s = "적정 수준으로 보수 평가.";
-  const f10score = scoreTenxFromUpside(bull.upsideMultiple, base.upsideMultiple);
+  const f10math = f10FromMath(tenxMath.currentRevenue == null ? null : tenxMath, tenxScenarios);
+  const f10score = f10math.score;
   const tenx = makeFlag(
     "TENX",
-    f10score >= 6 ? "GREEN" : f10score >= 4 ? "YELLOW" : "RED",
-    `Bull ${bull.upsideMultiple.toFixed(1)}x · Base ${base.upsideMultiple.toFixed(1)}x. 경로 ${tenxMath.path}.`,
+    f10score == null ? "YELLOW" : f10score >= 6 ? "GREEN" : f10score >= 4 ? "YELLOW" : "RED",
+    f10math.reason,
   );
 
   if (marketCap >= 2e11 && currency === "USD") {
@@ -372,10 +375,13 @@ export function heuristicDraft(
 
   const f10: Row = {
     score: f10score,
-    summary: tenx.reason,
-    found: `Bull ${bull.upsideMultiple.toFixed(1)}x · 필요 매출 ${formatMoney(requiredRev, currency)}`,
+    summary: f10math.reason,
+    found:
+      scenarios
+        ? `Bull ${scenarios.bull.upsideMultiple.toFixed(1)}x · 필요 매출 ${formatMoney(requiredRev, currency)}`
+        : "Tenx math 없음",
     benchmark: "6점: 현실 가정 5–7배 / 10점: Base~Bull로 10배",
-    confidence: rev != null ? "High" : "Medium",
+    confidence: f10score == null ? "Low" : "High",
   };
 
   void tamMult;
@@ -388,7 +394,7 @@ export function heuristicDraft(
     survival,
     tenx,
   ];
-  const feasibility = feasibilityFromMath([bear, base, bull], f10score, tenx.hardStop);
+  const feasibility = feasibilityFromMath(tenxScenarios, f10score, tenx.hardStop);
 
   const summary: Record<FactorCode, Row> = {
     F1: f1,
@@ -525,12 +531,12 @@ export function heuristicDraft(
     quote,
     factors,
     redFlags: flags,
-    tenxScenarios: [bear, base, bull],
+    tenxScenarios,
     tenxMath,
     requiredRevenue: requiredRev,
     requiredNetIncome: requiredNetIncomeFor10x(marketCap, 25),
-    requiredPe: requiredPeFor10x(marketCap, bull.netIncome),
-    requiredEvSales: requiredEvSalesFor10x(marketCap, bull.revenue),
+    requiredPe: scenarios ? requiredPeFor10x(marketCap, scenarios.bull.netIncome) : null,
+    requiredEvSales: scenarios ? requiredEvSalesFor10x(marketCap, scenarios.bull.revenue) : null,
     tenxFeasibility: feasibility,
     catalysts: pack.news.slice(0, 5).map((n) => n.title).concat(
       pack.news.length ? [] : ["실적 발표", "고객/제품 공시", "가이던스 변화"],

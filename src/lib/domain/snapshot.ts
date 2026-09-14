@@ -57,6 +57,12 @@ export interface Snapshot {
   periodType?: string | null;
   fiscalYear?: number | null;
   failureClass?: string | null;
+  criteria?: {
+    schema: string;
+    overlayId: string;
+    versions: { xbagger: string; oversold: string; quality70: string };
+    hash: string;
+  };
 }
 
 export interface Universe {
@@ -98,5 +104,6 @@ export interface AppSettings {
   defaultResearchMode: "auto" | "manual";
   useAi: boolean;
   researchPriorityOn: boolean;
-  qualityModel: "MFC70-v1.1" | "MFC70-v1.2" | "MFC74-v3.0";
+  qualityModel: "MFC70-v1.1" | "MFC70-v1.2" | "MFC70-v1.3" | "MFC74-v3.0";
+  criteriaPack?: import("../engines/criteria/types.ts").CriteriaPack | null;
 }

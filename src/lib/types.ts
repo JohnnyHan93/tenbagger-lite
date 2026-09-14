@@ -128,11 +128,45 @@ export interface TenxMath {
   assumedCagr: number | null;
   revenue5y: number | null;
   revenue7y: number | null;
-  matureMargin: number;
-  exitMultiple: number;
+  matureMargin: number | null;
+  exitMultiple: number | null;
   impliedFutureMarketCap: number | null;
   impliedMultipleVsToday: number | null;
+  requiredRevenue: number | null;
+  requiredNetIncome: number | null;
+  requiredPe: number | null;
+  requiredEvSales: number | null;
+  requiredCagr: number | null;
   path: TenxPath;
+}
+
+export interface FinancialSeriesPoint {
+  period: string;
+  periodType: "FY" | "Q";
+  revenue?: number | null;
+  operatingIncome?: number | null;
+  netIncome?: number | null;
+  cfo?: number | null;
+  fcf?: number | null;
+  dilutedShares?: number | null;
+  debt?: number | null;
+  ppe?: number | null;
+  epsDiluted?: number | null;
+  investedCapital?: number | null;
+}
+
+export interface FinancialSeriesProvenance {
+  period: string;
+  sourceTier?: SourceTier;
+  sourceName?: string;
+  sourceUrl?: string;
+  evidenceId?: string;
+  asOf?: string;
+}
+
+export interface FinancialSeries {
+  points: FinancialSeriesPoint[];
+  provenance?: FinancialSeriesProvenance[];
 }
 
 export interface FinancialSnapshot {
@@ -228,6 +262,9 @@ export interface ResearchQuote {
     opPrior?: number | null;
     omChange?: number | null;
     nm?: number | null;
+    series?: FinancialSeries | null;
+    investedCapital?: number | null;
+    goingConcernEvidence?: boolean;
     statementBasis?: "연결" | "별도" | string | null;
     periodType?: "Annual" | "Quarter" | "TTM" | "YTD" | string | null;
     fiscalYear?: number | null;

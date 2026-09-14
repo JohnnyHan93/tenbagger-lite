@@ -1,8 +1,6 @@
 import {
   FACTOR_META,
   FACTOR_ORDER,
-  GRADE_THRESHOLDS,
-  HARD_GATE,
   VERDICT_BY_GRADE,
   type FactorCode,
   type Grade,
@@ -10,9 +8,12 @@ import {
   type Verdict,
 } from "../scoring/config.ts";
 import { applyCoverage, weightedObserved } from "./coverage.ts";
+import { getCriteria } from "./criteria/active.ts";
+import type { XBaggerCriteria } from "./criteria/types.ts";
+import { f10FromMath } from "../tenx/calculator.ts";
 import type { TenxMath, TenxScenario } from "../types.ts";
 
-export const XBG_VERSION = "XBG-v2.0";
+export const XBG_VERSION = "XBG-v2.1";
 
 export const X_IDS: Record<FactorCode, string> = {
   F1: "X01",
@@ -42,6 +43,28 @@ export interface XFactor {
   status: "SCORED" | "NA" | "OVERRIDE";
 }
 
+export interface TrustSignals {
+  management?: boolean;
+  disclosure?: boolean;
+  auditGoingConcern?: boolean;
+}
+
+export interface SurvivalEvidence {
+  fcf?: number | null;
+  cfo?: number | null;
+  cash?: number | null;
+  debt?: number | null;
+  runwayYears?: number | null;
+}
+
+export interface CustomerEvidence {
+  named?: boolean;
+  paid?: boolean;
+  repeat?: boolean;
+  retention?: boolean;
+  model?: "b2b" | "b2c" | "unknown";
+}
+
 export interface XGates {
   trust: "PASS" | "FAIL" | "RESEARCH REQUIRED";
   survival: "PASS" | "FAIL" | "RESEARCH REQUIRED";
@@ -50,7 +73,7 @@ export interface XGates {
 }
 
 export interface XBaggerResult {
-  version: typeof XBG_VERSION;
+  version: string;
   observedWeighted: number;
   availableWeight: number;
   normalizedScore: number;
@@ -64,19 +87,12 @@ export interface XBaggerResult {
   tenxMath: TenxMath | null;
   tenxScenarios: TenxScenario[];
   tenxFeasibility: TenxFeasibility;
+  f10MathComplete: boolean;
+  trustSignals: TrustSignals;
   status: "COMPLETE" | "PARTIAL" | "RESEARCH REQUIRED";
 }
 
-function gradeOf(score: number): Grade {
-  if (score >= GRADE_THRESHOLDS.S) return "S";
-  if (score >= GRADE_THRESHOLDS.A) return "A";
-  if (score >= GRADE_THRESHOLDS.B) return "B";
-  if (score >= GRADE_THRESHOLDS.C) return "C";
-  if (score >= GRADE_THRESHOLDS.D) return "D";
-  return "F";
-}
-
-export function scoreXBagger(input: {
+export interface XBaggerInput {
   factors: Array<{
     code: FactorCode;
     score: number | null;
@@ -89,12 +105,76 @@ export function scoreXBagger(input: {
   tenxScenarios: TenxScenario[];
   tenxFeasibility: TenxFeasibility;
   trustFail?: boolean;
-}): XBaggerResult {
+  trustSignals?: TrustSignals;
+  survivalEvidence?: SurvivalEvidence;
+  customerEvidence?: CustomerEvidence;
+}
+
+function gradeOf(score: number, t: XBaggerCriteria["gradeThresholds"]): Grade {
+  if (score >= t.S) return "S";
+  if (score >= t.A) return "A";
+  if (score >= t.B) return "B";
+  if (score >= t.C) return "C";
+  if (score >= t.D) return "D";
+  return "F";
+}
+
+function survivalGate(
+  f7: number | null,
+  ev: SurvivalEvidence | undefined,
+  min: number,
+): XGates["survival"] {
+  const cash = ev?.cash ?? null;
+  const fcf = ev?.fcf ?? null;
+  const cfo = ev?.cfo ?? null;
+  const runway = ev?.runwayYears ?? null;
+  const netCash = cash != null && ev?.debt != null ? cash >= ev.debt : cash != null && cash > 0 && (ev?.debt ?? 0) === 0;
+  const cashflowOk = (fcf != null && fcf > 0) || (cfo != null && cfo > 0);
+  const distress =
+    (runway != null && runway < 1) ||
+    (fcf != null && fcf < 0 && cash != null && cash <= 0) ||
+    (f7 != null && f7 <= 0);
+  if (distress) return "FAIL";
+  const complete = cashflowOk && (netCash || (runway != null && runway >= 2) || (f7 != null && f7 >= min));
+  if (complete && (f7 == null || f7 >= min)) return "PASS";
+  if (f7 == null || !cashflowOk) return "RESEARCH REQUIRED";
+  if (f7 < min) return "FAIL";
+  return "RESEARCH REQUIRED";
+}
+
+function customerGate(
+  f6: number | null,
+  ev: CustomerEvidence | undefined,
+  min: number,
+): XGates["customer"] {
+  const named = Boolean(ev?.named);
+  const paid = Boolean(ev?.paid);
+  const repeat = Boolean(ev?.repeat);
+  const retention = Boolean(ev?.retention);
+  const validated = named || paid || repeat || retention;
+  if (!validated) {
+    if (f6 == null) return "RESEARCH REQUIRED";
+    return "WATCHLIST";
+  }
+  if (f6 == null) return "RESEARCH REQUIRED";
+  if (f6 < min) return "WATCHLIST";
+  return "PASS";
+}
+
+export function scoreXBagger(input: XBaggerInput, criteria?: XBaggerCriteria): XBaggerResult {
+  const spec = criteria ?? getCriteria().engines.xbagger;
+  const mathOk = Boolean(input.tenxMath && input.tenxMath.currentRevenue != null && input.tenxScenarios.length > 0);
+  const mathF10 = f10FromMath(mathOk ? input.tenxMath : null, input.tenxScenarios);
   const byCode = new Map(input.factors.map((f) => [f.code, f]));
   const factors: XFactor[] = FACTOR_ORDER.map((code) => {
     const row = byCode.get(code);
-    const weight = FACTOR_META[code].weight;
-    const score = row?.score ?? null;
+    const weight = spec.weights[code];
+    let score = row?.score ?? null;
+    let reason = row?.reason ?? "자료 없음. N/A.";
+    if (code === "F10" && !row?.override) {
+      score = mathF10.score;
+      reason = mathF10.reason;
+    }
     return {
       id: X_IDS[code],
       code,
@@ -104,27 +184,32 @@ export function scoreXBagger(input: {
       weightedScore: score == null ? null : (score / 10) * weight,
       coverage: score == null ? 0 : 1,
       confidence: row?.confidence ?? (score == null ? "Low" : "Medium"),
-      reason: row?.reason ?? "자료 없음. N/A.",
+      reason,
       calculation: score == null ? "NA" : `${score}/10 × ${weight}`,
       evidenceIds: row?.evidenceIds ?? [],
-      status: row?.override ? "OVERRIDE" : score == null ? "NA" : "SCORED",
+      status: row?.override && score != null ? "OVERRIDE" : score == null ? "NA" : "SCORED",
     };
   });
 
   const w = weightedObserved(factors);
-  const cov = applyCoverage(w.normalized, w.coverage);
-  let grade = gradeOf(cov.adjusted);
+  const cov = applyCoverage(w.normalized, w.coverage, spec.coverage);
+  let grade = gradeOf(cov.adjusted, spec.gradeThresholds);
   let verdict = VERDICT_BY_GRADE[grade];
 
   const f6 = factors.find((f) => f.code === "F6")?.score ?? null;
   const f7 = factors.find((f) => f.code === "F7")?.score ?? null;
   const f10 = factors.find((f) => f.code === "F10")?.score ?? null;
+  const trustSignals: TrustSignals = {
+    management: input.trustFail ? true : input.trustSignals?.management,
+    disclosure: input.trustSignals?.disclosure,
+    auditGoingConcern: input.trustSignals?.auditGoingConcern,
+  };
 
   const gates: XGates = {
-    trust: input.trustFail ? "FAIL" : "PASS",
-    survival: f7 == null ? "RESEARCH REQUIRED" : f7 < HARD_GATE.survivalMin ? "FAIL" : "PASS",
-    tenx: f10 == null ? "RESEARCH REQUIRED" : f10 < HARD_GATE.tenxMin ? "FAIL" : "PASS",
-    customer: f6 == null ? "RESEARCH REQUIRED" : f6 < HARD_GATE.customerMin ? "WATCHLIST" : "PASS",
+    trust: input.trustFail || trustSignals.auditGoingConcern ? "FAIL" : "PASS",
+    survival: survivalGate(f7, input.survivalEvidence, spec.hardGates.survivalMin),
+    tenx: !mathOk || f10 == null ? "RESEARCH REQUIRED" : f10 < spec.hardGates.tenxMin ? "FAIL" : "PASS",
+    customer: customerGate(f6, input.customerEvidence, spec.hardGates.customerMin),
   };
 
   if (gates.trust === "FAIL" || gates.survival === "FAIL" || gates.tenx === "FAIL") {
@@ -135,7 +220,7 @@ export function scoreXBagger(input: {
   }
 
   return {
-    version: XBG_VERSION,
+    version: spec.version,
     observedWeighted: w.observed,
     availableWeight: w.available,
     normalizedScore: w.normalized,
@@ -149,6 +234,8 @@ export function scoreXBagger(input: {
     tenxMath: input.tenxMath,
     tenxScenarios: input.tenxScenarios,
     tenxFeasibility: input.tenxFeasibility,
+    f10MathComplete: mathOk,
+    trustSignals,
     status: cov.status,
   };
 }

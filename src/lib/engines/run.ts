@@ -10,6 +10,7 @@ import { scoreOversold } from "./oversold.ts";
 import { scoreQuality } from "./quality.ts";
 import { scoreLenses } from "./lenses.ts";
 import { researchPriority, strategyTags } from "./matrix.ts";
+import { criteriaProvenance, getCriteria } from "./criteria/index.ts";
 import type { Snapshot } from "../domain/snapshot.ts";
 import type { FactorCode } from "../scoring/config.ts";
 import type { AdapterName } from "../research/identity.ts";
@@ -64,50 +65,93 @@ function finishSnapshot(input: {
       opPrior: input.quote.extras?.opPrior ?? null,
       omChange: input.quote.extras?.omChange ?? null,
       nm: input.quote.extras?.nm ?? null,
+      series: input.quote.extras?.series ?? null,
+      investedCapital: input.quote.extras?.investedCapital ?? null,
+      goingConcernEvidence: input.quote.extras?.goingConcernEvidence ?? false,
       ...input.extras,
     },
   });
 
+  const pack = getCriteria();
+  const fcf = input.quote.financials.fcf;
+  const cash = input.quote.financials.cash;
+  const op = input.quote.financials.operatingIncomeTtm;
+  const burn = Math.max(0, -(fcf ?? 0), op != null && op < 0 ? -op : 0);
+  const runwayYears = burn > 0 && cash != null && cash > 0 ? cash / burn : null;
+  const named = input.draft.evidences.some((e) => /customer|고객|named/i.test(`${e.title ?? ""} ${e.evidence}`))
+    || input.draft.factors.find((f) => f.code === "F6")?.found
+    || input.draft.factors.find((f) => f.code === "F6")?.summary?.includes("고객");
+  const f6summary = input.draft.factors.find((f) => f.code === "F6")?.summary ?? "";
+  const f6found = input.draft.factors.find((f) => f.code === "F6")?.found ?? "";
+  const customerEvidence = {
+    named: Boolean(named && !/고객명 없음|매출만/.test(`${f6summary} ${f6found}`)),
+    paid: /유료|paid|repeat|갱신|수주/i.test(f6summary),
+    repeat: /repeat|반복|갱신|수주/i.test(f6summary),
+    retention: /retention|구독|subscriber/i.test(f6summary),
+    model: "unknown" as const,
+  };
+
   let x;
   try {
-    x = scoreXBagger({
-      factors: input.draft.factors.map((f) => ({
-        code: f.code as FactorCode,
-        score: f.score,
-        reason: f.summary,
-        confidence: f.confidence,
-        evidenceIds: input.draft.evidences.filter((e) => e.factorCode === f.code).map((e) => e.id),
-      })),
-      tenxMath: input.draft.tenxMath ?? null,
-      tenxScenarios: input.draft.tenxScenarios,
-      tenxFeasibility: input.draft.tenxFeasibility,
-      trustFail: input.draft.redFlags.some((f) => f.flagType === "MANAGEMENT" && f.hardStop),
-    });
+    x = scoreXBagger(
+      {
+        factors: input.draft.factors.map((f) => ({
+          code: f.code as FactorCode,
+          score: f.score,
+          reason: f.summary,
+          confidence: f.confidence,
+          evidenceIds: input.draft.evidences.filter((e) => e.factorCode === f.code).map((e) => e.id),
+        })),
+        tenxMath: input.draft.tenxMath ?? null,
+        tenxScenarios: input.draft.tenxScenarios,
+        tenxFeasibility: input.draft.tenxFeasibility,
+        trustFail: input.draft.redFlags.some((f) => f.flagType === "MANAGEMENT" && f.hardStop),
+        trustSignals: {
+          management: input.draft.redFlags.some((f) => f.flagType === "MANAGEMENT" && f.hardStop),
+          auditGoingConcern: Boolean(input.quote.extras?.goingConcernEvidence),
+        },
+        survivalEvidence: {
+          fcf: input.quote.financials.fcf,
+          cfo: input.quote.financials.cfo ?? derived.cfo,
+          cash: input.quote.financials.cash,
+          debt: input.quote.financials.totalDebt,
+          runwayYears,
+        },
+        customerEvidence,
+      },
+      pack.engines.xbagger,
+    );
   } catch {
-    x = scoreXBagger({
-      factors: input.draft.factors.map((f) => ({
-        code: f.code as FactorCode,
-        score: null,
-        reason: "X-Bagger provider error — N/A",
-      })),
-      tenxMath: null,
-      tenxScenarios: input.draft.tenxScenarios,
-      tenxFeasibility: input.draft.tenxFeasibility,
-    });
+    x = scoreXBagger(
+      {
+        factors: input.draft.factors.map((f) => ({
+          code: f.code as FactorCode,
+          score: null,
+          reason: "X-Bagger provider error — N/A",
+        })),
+        tenxMath: null,
+        tenxScenarios: input.draft.tenxScenarios,
+        tenxFeasibility: input.draft.tenxFeasibility,
+      },
+      pack.engines.xbagger,
+    );
   }
 
   let o;
   try {
-    o = scoreOversold(derived);
+    o = scoreOversold(derived, pack.engines.oversold);
   } catch {
-    o = scoreOversold({ ...derived, revenueYoY: null, evSales: null, pe: null, pb: null, drawdown52w: null, netDebt: null, cash: null, fcf: null });
+    o = scoreOversold(
+      { ...derived, revenueYoY: null, evSales: null, pe: null, pb: null, drawdown52w: null, netDebt: null, cash: null, fcf: null },
+      pack.engines.oversold,
+    );
   }
 
   let q;
   try {
-    q = scoreQuality(derived);
+    q = scoreQuality(derived, pack.engines.quality70);
   } catch {
-    q = scoreQuality(derived);
+    q = scoreQuality(derived, pack.engines.quality70);
   }
 
   const lenses = scoreLenses({ m: derived, x, o, q });
@@ -159,6 +203,7 @@ function finishSnapshot(input: {
     statementBasis: input.quote.extras?.statementBasis ?? null,
     periodType: input.quote.extras?.periodType ?? null,
     fiscalYear: input.quote.extras?.fiscalYear ?? null,
+    criteria: criteriaProvenance(pack),
   };
 }
 
@@ -242,6 +287,7 @@ export function buildQueue(snapshots: Snapshot[]): Array<{
 }> {
   const items: ReturnType<typeof buildQueue> = [];
   for (const s of snapshots) {
+    if (!s?.xbagger?.factors || !s.oversold || !s.quality?.factors) continue;
     for (const f of s.xbagger.factors) {
       if (f.score == null) {
         const gateBoost = ["F7", "F10", "F6", "F1"].includes(f.code) ? 20 : 0;

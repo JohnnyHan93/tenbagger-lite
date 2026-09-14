@@ -7,7 +7,7 @@ import { emptyFinancials } from "./quote-parse.ts";
 import { FACTOR_ORDER } from "../scoring/config.ts";
 import { defaultScenarios } from "../tenx/calculator.ts";
 import { SAMPLE_RESEARCH_100, SAMPLE_RESEARCH_100_UNIVERSE_ID } from "../sample-research-100.ts";
-import { remainingUniverseJobs, EXECUTE_FULL_100, FULL100_EXECUTION_DISABLED, PREFLIGHT_FAILED } from "./jobs.ts";
+import { remainingUniverseJobs, EXECUTE_FULL_100, FULL100_EPHEMERAL, PREFLIGHT_FAILED } from "./jobs.ts";
 import {
   createProductionDeps,
   processFull100Chunk,
@@ -69,6 +69,7 @@ function draftFor(ticker: string): ResearchDraft {
     sharesOutstanding: 10,
   };
   const scenarios = defaultScenarios(1e9, fin);
+  if (!scenarios) throw new Error("fixture must have revenue");
   return {
     quote: {
       ticker,
@@ -171,8 +172,8 @@ function queueDownSql(inner: Sql): Sql {
 }
 
 describe("production Full100 start wiring", () => {
-  it("keeps EXECUTE_FULL_100 off", () => {
-    assert.equal(EXECUTE_FULL_100, false);
+  it("authorizes EXECUTE_FULL_100 and keeps the v2.4 queue operator locked", () => {
+    assert.equal(EXECUTE_FULL_100, true);
   });
 
   it("keeps v2.4 operator locked so Full100 cannot start again", async () => {
@@ -190,7 +191,7 @@ describe("production Full100 start wiring", () => {
     assert.equal((await listResearchRuns()).length, before);
   });
 
-  it("flag off creates 0 jobs and does not load workspace", async () => {
+  it("PGLite refuses startFull100FromWorkspace unless executeEnabled override", async () => {
     let loaded = false;
     let probed = false;
     const before = (await listResearchRuns()).length;
@@ -205,7 +206,7 @@ describe("production Full100 start wiring", () => {
       },
     });
     assert.equal(res.ok, false);
-    if (!res.ok) assert.equal(res.error, FULL100_EXECUTION_DISABLED);
+    if (!res.ok) assert.equal(res.error, FULL100_EPHEMERAL);
     assert.equal(loaded, false);
     assert.equal(probed, false);
     assert.equal((await listResearchRuns()).length, before);
@@ -473,7 +474,7 @@ describe("chunk pause / cancel / DB-authoritative status", () => {
     assert.equal(completed.length, 2);
   });
 
-  it("flag-off chunk processor does not research", async () => {
+  it("PGLite chunk processor does not research without executeEnabled override", async () => {
     const researched: string[] = [];
     const chunk = await processFull100Chunk("missing", {
       deps: createProductionDeps({
@@ -484,7 +485,7 @@ describe("chunk pause / cancel / DB-authoritative status", () => {
       }),
     });
     assert.equal(chunk.ok, false);
-    assert.equal(chunk.skipped, FULL100_EXECUTION_DISABLED);
+    assert.equal(chunk.skipped, FULL100_EPHEMERAL);
     assert.equal(researched.length, 0);
   });
 });

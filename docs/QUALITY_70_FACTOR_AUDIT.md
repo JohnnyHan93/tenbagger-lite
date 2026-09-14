@@ -1,4 +1,4 @@
-# Quality 70 Factor Audit — MFC70-v1.2
+# Quality 70 Factor Audit — MFC70-v1.3
 
 Canonical count: **70**. Duplicate IDs: **none**. Wrong proxies: **0**. Missing: **0**.
 
@@ -15,8 +15,8 @@ Canonical count: **70**. Duplicate IDs: **none**. Wrong proxies: **0**. Missing:
 | Q19 FCF Margin | FCF | N/A |
 | Q24 FCF vs NI | FCF | N/A |
 | Q57 External funding | FCF | N/A |
-| Q20 3Y FCF | MANUAL_ONLY | N/A (not 1Y FCF) |
-| Q21 CFO Growth | MANUAL_ONLY | N/A |
+| Q20 3Y FCF | FinancialSeries FY FCF × 3 | N/A if < 3 FY (not 1Y FCF) |
+| Q21 CFO Growth | FinancialSeries FY CFO | N/A |
 | Q32 Cash Interest Coverage | MANUAL_ONLY | N/A |
 | Q41 Cash ROIC | MANUAL_ONLY | not a copy of ROIC |
 
@@ -24,8 +24,8 @@ Wrong Proxy remains **0** after this repair.
 
 | Status | Count |
 |---|---|
-| IMPLEMENTED | 38 |
-| MANUAL_ONLY | 32 |
+| IMPLEMENTED | 42 |
+| MANUAL_ONLY | 28 |
 | N/A_BY_DESIGN (factor-level) | 0 |
 | MISSING | 0 |
 | WRONG_PROXY | 0 |
@@ -64,7 +64,7 @@ Evidence: auto factors use derived-metric provenance; MANUAL_ONLY requires TIER_
 | Q04 | EPS Growth | Growth | Conditional | All | diluted EPS series | YoY | MANUAL | none | MANUAL_ONLY | **removed OP proxy** | invalid | 10-K EPS | Q04 |
 | Q05 | Growth Acceleration | Growth | Core | All | YoY vs 3Y CAGR | delta | band ≥10/3/0/−5pp | yoy−cagr3 | IMPLEMENTED | No | — | filings | suite |
 | Q06 | Profit Growth Leverage | Growth | Core | All | OP growth, rev growth | OP−rev | band ≥10/0/−5pp | delta | IMPLEMENTED | No | — | filings | suite |
-| Q07 | Sequential Growth | Growth | Conditional | All | quarterly revenue | QoQ | MANUAL | none | MANUAL_ONLY | No | — | 10-Q | suite |
+| Q07 | Sequential Growth | Growth | Conditional | All | 2 comparable Q revenue | QoQ | band | FinancialSeries Q | IMPLEMENTED | No | — | 10-Q | suite |
 | Q08 | Organic vs M&A | Growth | Conditional | All | organic disclosure | organic % | MANUAL | none | MANUAL_ONLY | No | — | IR/10-K | suite |
 | Q09 | Gross Margin | Profitability | Core | not financial/REIT | GM | level | band ≥70/50/35/20/0% | derived.gm | IMPLEMENTED | No | — | filings | suite |
 | Q10 | Operating Margin | Profitability | Core | All | OM | level | band ≥25/15/8/2/0% | derived.om | IMPLEMENTED | No | — | filings | suite |
@@ -77,8 +77,8 @@ Evidence: auto factors use derived-metric provenance; MANUAL_ONLY requires TIER_
 | Q17 | CFO Margin | Cash | Core | All | CFO, revenue | CFO/rev | band ≥20/12/5/0% | derived.cfoMargin | IMPLEMENTED | No | — | CFS | suite |
 | Q18 | Cash Conversion | Cash | Core | All | CFO, NI | CFO/NI | band ≥1.1/0.9/0.7/0.4 | derived.cashConversion | IMPLEMENTED | No | — | CFS | suite |
 | Q19 | FCF Margin | Cash | Core | All | FCF, revenue | FCF/rev | band ≥15/8/3/0% | derived.fcfMargin | IMPLEMENTED | No | — | CFS | suite |
-| Q20 | 3Y FCF | Cash | Conditional | All | 3Y FCF | 3Y sum/sign | MANUAL | none | MANUAL_ONLY | **removed 1Y FCF** | invalid | CFS 3Y | suite |
-| Q21 | CFO Growth | Cash | Conditional | All | CFO series | YoY | MANUAL | none | MANUAL_ONLY | No | — | CFS | suite |
+| Q20 | 3Y FCF | Cash | Conditional | All | 3Y FCF | 3Y span | band | FinancialSeries FY FCF | IMPLEMENTED | **removed 1Y FCF** | invalid | CFS 3Y | suite |
+| Q21 | CFO Growth | Cash | Conditional | All | CFO series | YoY | band | FinancialSeries FY CFO | IMPLEMENTED | No | — | CFS | suite |
 | Q22 | Positive CFO Persistence | Cash | Core | All | CFO | sign | +8 / −2 | derived.cfo | IMPLEMENTED | No | — | CFS | suite |
 | Q23 | Accrual Ratio | Cash | Diagnostic | All | NI−CFO / assets | accrual | inv-band (diag) | derived.accrual | IMPLEMENTED | No | — | CFS | diag |
 | Q24 | FCF vs NI | Cash | Core | All | FCF, NI | FCF/NI | band ≥0.9/0.6/0.3 | ratio | IMPLEMENTED | No | — | CFS | suite |
@@ -94,7 +94,7 @@ Evidence: auto factors use derived-metric provenance; MANUAL_ONLY requires TIER_
 | Q34 | Debt Concentration | Balance Sheet | Conditional | All | maturity schedule | ST share | MANUAL | none | MANUAL_ONLY | No | — | notes | suite |
 | Q35 | Debt Growth Gap | Balance Sheet | Conditional | All | debt series | Δdebt − Δrev | MANUAL | none | MANUAL_ONLY | No | — | BS | suite |
 | Q36 | Cash / Assets | Balance Sheet | Core | All | cash, assets | ratio | band ≥30/15/8/3% | derived.cashToAssets | IMPLEMENTED | No | — | BS | suite |
-| Q37 | Invested Capital Turnover | Capital Efficiency | Core | All | revenue, IC | turnover | band (asset turnover proxy labeled as such) | derived.assetTurnover | IMPLEMENTED | asset turnover **labeled proxy** | valid only as IC-unavailable stand-in; not hidden | filings | suite |
+| Q37 | Invested Capital Turnover | Capital Efficiency | Core | All | revenue, IC | Rev/IC | band | derived.investedCapital | IMPLEMENTED | **no AT copy** | invalid as proxy | filings | suite |
 | Q38 | Incremental ROIC | Capital Efficiency | Conditional | not banks | ΔNOPAT, ΔIC | iROIC | MANUAL | none | MANUAL_ONLY | No | — | filings | suite |
 | Q39 | Asset Turnover | Capital Efficiency | Core | All | revenue, assets | AT | band ≥1.5/0.9/0.5/0.25 | derived.assetTurnover | IMPLEMENTED | No | — | filings | suite |
 | Q40 | PPE Turnover | Capital Efficiency | Conditional | saas/financial C | revenue, PPE | rev/PPE | MANUAL | none | MANUAL_ONLY | No | — | BS | suite |
@@ -111,7 +111,7 @@ Evidence: auto factors use derived-metric provenance; MANUAL_ONLY requires TIER_
 | Q51 | Contract Liability Growth | Reinvestment | Conditional | saas A else C | deferred revenue | YoY | MANUAL | none | MANUAL_ONLY | No | — | BS | suite |
 | Q52 | Customer Concentration | Shareholder | Core | All | top-customer % | share | inv-band | derived.customerConcentration | IMPLEMENTED | No | — | 10-K | suite |
 | Q53 | Share Count Growth | Shareholder | Core | All | diluted shares | YoY | inv-band | derived.shareGrowth | IMPLEMENTED | No | — | filings | suite |
-| Q54 | 3Y Dilution | Shareholder | Core | All | 3Y diluted shares | 3Y CAGR | MANUAL | none | MANUAL_ONLY | **removed 1Y shares** | invalid | filings | suite |
+| Q54 | 3Y Dilution | Shareholder | Core | All | 3Y diluted shares | 3Y span | inv-band | FinancialSeries FY shares | IMPLEMENTED | **removed 1Y shares** | invalid | filings | suite |
 | Q55 | Potential Dilution | Shareholder | Conditional | All | options, convertibles | potential % | MANUAL | none | MANUAL_ONLY | No | — | notes | suite |
 | Q56 | EPS vs NI Gap | Shareholder | Diagnostic | All | EPS vs NI growth | gap | MANUAL | none | MANUAL_ONLY | No | — | P&L | diag |
 | Q57 | External Funding Dependence | Shareholder | Core | All | FCF sign | +FCF 8 / − 3 | derived.fcf | IMPLEMENTED | No | — | CFS | suite |
@@ -127,8 +127,8 @@ Evidence: auto factors use derived-metric provenance; MANUAL_ONLY requires TIER_
 | Q67 | Off-balance Commitments | Accounting | Diagnostic | All | commitments | flag | MANUAL | none | MANUAL_ONLY | No | — | notes | diag |
 | Q68 | Pension / Lease | Accounting | Diagnostic | All | pension, lease | size | MANUAL | none | MANUAL_ONLY | No | — | notes | diag |
 | Q69 | Restatement | Accounting | Diagnostic | All | restatement flag | flag | MANUAL | none | MANUAL_ONLY | No | — | 8-K/10-K | diag |
-| Q70 | Going Concern | Accounting | Diagnostic | All | cash, FCF | liquidity stress | 8 vs 2 | cash+FCF heuristic | IMPLEMENTED | No | — | BS/CFS | diag |
+| Q70 | Going Concern | Accounting | Diagnostic | All | audit/filing GC evidence | evidence | 2 if present else N/A | extras.goingConcernEvidence | IMPLEMENTED | **removed liquidity proxy** | invalid | 10-K/감사 | diag |
 
-Q37 uses asset turnover **explicitly labeled** as invested-capital-unavailable stand-in. It is not a silent wrong proxy (Cash ROIC / EPS / 3Y FCF class). If IC is later available, bump model version and replace.
+Q37 is N/A without invested capital. Asset turnover stays on Q39 only. Q70 is N/A without going-concern evidence; liquidity stress is an operational flag, not a Quality factor.
 
 See `QUALITY_FACTORS` in `src/lib/engines/quality.ts` for live bands.

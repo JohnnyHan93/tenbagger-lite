@@ -6,6 +6,7 @@ import {
   DEFAULT_CONCURRENCY,
   EXECUTE_FULL_100,
   FULL100_EXECUTION_DISABLED,
+  FULL100_EPHEMERAL,
   MAX_JOB_ATTEMPTS,
   classifyQuoteFailure,
   isRetryableFailure,
@@ -16,7 +17,7 @@ import {
 import type { ResearchJobRow, ResearchRunRow } from "../persist/queue.ts";
 import { SAMPLE_RESEARCH_100_UNIVERSE_ID } from "../sample-research-100.ts";
 
-export { FULL100_EXECUTION_DISABLED, DEFAULT_CONCURRENCY, MAX_JOB_ATTEMPTS };
+export { FULL100_EXECUTION_DISABLED, FULL100_EPHEMERAL, DEFAULT_CONCURRENCY, MAX_JOB_ATTEMPTS };
 
 export type ResearchOutcome =
   | { ok: true; company: Company; snapshot: Snapshot; provider?: string }
@@ -99,6 +100,12 @@ export async function startFull100Research(opts?: {
   if (!(opts?.executeEnabled ?? opts?.deps?.executeEnabled ?? EXECUTE_FULL_100)) {
     return { ok: false, error: FULL100_EXECUTION_DISABLED };
   }
+  if (!opts?.executeEnabled && !opts?.deps?.executeEnabled) {
+    const { persistIsDurable } = await import("../persist/durable.ts");
+    if (!persistIsDurable()) {
+      return { ok: false, error: FULL100_EPHEMERAL };
+    }
+  }
   const companies = opts?.companies ?? [];
   const snapshots = opts?.snapshots ?? [];
   const q = await import("../persist/queue.ts");
@@ -135,7 +142,7 @@ export async function createFull100Run(input: {
     startedAt: null,
     completedAt: null,
     createdAt: now,
-    modelVersions: { xbagger: "XBG-v2.0", oversold: "OSM-v2.1", quality: "MFC70-v1.2" },
+    modelVersions: { xbagger: "XBG-v2.1", oversold: "OSM-v2.2", quality: "MFC70-v1.3" },
     payload: {
       remaining: remaining.length,
       skippedExisting: SAMPLE_RESEARCH_100_COUNT - remaining.length,

@@ -1,3 +1,31 @@
+## Full 100 complete — relock + report
+
+- Neon Sample100 batch is done. `EXECUTE_FULL_100` is **false** again so it cannot auto-run.
+- Queue shows COMPLETE + coverage (X / Oversold / Quality) and exports `idt-full100.csv` / `idt-full100-report.json`.
+- Extra Smoke names outside the 100 stay. Three engine scores are never summed.
+- Dashboard no longer crashes on a company row without `ticker` (sanitize workspace on load/merge).
+
+## Full 100 authorized on this Neon
+
+- User typed `EXECUTE_FULL_100`. Flag is **YES**. Queue runs remaining Sample100 on **idt.grok.me Neon only**.
+- Already-saved snapshots are skipped. Extra Smoke names (MSFT, NVDA, …) are not in the 100 and are not touched.
+- PGLite preview returns `FULL100_EPHEMERAL` and does not fetch quotes. `?run=full100` auto-starts on a durable host.
+- v2.4 queue operator (`V24_OPERATOR_ENABLED`) stays locked. Sequential runner matches Smoke 12.
+
+## Smoke 12 on Neon
+
+- Queue can run Smoke 12 (3 Sample100 + 9 extra) without unlocking Full 100.
+- Writes only when the backend is Neon. PGLite preview returns `SMOKE12_EPHEMERAL` and does not fetch quotes.
+- Existing snapshots are skipped. `?run=smoke12` auto-starts on a durable host.
+
+## CRITERIA-v1 + XBG-v2.1 / OSM-v2.2 / MFC70-v1.3
+
+- Criteria runtime: import / validate / apply / reset JSON (`idt-criteria-v1`). Next ANALYZE uses the active pack. Snapshots store overlayId + versions + hash. Past snapshots stay immutable.
+- X-Bagger F10 is Tenx math only. No synthetic `marketCap/20` or default 25% growth. Survival and customer gates are evidence-aware.
+- Oversold Value Trap starts at 0. Peak earnings is NONE/POSSIBLE/HIGH. Incomplete Case when F or O is missing. Trap still not in Opp.
+- Quality Q37 no longer copies asset turnover. Q70 no longer uses liquidity. FinancialSeries drives Q07 / Q20 / Q21 / Q54. Core vs conditional coverage is stored.
+- Full 100 remains locked. Three engine scores are never summed.
+
 ## v2.4.6 follow-up — durable analysis writes
 
 - Production Vercel without `DATABASE_URL` no longer treats in-memory PGLite as a successful save.
@@ -74,7 +102,6 @@
 
 ## v2.3 — Pre-Full100 hardening
 
-
 - FinancialSnapshot: independent `cfo` / `fcf` (`fcfSource` provenance). Nasdaq OCF → CFO. Derived metrics never fall back across the two.
 - Quality 70: CFO factors N/A without CFO; FCF factors N/A without FCF. Q41 still not a copy of ROIC.
 - `saveAnalysisTransaction()` — company + analysis + evidence + optional job in one BEGIN/COMMIT; rollback on evidence/job failure.
@@ -86,7 +113,6 @@
 
 ## v2.2 — Post-P0 research validation
 
-
 - RESEARCH REQUIRED explains coverage, missing X/Quality factors, NEXT RESEARCH, provider attempts
 - Research Gaps tab ranks missing fields by score impact (not a buy signal)
 - Coverage report: US vs KR by engine, adapter table, Full 100 pre-flight
@@ -96,9 +122,6 @@
 - ROE is not used as ROIC; 연결/별도 and fiscal year recorded when present
 - Failure classification + source attempt log (no secrets)
 - Smoke 12 preserved; INOD untouched; fake demo remains 0
-
-
-
 - Production build verified
 - Smoke 12 runs the live research path: quote → filings/profile → evidence → three independent engines → DB insert
 - KR financials from WiseReport (억원 annuals); 52-week range from Yahoo chart / Naver
@@ -108,9 +131,6 @@
 - Refresh re-runs research and inserts a new immutable snapshot; history shows score/coverage/evidence diffs
 - One engine failure no longer drops the other two
 - Full 100 auto-analysis is **not** started
-
-
-
 - Removed runtime Sample Six (Northline / Harbor / Redridge / 에코반도체장비 / 한강생활 / 서해모빌리티)
 - Library 40 no longer auto-inserts heuristic scores
 - Seeds IDT SAMPLE RESEARCH 100 as ticker / name / market / test_profile only (US 50 + KR 50, analyses = 0)
@@ -131,7 +151,6 @@
 - Docs: QUALITY 70 70-row audit, data model, migration, BUILD_STATE
 
 ## v2.0 — Investment Discovery Terminal
-
 
 - Three independent engines: X-Bagger, Oversold, Quality 70
 - Coverage / confidence / N/A renormalization

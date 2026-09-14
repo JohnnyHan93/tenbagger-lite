@@ -2,6 +2,7 @@ import { GRADE_THRESHOLDS } from "./scoring/config.ts";
 import { latestSnapshot } from "./store.ts";
 import type { Snapshot } from "./domain/snapshot.ts";
 import type { Company } from "./types.ts";
+import { isUsableCompany, isUsableSnapshot } from "./bootstrap.ts";
 
 export interface RankRow {
   rank: number;
@@ -18,9 +19,10 @@ export interface RosterRow {
 
 export function rankCompanies(companies: Company[], snapshots: Snapshot[]): RankRow[] {
   return companies
+    .filter(isUsableCompany)
     .map((company) => {
       const snapshot = latestSnapshot(snapshots, company.id);
-      if (!snapshot) return null;
+      if (!isUsableSnapshot(snapshot)) return null;
       return { company, snapshot };
     })
     .filter((r): r is NonNullable<typeof r> => r !== null)
@@ -33,24 +35,26 @@ export function rankCompanies(companies: Company[], snapshots: Snapshot[]): Rank
 }
 
 export function dashboardStats(companies: Company[], snapshots: Snapshot[]) {
-  const latest = companies
+  const usable = companies.filter(isUsableCompany);
+  const latest = usable
     .map((c) => latestSnapshot(snapshots, c.id))
-    .filter((a): a is Snapshot => Boolean(a));
+    .filter((a): a is Snapshot => isUsableSnapshot(a));
   const xDeep = latest.filter((s) => s.xbagger.grade === "S" || s.xbagger.grade === "A").length;
   const qualityHigh = latest.filter((s) => (s.quality.score ?? 0) >= 70).length;
   const oversold = latest.filter((s) => (s.oversold.opportunity ?? 0) >= 6.5 && s.oversold.valueTrap < 7).length;
   const research = latest.filter((s) => s.tags.includes("RESEARCH REQUIRED")).length;
   const stale = latest.filter((s) => Date.now() - new Date(s.asOf).getTime() > 14 * 86400000).length;
-  const pending = companies.filter((c) => !latestSnapshot(snapshots, c.id)).length;
-  const us = companies.filter((c) => c.country !== "KR").length;
-  const kr = companies.filter((c) => c.country === "KR").length;
-  return { xDeep, qualityHigh, oversold, research, stale, total: companies.length, analyzed: latest.length, pending, us, kr };
+  const pending = usable.filter((c) => !latestSnapshot(snapshots, c.id)).length;
+  const us = usable.filter((c) => c.country !== "KR").length;
+  const kr = usable.filter((c) => c.country === "KR").length;
+  return { xDeep, qualityHigh, oversold, research, stale, total: usable.length, analyzed: latest.length, pending, us, kr };
 }
 
 export function rosterCompanies(companies: Company[], snapshots: Snapshot[]): RosterRow[] {
-  const scored = rankCompanies(companies, snapshots);
+  const usable = companies.filter(isUsableCompany);
+  const scored = rankCompanies(usable, snapshots);
   const scoredIds = new Set(scored.map((r) => r.company.id));
-  const pending = companies
+  const pending = usable
     .filter((c) => !scoredIds.has(c.id))
     .sort((a, b) => a.ticker.localeCompare(b.ticker));
   return [
@@ -61,10 +65,11 @@ export function rosterCompanies(companies: Company[], snapshots: Snapshot[]): Ro
 
 export function oversoldRank(companies: Company[], snapshots: Snapshot[], market: "KR" | "US") {
   return companies
+    .filter(isUsableCompany)
     .filter((c) => c.country === market)
     .map((company) => {
       const snapshot = latestSnapshot(snapshots, company.id);
-      if (!snapshot || snapshot.oversold.opportunity == null) return null;
+      if (!isUsableSnapshot(snapshot) || snapshot.oversold.opportunity == null) return null;
       return { company, snapshot };
     })
     .filter((r): r is NonNullable<typeof r> => r !== null)

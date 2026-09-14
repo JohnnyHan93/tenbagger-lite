@@ -53,7 +53,7 @@ function Page() {
                   <FeasibilityBadge value={r.snapshot.xbagger.tenxFeasibility} />
                 </td>
                 <td className="px-3 py-3 font-mono text-xs text-muted">
-                  T {r.snapshot.xbagger.gates.tenx} · S {r.snapshot.xbagger.gates.survival}
+                  T {r.snapshot.xbagger.gates?.tenx ?? "—"} · S {r.snapshot.xbagger.gates?.survival ?? "—"}
                 </td>
                 <td className="px-3 py-3 text-right font-mono">{Math.round(r.snapshot.xbagger.coverage * 100)}%</td>
               </tr>

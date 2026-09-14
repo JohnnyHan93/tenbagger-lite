@@ -25,7 +25,9 @@ export function RankingList({ rows }: { rows: RankRow[] }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {rows.map((r) => (
+          {rows.map((r) => {
+            if (!r.company?.ticker || !r.snapshot?.xbagger) return null;
+            return (
             <tr key={r.company.id}>
               <td className={FREEZE_COL}>
                 <CompanyTicker ticker={r.company.ticker} name={r.company.companyName} />
@@ -35,7 +37,8 @@ export function RankingList({ rows }: { rows: RankRow[] }) {
                 <GradeBadge grade={r.snapshot.xbagger.grade} />
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
