@@ -1,4 +1,8 @@
-# Project: IDT 투자발견
+# Project: IDT 투자발견 (Tenbagger Lite)
+
+Same project. Repo slug `tenbagger-lite`. Product name IDT 투자발견. Research home is INV-RESEARCH.
+
+Tenbagger / Oversold / Quality 70 are engines inside this app, not separate products.
 
 Non-negotiable rules:
 
