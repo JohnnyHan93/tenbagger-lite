@@ -1,3 +1,9 @@
+## v2.4.6 follow-up — durable analysis writes
+
+- Production Vercel without `DATABASE_URL` no longer treats in-memory PGLite as a successful save.
+- After each analysis commit the row is read back. Missing row → SAVE_FAILED.
+- Banner shows ephemeral backend vs Neon counts. Full 100 stays locked. Engine scores stay separate.
+
 ## v2.4.6 — Fold6 install fix
 
 - Re-signed APK (v2+v3). Public download on the live site so the phone does not save a GitHub login page as an APK.

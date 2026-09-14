@@ -4,6 +4,22 @@ import type { Snapshot } from "../domain/snapshot.ts";
 import type { Company } from "../types.ts";
 import type { AnalysisJobUpdate } from "./repo.ts";
 
+export const persistHealthFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { persistBackend, persistIsDurable } = await import("./durable.ts");
+  const backend = persistBackend();
+  let companies = 0;
+  let analyses = 0;
+  try {
+    const { getSql } = await import("../db.ts");
+    const sql = await getSql();
+    companies = Number((await sql.query<{ n: number }>("select count(*)::int as n from companies"))[0]?.n ?? 0);
+    analyses = Number((await sql.query<{ n: number }>("select count(*)::int as n from analyses"))[0]?.n ?? 0);
+  } catch {
+    /* health must still return the backend */
+  }
+  return { backend, durable: persistIsDurable(), companies, analyses };
+});
+
 export const loadWorkspaceFn = createServerFn({ method: "GET" })
   .handler(async () => {
     const { loadWorkspace } = await import("./repo.ts");
@@ -45,8 +61,9 @@ export const saveAnalysisTransactionFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { saveAnalysisTransaction } = await import("./repo.ts");
+    const { persistBackend, persistIsDurable } = await import("./durable.ts");
     await saveAnalysisTransaction(data);
-    return { ok: true as const };
+    return { ok: true as const, backend: persistBackend(), durable: persistIsDurable() };
   });
 
 export const clearWorkspaceFn = createServerFn({ method: "POST" })
