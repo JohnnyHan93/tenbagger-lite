@@ -33,6 +33,33 @@ const MSFT_FIXTURE = {
         ],
       },
       {
+        meta: { type: ["annualCapitalExpenditure"] },
+        annualCapitalExpenditure: [
+          { asOfDate: "2023-06-30", reportedValue: { raw: -28107000000 } },
+          { asOfDate: "2024-06-30", reportedValue: { raw: -44477000000 } },
+          { asOfDate: "2025-06-30", reportedValue: { raw: -64551000000 } },
+          { asOfDate: "2026-06-30", reportedValue: { raw: -115948000000 } },
+        ],
+      },
+      {
+        meta: { type: ["annualNetPPE"] },
+        annualNetPPE: [
+          { asOfDate: "2023-06-30", reportedValue: { raw: 95641000000 } },
+          { asOfDate: "2024-06-30", reportedValue: { raw: 135591000000 } },
+          { asOfDate: "2025-06-30", reportedValue: { raw: 204351000000 } },
+          { asOfDate: "2026-06-30", reportedValue: { raw: 320299000000 } },
+        ],
+      },
+      {
+        meta: { type: ["annualInvestedCapital"] },
+        annualInvestedCapital: [
+          { asOfDate: "2023-06-30", reportedValue: { raw: 220000000000 } },
+          { asOfDate: "2024-06-30", reportedValue: { raw: 260000000000 } },
+          { asOfDate: "2025-06-30", reportedValue: { raw: 310000000000 } },
+          { asOfDate: "2026-06-30", reportedValue: { raw: 380000000000 } },
+        ],
+      },
+      {
         meta: { type: ["quarterlyTotalRevenue"] },
         quarterlyTotalRevenue: [
           { asOfDate: "2025-12-31", reportedValue: { raw: 81273000000 } },
@@ -52,6 +79,9 @@ describe("Yahoo fundamentals timeseries", () => {
     assert.equal(fy.at(-1)?.revenue, 331839000000);
     assert.equal(fy.at(-1)?.fcf, 66987000000);
     assert.equal(fy.at(-1)?.cfo, 182935000000);
+    assert.equal(fy.at(-1)?.capex, -115948000000);
+    assert.equal(fy.at(-1)?.ppe, 320299000000);
+    assert.equal(fy.at(-1)?.investedCapital, 380000000000);
     assert.equal(series.points.filter((p) => p.periodType === "Q").length, 2);
     assert.ok(series.provenance?.every((p) => p.sourceTier === "TIER_2"));
   });

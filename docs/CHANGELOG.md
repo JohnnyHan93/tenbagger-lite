@@ -1,3 +1,14 @@
+## v2.4.8 — Scoring honesty XBG-v2.2 / OSM-v2.3 / MFC70-v1.4
+
+- X-Bagger: TAM·점유율·고객을 테마 키워드나 매출만으로 채점하지 않음. 3Y CAGR가 있으면 F2는 그걸 쓰고, 최근 YoY가 꺾이면 캡. 깊은 영업적자는 F3를 제한. 배수 없으면 F8은 N/A.
+- Oversold: 3Y 매출 CAGR·FCF 추세·현금전환을 펀더멘털에 반영. 최근 순이익이 3Y 고점이면 Peak earnings 가산.
+- Quality: Yahoo FY 시계열로 Q04 EPS, Q22 3FY CFO 지속, Q35 부채갭, Q38 ΔOP/ΔIC, Q40 PPE 회전, Q42 CAPEX 생산성, Q45 PPE 성장을 자동 채점. 단년 CFO로 Q22를 채우지 않음. 3Y CAGR는 FY 4점이 필요.
+- 세 엔진 점수는 합치지 않음. 과거 스냅샷은 불변. `EXECUTE_FULL_100` 잠금.
+
+## Discover fills missing quote inline
+
+- ANALYZE with no market cap no longer sends you to Manual Mode. Enter price / cap / optional financials on the same card and run.
+
 ## v2.4.7 — Sample100 complete on Neon
 
 - Full 100 + gap fill finished on `idt.grok.me` Neon. `EXECUTE_FULL_100` stays locked.

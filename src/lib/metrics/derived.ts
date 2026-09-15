@@ -1,6 +1,6 @@
 import type { FinancialSnapshot, FinancialSeries } from "../types.ts";
 import type { IndustryGroup } from "../engines/industry.ts";
-import { numericField, pointsOf, seriesTrusted } from "./series.ts";
+import { numericField, pointsOf, seriesTrusted, yoyFromFy, latestFy, omDeltaFromSeries } from "./series.ts";
 
 export interface DerivedMetrics {
   revenueTtm: number | null;
@@ -82,12 +82,11 @@ export function cagrFromSeries(
 ): number | null {
   if (!seriesTrusted(series)) return null;
   const vals = numericField(pointsOf(series, "FY"), field);
-  if (vals.length < Math.max(2, nPoints - 1)) return null;
-  const span = Math.min(nPoints, vals.length);
-  const first = vals[vals.length - span];
+  if (vals.length < nPoints) return null;
+  const first = vals[vals.length - nPoints];
   const last = vals[vals.length - 1];
   if (first == null || last == null || first <= 0 || last <= 0) return null;
-  return Math.pow(last / first, 1 / (span - 1)) - 1;
+  return Math.pow(last / first, 1 / (nPoints - 1)) - 1;
 }
 
 export function deriveMetrics(input: {
@@ -109,6 +108,11 @@ export function deriveMetrics(input: {
   const nm = x.nm ?? ratio(f.netIncomeTtm, f.revenueTtm);
   const cfo = x.cfo ?? f.cfo ?? null;
   const fcf = x.fcf ?? f.fcf ?? null;
+  const capexRaw = x.capex ?? latestFy(series, "capex");
+  const capex = capexRaw != null ? Math.abs(capexRaw) : null;
+  const investedCapital = x.investedCapital ?? latestFy(series, "investedCapital");
+  const shareGrowth = x.shareGrowth ?? yoyFromFy(series, "dilutedShares");
+  const omChange = x.omChange ?? omDeltaFromSeries(series);
   const fcfMargin = x.fcfMargin ?? ratio(fcf, f.revenueTtm);
   const cfoMargin = x.cfoMargin ?? ratio(cfo, f.revenueTtm);
   const cashConversion = x.cashConversion ?? ratio(cfo, f.netIncomeTtm);
@@ -137,7 +141,7 @@ export function deriveMetrics(input: {
     om,
     nm,
     gmChange: x.gmChange ?? null,
-    omChange: x.omChange ?? null,
+    omChange,
     fcf,
     cfo,
     fcfMargin,
@@ -153,12 +157,12 @@ export function deriveMetrics(input: {
     cashToAssets,
     stDebtToCash: x.stDebtToCash ?? null,
     shares: f.sharesOutstanding,
-    shareGrowth: x.shareGrowth ?? null,
+    shareGrowth,
     arGrowthGap: x.arGrowthGap ?? null,
     invGrowthGap: x.invGrowthGap ?? null,
     cccChange: x.cccChange ?? null,
-    capex: x.capex ?? null,
-    capexToRev: x.capexToRev ?? ratio(x.capex ?? null, f.revenueTtm),
+    capex,
+    capexToRev: x.capexToRev ?? ratio(capex, f.revenueTtm),
     rdToRev: x.rdToRev ?? null,
     rdGrowth: x.rdGrowth ?? null,
     backlogGrowth: x.backlogGrowth ?? null,
@@ -179,7 +183,7 @@ export function deriveMetrics(input: {
     industryGroup: input.industryGroup,
     high52w: x.high52w ?? null,
     price: input.price,
-    investedCapital: x.investedCapital ?? null,
+    investedCapital,
     goingConcernEvidence: Boolean(x.goingConcernEvidence),
     series: x.series ?? null,
     liquidityStress: Boolean(

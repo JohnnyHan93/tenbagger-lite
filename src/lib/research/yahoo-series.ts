@@ -22,6 +22,7 @@ const FIELD_OF: Record<string, keyof FinancialSeriesPoint> = {
   annualNetIncome: "netIncome",
   annualOperatingCashFlow: "cfo",
   annualFreeCashFlow: "fcf",
+  annualCapitalExpenditure: "capex",
   annualDilutedAverageShares: "dilutedShares",
   annualOrdinarySharesNumber: "dilutedShares",
   annualTotalDebt: "debt",
@@ -80,6 +81,7 @@ export function parseYahooTimeseries(payload: YahooTimeseriesPayload): Financial
       else if (field === "dilutedShares") prev.dilutedShares = prev.dilutedShares ?? raw;
       else if (field === "debt") prev.debt = prev.debt ?? raw;
       else if (field === "ppe") prev.ppe = prev.ppe ?? raw;
+      else if (field === "capex") prev.capex = prev.capex ?? raw;
       else if (field === "epsDiluted") prev.epsDiluted = prev.epsDiluted ?? raw;
       else if (field === "investedCapital") prev.investedCapital = prev.investedCapital ?? raw;
       byPeriod.set(key, prev);
@@ -144,6 +146,7 @@ export function mergeSeries(a: FinancialSeries | null | undefined, b: FinancialS
       dilutedShares: prev.dilutedShares ?? p.dilutedShares,
       debt: prev.debt ?? p.debt,
       ppe: prev.ppe ?? p.ppe,
+      capex: prev.capex ?? p.capex,
       epsDiluted: prev.epsDiluted ?? p.epsDiluted,
       investedCapital: prev.investedCapital ?? p.investedCapital,
     });

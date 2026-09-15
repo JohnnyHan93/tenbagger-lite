@@ -1,12 +1,12 @@
 import type { DerivedMetrics } from "../metrics/derived.ts";
-import { fyCount, qoqChange, seriesTrusted, spanChange, yoyFromFy } from "../metrics/series.ts";
+import { fyCount, latestFy, numericField, pointsOf, qoqChange, seriesTrusted, spanChange, yoyFromFy } from "../metrics/series.ts";
 import { DEFAULT_CRITERIA } from "./criteria/defaults.ts";
 import { getCriteria } from "./criteria/active.ts";
 import type { BandStep, QualityCriteria } from "./criteria/types.ts";
 import type { Applicability, IndustryGroup } from "./industry.ts";
 import { naForGroup } from "./industry.ts";
 
-export const MFC70_VERSION = "MFC70-v1.3";
+export const MFC70_VERSION = "MFC70-v1.4";
 export const MFC74_VERSION = "MFC74-v3.0";
 
 export type FactorClass = "Core" | "Conditional" | "Diagnostic";
@@ -116,7 +116,7 @@ export const QUALITY_FACTORS: QualityFactorDef[] = [
       return { score: null, reason: "TIER_3 EPS 시계열은 자동 채점하지 않음.", calc: "epsYoY", missingReason: "MISSING_TIER_1_2_EVIDENCE" };
     }
     const g = yoyFromFy(m.series ?? null, "epsDiluted");
-    if (g == null) return { score: null, reason: "희석 EPS 시계열 없음. OP 성장으로 대체하지 않음.", calc: "epsYoY", missingReason: "MANUAL_ONLY" };
+    if (g == null) return { score: null, reason: "희석 EPS 시계열 없음. OP 성장으로 대체하지 않음.", calc: "epsYoY", missingReason: "MISSING_SERIES" };
     return packedBand("Q04", g, [[0.3, 10], [0.15, 8], [0.05, 6], [0, 4], [-0.1, 2], [-9, 0]], "희석 EPS YoY", "epsYoY");
   } },
   { id: "Q05", pillar: "Growth", name: "Growth Acceleration", kind: "Core", apply: A, score: (m) => {
@@ -170,7 +170,16 @@ export const QUALITY_FACTORS: QualityFactorDef[] = [
     if (g == null) return { score: null, reason: "CFO 시계열 없음.", calc: "cfoG", missingReason: "MISSING_SERIES" };
     return packedBand("Q21", g, [[0.2, 10], [0.08, 8], [0, 6], [-0.1, 4], [-9, 2]], "CFO YoY", "cfoG");
   } },
-  { id: "Q22", pillar: "Cash", name: "Positive CFO Persistence", kind: "Core", apply: A, score: (m) => (m.cfo == null ? { score: null, reason: "CFO 없음.", calc: "cfo" } : { score: m.cfo > 0 ? 8 : 2, reason: m.cfo > 0 ? "CFO 양수" : "CFO 음수", calc: "sign" }) },
+  { id: "Q22", pillar: "Cash", name: "Positive CFO Persistence", kind: "Core", apply: A, score: (m) => {
+    const n = fyCount(m.series ?? null, "cfo");
+    if (n < 3) {
+      return { score: null, reason: "3FY CFO 시계열 없음. 단년 흑자로 지속성을 대체하지 않음.", calc: "cfoPersist", missingReason: "MISSING_SERIES" };
+    }
+    const vals = numericField(pointsOf(m.series, "FY"), "cfo").slice(-3);
+    const pos = vals.filter((v) => v > 0).length;
+    const score = pos === 3 ? 10 : pos === 2 ? 6 : pos === 1 ? 3 : 0;
+    return { score, reason: `최근 3FY CFO 흑자 ${pos}/3`, calc: "cfoPersist" };
+  } },
   { id: "Q23", pillar: "Cash", name: "Accrual Ratio", kind: "Diagnostic", apply: A, score: (m) => packedInv("Q23", m.accrual, [[0.05, 8], [0.1, 6], [0.2, 3], [9, 1]], "발생액", "accrual") },
   { id: "Q24", pillar: "Cash", name: "FCF vs NI", kind: "Core", apply: A, score: (m) => packedBand("Q24", ratioSafe(m.fcf, m.niTtm), [[0.9, 10], [0.6, 7], [0.3, 4], [-9, 2]], "FCF/NI", "fcf/ni") },
   { id: "Q25", pillar: "Working Capital", name: "AR Growth Gap", kind: "Core", apply: (g) => (g === "financial" ? "N" : "A"), score: (m) => packedInv("Q25", m.arGrowthGap, [[0.02, 8], [0.08, 6], [0.15, 3], [9, 1]], "AR 성장 − 매출 성장", "arGap") },
@@ -187,8 +196,11 @@ export const QUALITY_FACTORS: QualityFactorDef[] = [
   { id: "Q33", pillar: "Balance Sheet", name: "ST Debt / Cash", kind: "Core", apply: A, score: (m) => packedInv("Q33", m.stDebtToCash, [[0.3, 10], [0.7, 7], [1, 4], [99, 1]], "단기차입/현금", "st/cash") },
   { id: "Q34", pillar: "Balance Sheet", name: "Debt Concentration", kind: "Conditional", apply: A, score: () => ({ score: null, reason: "만기 분포 없음.", calc: "mat" }) },
   { id: "Q35", pillar: "Balance Sheet", name: "Debt Growth Gap", kind: "Conditional", apply: A, score: (m) => {
+    if (m.series?.points?.length && !seriesTrusted(m.series)) {
+      return { score: null, reason: "TIER_3 부채 시계열은 자동 채점하지 않음.", calc: "dDebt", missingReason: "MISSING_TIER_1_2_EVIDENCE" };
+    }
     const dg = yoyFromFy(m.series ?? null, "debt");
-    if (dg == null) return { score: null, reason: "부채 시계열 없음.", calc: "dDebt", missingReason: "MANUAL_ONLY" };
+    if (dg == null) return { score: null, reason: "부채 시계열 없음.", calc: "dDebt", missingReason: "MISSING_SERIES" };
     if (m.revenueYoY == null) return { score: null, reason: "매출 성장과 비교할 수 없음.", calc: "dDebt", missingReason: "MISSING_FIELD" };
     return packedInv("Q35", dg - m.revenueYoY, [[0.05, 8], [0.15, 5], [0.3, 2], [9, 1]], "부채성장 − 매출성장", "dDebt");
   } },
@@ -199,19 +211,48 @@ export const QUALITY_FACTORS: QualityFactorDef[] = [
     }
     return packedBand("Q37", m.revenueTtm / m.investedCapital, [[1.2, 10], [0.8, 8], [0.5, 6], [0.3, 4], [0, 2]], "Revenue / Invested Capital", "icTurn");
   } },
-  { id: "Q38", pillar: "Capital Efficiency", name: "Incremental ROIC", kind: "Conditional", apply: (g) => naForGroup(g, "roic"), score: () => ({ score: null, reason: "증분 ROIC 없음.", calc: "iROIC" }) },
+  { id: "Q38", pillar: "Capital Efficiency", name: "Incremental ROIC", kind: "Conditional", apply: (g) => naForGroup(g, "roic"), score: (m) => {
+    if (m.series?.points?.length && !seriesTrusted(m.series)) {
+      return { score: null, reason: "TIER_3 IC 시계열은 자동 채점하지 않음.", calc: "iROIC", missingReason: "MISSING_TIER_1_2_EVIDENCE" };
+    }
+    const pts = pointsOf(m.series ?? null, "FY").filter(
+      (p) => typeof p.operatingIncome === "number" && typeof p.investedCapital === "number" && p.investedCapital > 0,
+    );
+    if (pts.length < 2) return { score: null, reason: "증분 ROIC(ΔOP/ΔIC) 시계열 없음.", calc: "iROIC", missingReason: "MISSING_SERIES" };
+    const a = pts[pts.length - 2]!;
+    const b = pts[pts.length - 1]!;
+    const dIc = b.investedCapital! - a.investedCapital!;
+    if (dIc <= 0) return { score: null, reason: "증분 IC ≤ 0. 계산하지 않음.", calc: "iROIC", missingReason: "MISSING_FIELD" };
+    return packedBand("Q38", (b.operatingIncome! - a.operatingIncome!) / dIc, [[0.25, 10], [0.15, 8], [0.08, 6], [0, 4], [-9, 2]], "ΔOP / ΔIC", "iROIC");
+  } },
   { id: "Q39", pillar: "Capital Efficiency", name: "Asset Turnover", kind: "Core", apply: A, score: (m) => packedBand("Q39", m.assetTurnover, [[1.5, 10], [0.9, 8], [0.5, 6], [0.25, 4], [0, 2]], "Asset Turnover", "AT") },
-  { id: "Q40", pillar: "Capital Efficiency", name: "PPE Turnover", kind: "Conditional", apply: (g) => (g === "saas" || g === "financial" ? "C" : "A"), score: () => ({ score: null, reason: "PPE 없음.", calc: "ppeT" }) },
+  { id: "Q40", pillar: "Capital Efficiency", name: "PPE Turnover", kind: "Conditional", apply: (g) => (g === "saas" || g === "financial" ? "C" : "A"), score: (m) => {
+    const ppe = latestFy(m.series ?? null, "ppe");
+    if (ppe == null || ppe <= 0 || m.revenueTtm == null) {
+      return { score: null, reason: "PPE 시계열 없음.", calc: "ppeT", missingReason: "MISSING_SERIES" };
+    }
+    return packedBand("Q40", m.revenueTtm / ppe, [[3, 10], [1.5, 8], [0.8, 6], [0.4, 4], [0, 2]], "Revenue / PPE", "ppeT");
+  } },
   { id: "Q41", pillar: "Capital Efficiency", name: "Cash ROIC", kind: "Conditional", apply: A, score: () => ({ score: null, reason: "Cash ROIC 원자료 없음. 회계 ROIC로 복사하지 않음.", calc: "croic" }) },
-  { id: "Q42", pillar: "Capital Efficiency", name: "CAPEX Productivity", kind: "Conditional", apply: A, score: () => ({ score: null, reason: "CAPEX 생산성 없음.", calc: "capexP" }) },
+  { id: "Q42", pillar: "Capital Efficiency", name: "CAPEX Productivity", kind: "Conditional", apply: A, score: (m) => {
+    const capex = m.capex ?? latestFy(m.series ?? null, "capex");
+    if (capex == null || capex === 0 || m.revenueYoY == null || m.revenueTtm == null) {
+      return { score: null, reason: "CAPEX 대비 매출 증분 없음.", calc: "capexP", missingReason: "MISSING_SERIES" };
+    }
+    const dRev = m.revenueTtm - (m.revenuePrior ?? m.revenueTtm / (1 + m.revenueYoY));
+    return packedBand("Q42", dRev / Math.abs(capex), [[2, 10], [1, 8], [0.4, 6], [0, 4], [-9, 2]], "Δ매출 / |CAPEX|", "capexP");
+  } },
   { id: "Q43", pillar: "Reinvestment", name: "CAPEX / Revenue", kind: "Core", apply: A, score: (m) => packedInv("Q43", m.capexToRev, [[0.04, 8], [0.08, 7], [0.15, 5], [0.3, 3], [9, 2]], "CAPEX/매출", "capex/rev") },
   { id: "Q44", pillar: "Reinvestment", name: "CAPEX / CFO", kind: "Conditional", apply: A, score: (m) => {
     if (m.capex == null || m.cfo == null || m.cfo === 0) return { score: null, reason: "CAPEX/CFO 계산 자료 없음.", calc: "capex/cfo" };
     return packedInv("Q44", Math.abs(m.capex) / Math.abs(m.cfo), [[0.3, 8], [0.6, 6], [1, 4], [9, 2]], "CAPEX/CFO", "capex/cfo");
   } },
   { id: "Q45", pillar: "Reinvestment", name: "PPE Growth", kind: "Conditional", apply: A, score: (m) => {
+    if (m.series?.points?.length && !seriesTrusted(m.series)) {
+      return { score: null, reason: "TIER_3 PPE 시계열은 자동 채점하지 않음.", calc: "ppeG", missingReason: "MISSING_TIER_1_2_EVIDENCE" };
+    }
     const g = yoyFromFy(m.series ?? null, "ppe");
-    if (g == null) return { score: null, reason: "PPE 성장 없음.", calc: "ppeG", missingReason: "MANUAL_ONLY" };
+    if (g == null) return { score: null, reason: "PPE 성장 없음.", calc: "ppeG", missingReason: "MISSING_SERIES" };
     return packedBand("Q45", g, [[0.15, 8], [0.05, 6], [0, 4], [-9, 2]], "PPE 성장", "ppeG");
   } },
   { id: "Q46", pillar: "Reinvestment", name: "R&D / Revenue", kind: "Core", apply: (g) => naForGroup(g, "rd"), score: (m) => packedBand("Q46", m.rdToRev, [[0.12, 8], [0.06, 7], [0.03, 5], [0, 4]], "R&D/매출", "rd/rev") },
@@ -390,8 +431,8 @@ export function assertSeventyFactors(): number {
 export type QualityImplStatus = "IMPLEMENTED" | "MANUAL_ONLY" | "N/A_BY_DESIGN";
 
 const MANUAL = new Set([
-  "Q04", "Q08", "Q28", "Q29", "Q32", "Q34", "Q35",
-  "Q38", "Q40", "Q41", "Q42", "Q45", "Q49", "Q51", "Q55", "Q56",
+  "Q08", "Q28", "Q29", "Q32", "Q34",
+  "Q41", "Q49", "Q51", "Q55", "Q56",
   "Q58", "Q59", "Q60", "Q61", "Q62", "Q63", "Q64", "Q65", "Q66", "Q67", "Q68", "Q69",
 ]);
 

@@ -142,7 +142,7 @@ export async function createFull100Run(input: {
     startedAt: null,
     completedAt: null,
     createdAt: now,
-    modelVersions: { xbagger: "XBG-v2.1", oversold: "OSM-v2.2", quality: "MFC70-v1.3" },
+    modelVersions: { xbagger: "XBG-v2.2", oversold: "OSM-v2.3", quality: "MFC70-v1.4" },
     payload: {
       remaining: remaining.length,
       skippedExisting: SAMPLE_RESEARCH_100_COUNT - remaining.length,

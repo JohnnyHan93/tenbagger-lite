@@ -80,7 +80,7 @@ describe("Nasdaq OCF mapping", () => {
 });
 
 describe("Quality 70 CFO vs FCF factors", () => {
-  it("CFO present / FCF missing: Q17 Q18 Q22 may score, Q19 Q24 Q57 N/A", () => {
+  it("CFO present / FCF missing: Q17 Q18 may score, Q22 persistence N/A without 3FY, Q19 Q24 Q57 N/A", () => {
     const m = derived({
       ...emptyFinancials(),
       revenueTtm: 1000,
@@ -92,7 +92,8 @@ describe("Quality 70 CFO vs FCF factors", () => {
     const byId = Object.fromEntries(q.factors.concat(q.diagnostics).map((f) => [f.id, f]));
     assert.notEqual(byId.Q17?.score, null);
     assert.notEqual(byId.Q18?.score, null);
-    assert.equal(byId.Q22?.score, 8);
+    assert.equal(byId.Q22?.score, null);
+    assert.equal(byId.Q22?.missingReason, "MISSING_SERIES");
     assert.equal(byId.Q19?.score, null);
     assert.equal(byId.Q24?.score, null);
     assert.equal(byId.Q57?.score, null);

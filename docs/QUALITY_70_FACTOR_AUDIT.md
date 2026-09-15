@@ -1,4 +1,4 @@
-# Quality 70 Factor Audit — MFC70-v1.3
+# Quality 70 Factor Audit — MFC70-v1.4
 
 Canonical count: **70**. Duplicate IDs: **none**. Wrong proxies: **0**. Missing: **0**.
 
@@ -10,7 +10,7 @@ Canonical count: **70**. Duplicate IDs: **none**. Wrong proxies: **0**. Missing:
 |---|---|---|
 | Q17 CFO Margin | CFO | N/A |
 | Q18 Cash Conversion | CFO / NI | N/A |
-| Q22 Positive CFO Persistence | CFO | N/A |
+| Q22 Positive CFO Persistence | 3 FY CFO | N/A if < 3 FY (not 1Y sign) |
 | Q44 CAPEX / CFO | CAPEX and CFO | N/A |
 | Q19 FCF Margin | FCF | N/A |
 | Q24 FCF vs NI | FCF | N/A |
@@ -24,8 +24,8 @@ Wrong Proxy remains **0** after this repair.
 
 | Status | Count |
 |---|---|
-| IMPLEMENTED | 42 |
-| MANUAL_ONLY | 28 |
+| IMPLEMENTED | 48 |
+| MANUAL_ONLY | 22 |
 | N/A_BY_DESIGN (factor-level) | 0 |
 | MISSING | 0 |
 | WRONG_PROXY | 0 |
@@ -61,7 +61,7 @@ Evidence: auto factors use derived-metric provenance; MANUAL_ONLY requires TIER_
 | Q01 | Revenue Growth | Growth | Core | All | revenueTtm, revenuePrior | YoY | band ≥30/15/8/3/0% | derived.revenueYoY | IMPLEMENTED | No | — | filings | suite |
 | Q02 | 3Y Revenue CAGR | Growth | Core | All | 3Y revenue | CAGR | band ≥20/12/7/3/0% | derived.revenueCagr3y | IMPLEMENTED | No | — | filings | suite |
 | Q03 | OP Growth | Growth | Core | All | OP ttm/prior | YoY | band ≥30/15/5/0/−10% | derived.opGrowth | IMPLEMENTED | No | — | filings | suite |
-| Q04 | EPS Growth | Growth | Conditional | All | diluted EPS series | YoY | MANUAL | none | MANUAL_ONLY | **removed OP proxy** | invalid | 10-K EPS | Q04 |
+| Q04 | EPS Growth | Growth | Conditional | All | diluted EPS series | YoY | band | FinancialSeries FY EPS | IMPLEMENTED | **removed OP proxy** | invalid | 10-K EPS | Q04 |
 | Q05 | Growth Acceleration | Growth | Core | All | YoY vs 3Y CAGR | delta | band ≥10/3/0/−5pp | yoy−cagr3 | IMPLEMENTED | No | — | filings | suite |
 | Q06 | Profit Growth Leverage | Growth | Core | All | OP growth, rev growth | OP−rev | band ≥10/0/−5pp | delta | IMPLEMENTED | No | — | filings | suite |
 | Q07 | Sequential Growth | Growth | Conditional | All | 2 comparable Q revenue | QoQ | band | FinancialSeries Q | IMPLEMENTED | No | — | 10-Q | suite |
@@ -79,7 +79,7 @@ Evidence: auto factors use derived-metric provenance; MANUAL_ONLY requires TIER_
 | Q19 | FCF Margin | Cash | Core | All | FCF, revenue | FCF/rev | band ≥15/8/3/0% | derived.fcfMargin | IMPLEMENTED | No | — | CFS | suite |
 | Q20 | 3Y FCF | Cash | Conditional | All | 3Y FCF | 3Y span | band | FinancialSeries FY FCF | IMPLEMENTED | **removed 1Y FCF** | invalid | CFS 3Y | suite |
 | Q21 | CFO Growth | Cash | Conditional | All | CFO series | YoY | band | FinancialSeries FY CFO | IMPLEMENTED | No | — | CFS | suite |
-| Q22 | Positive CFO Persistence | Cash | Core | All | CFO | sign | +8 / −2 | derived.cfo | IMPLEMENTED | No | — | CFS | suite |
+| Q22 | Positive CFO Persistence | Cash | Core | All | 3 FY CFO | 3Y sign count | 10/6/3/0 | FinancialSeries FY CFO | IMPLEMENTED | **removed 1Y sign** | invalid | CFS 3Y | suite |
 | Q23 | Accrual Ratio | Cash | Diagnostic | All | NI−CFO / assets | accrual | inv-band (diag) | derived.accrual | IMPLEMENTED | No | — | CFS | diag |
 | Q24 | FCF vs NI | Cash | Core | All | FCF, NI | FCF/NI | band ≥0.9/0.6/0.3 | ratio | IMPLEMENTED | No | — | CFS | suite |
 | Q25 | AR Growth Gap | Working Capital | Core | not financial | AR, revenue | AR g − rev g | inv-band | derived.arGrowthGap | IMPLEMENTED | No | — | BS | suite |
@@ -92,17 +92,17 @@ Evidence: auto factors use derived-metric provenance; MANUAL_ONLY requires TIER_
 | Q32 | Cash Interest Coverage | Balance Sheet | Conditional | not banks | CFO, cash interest | CFO/cash int | MANUAL | none | MANUAL_ONLY | **removed accrual copy** | invalid | CFS | suite |
 | Q33 | ST Debt / Cash | Balance Sheet | Core | All | ST debt, cash | ratio | inv-band | derived.stDebtToCash | IMPLEMENTED | No | — | BS | suite |
 | Q34 | Debt Concentration | Balance Sheet | Conditional | All | maturity schedule | ST share | MANUAL | none | MANUAL_ONLY | No | — | notes | suite |
-| Q35 | Debt Growth Gap | Balance Sheet | Conditional | All | debt series | Δdebt − Δrev | MANUAL | none | MANUAL_ONLY | No | — | BS | suite |
+| Q35 | Debt Growth Gap | Balance Sheet | Conditional | All | debt series | Δdebt − Δrev | inv-band | FinancialSeries FY debt | IMPLEMENTED | No | — | BS | suite |
 | Q36 | Cash / Assets | Balance Sheet | Core | All | cash, assets | ratio | band ≥30/15/8/3% | derived.cashToAssets | IMPLEMENTED | No | — | BS | suite |
 | Q37 | Invested Capital Turnover | Capital Efficiency | Core | All | revenue, IC | Rev/IC | band | derived.investedCapital | IMPLEMENTED | **no AT copy** | invalid as proxy | filings | suite |
-| Q38 | Incremental ROIC | Capital Efficiency | Conditional | not banks | ΔNOPAT, ΔIC | iROIC | MANUAL | none | MANUAL_ONLY | No | — | filings | suite |
+| Q38 | Incremental ROIC | Capital Efficiency | Conditional | not banks | ΔOP, ΔIC | ΔOP/ΔIC | band | FinancialSeries FY IC | IMPLEMENTED | No | — | filings | suite |
 | Q39 | Asset Turnover | Capital Efficiency | Core | All | revenue, assets | AT | band ≥1.5/0.9/0.5/0.25 | derived.assetTurnover | IMPLEMENTED | No | — | filings | suite |
-| Q40 | PPE Turnover | Capital Efficiency | Conditional | saas/financial C | revenue, PPE | rev/PPE | MANUAL | none | MANUAL_ONLY | No | — | BS | suite |
+| Q40 | PPE Turnover | Capital Efficiency | Conditional | saas/financial C | revenue, PPE | rev/PPE | band | FinancialSeries FY PPE | IMPLEMENTED | No | — | BS | suite |
 | Q41 | Cash ROIC | Capital Efficiency | Conditional | All | CFO−maint. capex, IC | cash ROIC | MANUAL | none | MANUAL_ONLY | **removed ROIC copy** | invalid | CFS | Q41 |
-| Q42 | CAPEX Productivity | Capital Efficiency | Conditional | All | Δrev, capex | Δrev/capex | MANUAL | none | MANUAL_ONLY | No | — | CFS | suite |
+| Q42 | CAPEX Productivity | Capital Efficiency | Conditional | All | Δrev, capex | Δrev/|capex| | band | FinancialSeries FY capex | IMPLEMENTED | No | — | CFS | suite |
 | Q43 | CAPEX / Revenue | Reinvestment | Core | All | capex, revenue | ratio | inv-band | derived.capexToRev | IMPLEMENTED | No | — | CFS | suite |
 | Q44 | CAPEX / CFO | Reinvestment | Conditional | All | capex, CFO | |capex|/|CFO| | inv-band | derived.capex, cfo | IMPLEMENTED | No | — | CFS | suite |
-| Q45 | PPE Growth | Reinvestment | Conditional | All | PPE series | YoY | MANUAL | none | MANUAL_ONLY | No | — | BS | suite |
+| Q45 | PPE Growth | Reinvestment | Conditional | All | PPE series | YoY | band | FinancialSeries FY PPE | IMPLEMENTED | No | — | BS | suite |
 | Q46 | R&D / Revenue | Reinvestment | Core | R&D industries | R&D, revenue | ratio | band ≥12/6/3% | derived.rdToRev | IMPLEMENTED | No | — | P&L | suite |
 | Q47 | R&D Growth | Reinvestment | Conditional | R&D industries | R&D series | YoY | band ≥15/5/0% | derived.rdGrowth | IMPLEMENTED | No | — | P&L | suite |
 | Q48 | Backlog Growth | Reinvestment | Conditional | backlog industries | backlog | YoY | band ≥20/10/3/0% | derived.backlogGrowth | IMPLEMENTED | No | — | IR | suite |

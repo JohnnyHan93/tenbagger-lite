@@ -1,9 +1,10 @@
 import type { DerivedMetrics } from "../metrics/derived.ts";
+import { fyCount, numericField, pointsOf, seriesTrusted, spanChange } from "../metrics/series.ts";
 import { DEFAULT_CRITERIA } from "./criteria/defaults.ts";
 import { getCriteria } from "./criteria/active.ts";
 import type { OversoldCriteria } from "./criteria/types.ts";
 
-export const OSM_VERSION = "OSM-v2.2";
+export const OSM_VERSION = "OSM-v2.3";
 
 export type OversoldCase = "A" | "B" | "C" | "D";
 export type PeakEarningsLevel = "NONE" | "POSSIBLE" | "HIGH";
@@ -93,6 +94,29 @@ function fundScore(m: DerivedMetrics, spec: OversoldCriteria): { score: number |
     else if (m.revenueYoY > -0.08) bits.push(`매출 소폭 감소`);
     else bits.push(`매출 ${(m.revenueYoY * 100).toFixed(0)}%`);
   }
+  if (m.revenueCagr3y != null) {
+    if (m.revenueCagr3y > 0.15) {
+      s += 1;
+      bits.push(`3Y CAGR ${(m.revenueCagr3y * 100).toFixed(0)}%`);
+    } else if (m.revenueCagr3y < 0) {
+      s -= 1;
+      bits.push(`3Y CAGR ${(m.revenueCagr3y * 100).toFixed(0)}%`);
+    }
+  }
+  if (m.cashConversion != null && m.niTtm != null && m.niTtm > 0 && m.cashConversion < 0.5) {
+    s -= 1;
+    bits.push("현금전환 약함");
+  }
+  if (seriesTrusted(m.series) && fyCount(m.series, "fcf") >= 3) {
+    const g = spanChange(m.series, "fcf", 3);
+    if (g != null && g > 0.15) {
+      s += 1;
+      bits.push("3Y FCF 개선");
+    } else if (g != null && g < -0.3) {
+      s -= 1;
+      bits.push("3Y FCF 악화");
+    }
+  }
   if (m.om != null) {
     if (m.om > fund.omHigh) s += fund.omHighDelta;
     else if (m.om < 0) s += fund.omNegDelta;
@@ -122,6 +146,14 @@ function peakLevel(m: DerivedMetrics, spec: OversoldCriteria): PeakEarningsLevel
   if (cheapPe) hits++;
   if (weakCash) hits++;
   if (accrual) hits++;
+  if (seriesTrusted(m.series)) {
+    const ni = numericField(pointsOf(m.series, "FY"), "netIncome");
+    if (ni.length >= 3) {
+      const last = ni[ni.length - 1]!;
+      const window = ni.slice(-3);
+      if (last > 0 && last === Math.max(...window) && (revDown || compress)) hits++;
+    }
+  }
   if (hits >= 3 && (revDown || cheapPe)) return "HIGH";
   if (hits >= 2) return "POSSIBLE";
   return "NONE";

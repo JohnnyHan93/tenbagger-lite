@@ -12,9 +12,9 @@ Shared research pack (price, filings, evidence, derived metrics) feeds three ind
 
 | Engine | Version | Question |
 |---|---|---|
-| X-Bagger / Wildcard | XBG-v2.1 | Can this market cap become 5–10x on a real path? |
-| Oversold Opportunity | OSM-v2.2 | Cheap, or broken? |
-| Quality 70 | MFC70-v1.3 | Is this a durable business on disclosure? |
+| X-Bagger / Wildcard | XBG-v2.2 | Can this market cap become 5–10x on a real path? |
+| Oversold Opportunity | OSM-v2.3 | Cheap, or broken? |
+| Quality 70 | MFC70-v1.4 | Is this a durable business on disclosure? |
 
 Research Priority is optional and is **not** an investment grade.
 
@@ -62,9 +62,9 @@ Production note (2026-09-14): the live site can show Sample100 identities with *
 
 ## Models
 
-- XBG-v2.1 — F10 from Tenx math only; no synthetic revenue
-- OSM-v2.2 — `Opp = 0.40F + 0.25V + 0.10O + 0.25R`, N/A renormalized (not 5, not 0). Value Trap 0–10 separate
-- MFC70-v1.3 canonical. MFC74-v3.0 listed as experimental, never mixed into 70.
+- XBG-v2.2 — TAM/share/customers need numbers or names; F10 from Tenx math only; no synthetic revenue
+- OSM-v2.3 — `Opp = 0.40F + 0.25V + 0.10O + 0.25R`, N/A renormalized. 3Y CAGR/FCF and peak-NI hits. Value Trap 0–10 separate
+- MFC70-v1.4 canonical (series-backed Q04/Q22/Q35/Q38/Q40/Q42/Q45). MFC74-v3.0 listed as experimental, never mixed into 70.
 - LENS-v1.0 overlay. Not added to Quality.
 
 ## Testing

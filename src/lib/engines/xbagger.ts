@@ -13,7 +13,7 @@ import type { XBaggerCriteria } from "./criteria/types.ts";
 import { f10FromMath } from "../tenx/calculator.ts";
 import type { TenxMath, TenxScenario } from "../types.ts";
 
-export const XBG_VERSION = "XBG-v2.1";
+export const XBG_VERSION = "XBG-v2.2";
 
 export const X_IDS: Record<FactorCode, string> = {
   F1: "X01",

@@ -91,6 +91,15 @@ export function parseKoreanMoney(text: string): number | null {
   return parseCommaNumber(t.replace(/[^\d.-]/g, ""));
 }
 
+export function parseUserMoney(text: string): number | null {
+  const t = text.trim();
+  if (!t) return null;
+  if (/[조억만]/.test(t)) return parseKoreanMoney(t);
+  const compact = t.replace(/,/g, "").replace(/\s+/g, "");
+  if (/^-?[0-9]*\.?[0-9]+[KMBT]$/i.test(compact)) return parseAbbrevMoney(compact);
+  return parseCommaNumber(t);
+}
+
 export function currencyOf(code?: string): Currency {
   return code === "KRW" ? "KRW" : "USD";
 }

@@ -9,14 +9,14 @@ export const DEFAULT_CRITERIA: CriteriaPack = {
   appliedAt: null,
   engines: {
     xbagger: {
-      version: "XBG-v2.1",
+      version: "XBG-v2.2",
       weights: { F1: 12, F2: 12, F3: 10, F4: 10, F5: 10, F6: 10, F7: 12, F8: 8, F9: 6, F10: 10 },
       gradeThresholds: { S: 85, A: 75, B: 65, C: 55, D: 45 },
       hardGates: { tenxMin: 6, survivalMin: 4, customerMin: 4 },
       coverage: { noPenalty: 0.9, mild: 0.8, research: 0.7, mildPenalty: 3, heavyPenalty: 7 },
     },
     oversold: {
-      version: "OSM-v2.2",
+      version: "OSM-v2.3",
       weights: { fundamental: 0.4, valuation: 0.25, oversold: 0.1, risk: 0.25 },
       coverage: { researchBelow: 0.7, partialBelow: 1 },
       classify: { caseDOversoldMax: 2, caseAFundMin: 6, caseBFundMin: 4 },
@@ -94,7 +94,7 @@ export const DEFAULT_CRITERIA: CriteriaPack = {
       },
     },
     quality70: {
-      version: "MFC70-v1.3",
+      version: "MFC70-v1.4",
       gradeThresholds: { S: 85, A: 75, B: 65, C: 55, D: 45 },
       coverage: { researchBelow: 0.7, partialBelow: 0.9 },
       redFlag: { redScoreMax: 2, yellowHits: 1, redHits: 2 },

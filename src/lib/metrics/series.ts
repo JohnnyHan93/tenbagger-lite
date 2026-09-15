@@ -61,3 +61,20 @@ export function fyCount(series: FinancialSeries | null | undefined, field: keyof
   if (!seriesTrusted(series)) return 0;
   return numericField(pointsOf(series, "FY"), field).length;
 }
+
+export function latestFy(series: FinancialSeries | null | undefined, field: keyof FinancialSeriesPoint): number | null {
+  if (!seriesTrusted(series)) return null;
+  const vals = numericField(pointsOf(series, "FY"), field);
+  return vals.at(-1) ?? null;
+}
+
+export function omDeltaFromSeries(series: FinancialSeries | null | undefined): number | null {
+  if (!seriesTrusted(series)) return null;
+  const pts = pointsOf(series, "FY").filter(
+    (p) => typeof p.revenue === "number" && p.revenue !== 0 && typeof p.operatingIncome === "number",
+  );
+  if (pts.length < 2) return null;
+  const a = pts[pts.length - 2]!;
+  const b = pts[pts.length - 1]!;
+  return b.operatingIncome! / b.revenue! - a.operatingIncome! / a.revenue!;
+}

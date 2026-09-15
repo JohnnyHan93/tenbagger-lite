@@ -17,6 +17,8 @@ import type {
   ResearchDraft,
   ResearchQuote,
 } from "../types.ts";
+import { cagrFromSeries } from "../metrics/derived.ts";
+import { numericField, omDeltaFromSeries, pointsOf, seriesTrusted } from "../metrics/series.ts";
 import { emptyPack, type ResearchPack } from "./pack.ts";
 
 function evId(prefix: string) {
@@ -51,9 +53,6 @@ export function stampEvidence(e: Evidence): Evidence {
   };
 }
 
-const GROWING =
-  /quantum|semiconductor|robot|aerospace|space\b|artificial intelligence|\bai\b|cyber|biotech|electric vehicle|\bev\b|data center|foundry|photonic|networking|defense/i;
-
 type Row = {
   score: number | null;
   summary: string;
@@ -74,6 +73,8 @@ export function heuristicDraft(
   const op = financials.operatingIncomeTtm;
   const fcf = financials.fcf;
   const gm = financials.grossMargin;
+  const series = quote.extras?.series ?? null;
+  const cagr3 = cagrFromSeries(series, "revenue", 4);
   const growth =
     rev != null && prior && prior > 0 ? rev / prior - 1 : null;
   const salesMultiple =
@@ -85,7 +86,6 @@ export function heuristicDraft(
   );
   const runwayYears = burn > 0 && cash > 0 ? cash / burn : null;
   const blob = `${pack.profile}\n${pack.wiki}\n${quote.sector}\n${quote.industry}`;
-  const growingTheme = GROWING.test(blob);
   const requiredRev = marketCap > 0 ? requiredRevenueFor10x(marketCap, "EV_SALES", 8, 0.12) : null;
   const scenarios = defaultScenarios(marketCap, financials);
   const tenxScenarios = scenarios ? [scenarios.bear, scenarios.base, scenarios.bull] : [];
@@ -98,7 +98,24 @@ export function heuristicDraft(
     benchmark: "10점: YoY 50%+ 또는 30%+ 재가속",
     confidence: "Low",
   };
-  if (growth != null && rev != null && prior != null) {
+  if (cagr3 != null) {
+    let score = 4;
+    if (cagr3 < 0) score = 0;
+    else if (cagr3 < 0.05) score = 2;
+    else if (cagr3 < 0.12) score = 4;
+    else if (cagr3 < 0.2) score = 6;
+    else if (cagr3 < 0.35) score = 8;
+    else score = 10;
+    if (growth != null && growth < 0) score = Math.min(score, 2);
+    else if (growth != null && growth < 0.05) score = Math.min(score, 4);
+    f2 = {
+      score,
+      summary: `3Y 매출 CAGR ${formatPct(cagr3)}${growth != null ? ` · YoY ${formatPct(growth)}` : ""}.`,
+      found: `CAGR ${formatPct(cagr3)}`,
+      benchmark: "10점: 3Y CAGR 35%+",
+      confidence: "High",
+    };
+  } else if (growth != null && rev != null && prior != null) {
     let score = 4;
     if (growth < 0) score = 0;
     else if (growth < 0.05) score = 2;
@@ -140,24 +157,7 @@ export function heuristicDraft(
       benchmark: "8점: CAGR 15–25%",
       confidence: "Medium",
     };
-  } else if (growingTheme && (growth == null || growth >= 0.08)) {
-    f1 = {
-      score: 6,
-      summary: `구조 성장 테마(${quote.sector || quote.industry || "profile"}). 외부 TAM 숫자는 없음.`,
-      found: `성장 테마 · ${quote.sector || quote.industry || "profile"}`,
-      benchmark: "8점: CAGR 15–25% + TAM 10배+",
-      confidence: "Medium",
-    };
-  } else if (!growingTheme && growth != null && growth < 0) {
-    f1 = {
-      score: 0,
-      summary: "시장·매출이 동시에 약함.",
-      found: "축소 징후",
-      benchmark: "8점: CAGR 15–25%",
-      confidence: "Medium",
-    };
   }
-
 
   let f3: Row = {
     score: null,
@@ -166,6 +166,8 @@ export function heuristicDraft(
     benchmark: "8점: 플랫폼/IP + 높은 증분이익",
     confidence: "Low",
   };
+  const om = gm != null ? financials.operatingMargin ?? (rev && op != null && rev > 0 ? op / rev : null) : financials.operatingMargin;
+  const omDelta = omDeltaFromSeries(series);
   if (gm != null) {
     let score = 4;
     if (gm < 0.1) score = 0;
@@ -174,12 +176,16 @@ export function heuristicDraft(
     else if (gm < 0.55) score = op != null && op > 0 ? 6 : 4;
     else score = op != null && op > 0 ? 8 : 6;
     if (gm >= 0.7 && op != null && op > 0) score = 8;
+    if (om != null && om < -0.3) score = Math.min(score, 2);
+    if (omDelta != null && omDelta > 0.03 && (op == null || op > 0) && score >= 4) {
+      score = Math.min(10, score + 2);
+    }
     f3 = {
       score,
       summary:
         op != null && op < 0
-          ? `매출총이익률 ${formatPct(gm)}이나 영업적자.`
-          : `매출총이익률 ${formatPct(gm)}.`,
+          ? `매출총이익률 ${formatPct(gm)}이나 영업적자${om != null ? ` (OM ${formatPct(om)})` : ""}.`
+          : `매출총이익률 ${formatPct(gm)}${omDelta != null ? ` · OM Δ ${formatPct(omDelta)}` : ""}.`,
       found: `GPM ${formatPct(gm)}`,
       benchmark: "8점: 높은 증분이익 + 레버리지",
       confidence: "High",
@@ -210,14 +216,20 @@ export function heuristicDraft(
     benchmark: "8점: Top 3 또는 빠른 점유 상승",
     confidence: "Low",
   };
-  if (/world'?s leading|leader|first commercially/i.test(blob) || pack.customers.length >= 3) {
+  const share =
+    blob.match(/(?:market share|점유율|share of)[^0-9%]{0,24}(\d{1,2}(?:\.\d+)?)\s*%/i) ||
+    blob.match(/(\d{1,2}(?:\.\d+)?)\s*%[^.]{0,16}(?:market share|점유율)/i);
+  const shareN = share ? Number(share[1]) / 100 : null;
+  if (shareN != null && Number.isFinite(shareN)) {
+    let score = 2;
+    if (shareN >= 0.3) score = 8;
+    else if (shareN >= 0.15) score = 6;
+    else if (shareN >= 0.05) score = 4;
     f5 = {
-      score: 4,
-      summary: pack.customers.length
-        ? `공개 고객 ${pack.customers.slice(0, 3).join(", ")}. 점유율은 미확인.`
-        : "리더 주장. 점유율 숫자 없음.",
-      found: pack.customers.length ? `고객 ${pack.customers.length}곳` : "리더 주장",
-      benchmark: "8점: Top 3 또는 점유 상승",
+      score,
+      summary: `언급된 점유율 ${formatPct(shareN)}.`,
+      found: formatPct(shareN),
+      benchmark: "8점: 점유 30%+",
       confidence: "Medium",
     };
   }
@@ -226,13 +238,11 @@ export function heuristicDraft(
     /purchase order|\brepeat\b|production contract|양산|수주/i.test(n.title),
   );
   let f6: Row = {
-    score: pack.customers.length ? 4 : rev && rev > 0 ? 4 : 2,
+    score: pack.customers.length ? 4 : null,
     summary: pack.customers.length
       ? `공개 고객: ${pack.customers.join(", ")}. Repeat PO 미확인.`
-      : rev && rev > 0
-        ? "매출은 있으나 고객명 없음."
-        : "고객 증거 약함.",
-    found: pack.customers.length ? pack.customers.slice(0, 3).join(", ") : rev ? "매출만 확인" : "고객명 없음",
+      : "고객명 없음. 매출만으로 고객 검증하지 않음. N/A.",
+    found: pack.customers.length ? pack.customers.slice(0, 3).join(", ") : "고객명 없음",
     benchmark: "6점: 다수 유료+반복 / 8점: 대형 고객 반복",
     confidence: pack.customers.length ? "Medium" : "Low",
   };
@@ -245,16 +255,9 @@ export function heuristicDraft(
       confidence: "Medium",
     };
   }
-  if (!pack.customers.length && !(rev && rev > 0)) {
-    f6 = {
-      score: 2,
-      summary: "MOU/파일럿 이상으로 보기 어려움.",
-      found: "고객명 없음",
-      benchmark: "6점: 다수 유료+반복",
-      confidence: "Low",
-    };
-  }
 
+  const cfoVals = seriesTrusted(series) ? numericField(pointsOf(series, "FY"), "cfo").slice(-3) : [];
+  const cfoPersist3 = cfoVals.length >= 3 && cfoVals.every((v) => v > 0);
   let f7score: number | null = null;
   let f7s = "현금·부채·CFO 미확인. N/A.";
   let f7conf: Confidence = "Low";
@@ -266,6 +269,11 @@ export function heuristicDraft(
   if (fcf != null && fcf > 0 && cash >= debt) {
     f7score = 10;
     f7s = `FCF 흑자 ${formatMoney(fcf, currency)} · 순현금.`;
+    f7conf = "High";
+    survival = makeFlag("SURVIVAL", "GREEN", f7s);
+  } else if (cfoPersist3 && cash >= debt) {
+    f7score = 8;
+    f7s = `최근 3FY CFO 흑자 · 순현금. FCF ${formatMoney(fcf, currency)}.`;
     f7conf = "High";
     survival = makeFlag("SURVIVAL", "GREEN", f7s);
   } else if (op != null && op > 0 && cash >= debt) {
@@ -307,8 +315,8 @@ export function heuristicDraft(
     confidence: f7conf,
   };
 
-  let f8score: number | null = 4;
-  let f8s = "적정 수준으로 보수 평가.";
+  let f8score: number | null = null;
+  let f8s = "시총/매출 배수 없음. N/A.";
   const f10math = f10FromMath(tenxMath.currentRevenue == null ? null : tenxMath, tenxScenarios);
   const f10score = f10math.score;
   const tenx = makeFlag(
@@ -335,12 +343,6 @@ export function heuristicDraft(
   } else if (salesMultiple != null && salesMultiple < 8) {
     f8score = 8;
     f8s = `시총/매출 ${salesMultiple.toFixed(1)}x. 성장 대비 여지.`;
-  } else if (marketCap > 0 && marketCap < 1e10 && currency === "USD") {
-    f8score = 6;
-    f8s = "시총 대비 미래 기회 여지.";
-  } else if (currency === "KRW" && marketCap > 0 && marketCap < 1.5e13) {
-    f8score = 6;
-    f8s = "시총 대비 미래 기회 여지.";
   }
 
   const f8: Row = {
@@ -348,7 +350,7 @@ export function heuristicDraft(
     summary: f8s,
     found: salesMultiple != null ? `${salesMultiple.toFixed(0)}x 시총/매출` : formatMoney(marketCap, currency),
     benchmark: "8점: 성장 대비 저평가",
-    confidence: salesMultiple != null ? "High" : "Medium",
+    confidence: f8score == null ? "Low" : salesMultiple != null ? "High" : "Medium",
   };
 
   const catNews = pack.news.find((n) =>
@@ -357,8 +359,8 @@ export function heuristicDraft(
     ),
   );
   let f9: Row = {
-    score: pack.news.length ? 2 : 0,
-    summary: pack.news[0] ? `장기 기대/뉴스: ${pack.news[0].title}` : "명확한 촉매 없음.",
+    score: pack.news.length ? 2 : null,
+    summary: pack.news[0] ? `장기 기대/뉴스: ${pack.news[0].title}` : "촉매 공시 없음. N/A.",
     found: catNews?.title || pack.news[0]?.title || "촉매 없음",
     benchmark: "8점: 12–24개월 실적 반영 복수 촉매",
     confidence: pack.news.length ? "Medium" : "Low",

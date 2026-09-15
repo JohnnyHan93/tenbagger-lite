@@ -67,7 +67,7 @@ function Page() {
               onChange={(e) => updateSettings({ useAi: e.target.checked })}
             />
           </label>
-          <p className="mt-3 text-xs text-subtle">Quality model stays MFC70-v1.3. 74 is listed, not scored.</p>
+          <p className="mt-3 text-xs text-subtle">Quality model stays MFC70-v1.4. 74 is listed, not scored.</p>
         </div>
       </section>
 

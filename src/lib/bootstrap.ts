@@ -87,7 +87,7 @@ export const EMPTY_SETTINGS: AppSettings = {
   defaultResearchMode: "auto",
   useAi: true,
   researchPriorityOn: true,
-  qualityModel: "MFC70-v1.3",
+  qualityModel: "MFC70-v1.4",
 };
 
 export interface StripDemoReport {

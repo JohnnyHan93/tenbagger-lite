@@ -104,6 +104,6 @@ export interface AppSettings {
   defaultResearchMode: "auto" | "manual";
   useAi: boolean;
   researchPriorityOn: boolean;
-  qualityModel: "MFC70-v1.1" | "MFC70-v1.2" | "MFC70-v1.3" | "MFC74-v3.0";
+  qualityModel: "MFC70-v1.1" | "MFC70-v1.2" | "MFC70-v1.3" | "MFC70-v1.4" | "MFC74-v3.0";
   criteriaPack?: import("../engines/criteria/types.ts").CriteriaPack | null;
 }

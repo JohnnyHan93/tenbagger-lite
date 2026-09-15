@@ -18,7 +18,8 @@ import type {
   ResearchQuote,
 } from "../types";
 import { heuristicDraft, stampEvidence } from "./heuristic";
-import { packText, type ResearchPack } from "./pack";
+import { emptyPack, packText, type ResearchPack } from "./pack";
+import { applyQuoteOverrides, quoteIsUsable, missingQuoteFields, type QuoteOverrides } from "./manual-quote";
 
 const GROK_PROMPT = `You are the Tenbagger / Wildcard research agent.
 Goal: score whether THIS market cap can become 5–10x in 5–7 years. Not "is this a good company".
@@ -302,39 +303,55 @@ function mergeGrok(
 export async function executeResearch(input: {
   ticker: string;
   useAi: boolean;
-}): Promise<{ ok: true; draft: ResearchDraft } | { ok: false; error: string }> {
+  overrides?: QuoteOverrides;
+}): Promise<
+  | { ok: true; draft: ResearchDraft }
+  | { ok: false; error: string; missing?: string[]; quote?: ResearchQuote | null }
+> {
   const { candidatesFor, resolveQuote } = await import("./quote-fetch.ts");
   const { gatherResearchPack } = await import("./pack.ts");
   const list = candidatesFor(input.ticker);
-  if (list.length === 0) return { ok: false, error: "INVALID TICKER" };
+  if (list.length === 0) return { ok: false, error: "INVALID TICKER", missing: ["ticker"] };
 
-  let quote: ResearchQuote | null = null;
-  for (const t of list) {
-    try {
-      quote = await resolveQuote(t);
-    } catch {
-      quote = null;
+  let fetched: ResearchQuote | null = null;
+  const seeded = applyQuoteOverrides(null, input.overrides, input.ticker);
+  const skipFetch = quoteIsUsable(seeded);
+  if (!skipFetch) {
+    for (const t of list) {
+      try {
+        fetched = await resolveQuote(t);
+      } catch {
+        fetched = null;
+      }
+      if (fetched && fetched.price) break;
     }
-    if (quote && quote.price) break;
-    quote = null;
   }
-  if (!quote) return { ok: false, error: "INVALID TICKER" };
-  if (!quote.marketCap) {
+
+  const quote = applyQuoteOverrides(fetched, input.overrides, input.ticker);
+  if (!quoteIsUsable(quote)) {
     return {
       ok: false,
-      error: "시가총액을 확인하지 못했습니다. Manual Mode에서 직접 입력하세요.",
+      error: "시가총액 또는 주가를 확인하지 못했습니다. 아래에 직접 입력하세요.",
+      missing: missingQuoteFields(quote),
+      quote,
     };
   }
 
-  let pack: ResearchPack;
+  let pack: ResearchPack = emptyPack();
   try {
-    pack = await gatherResearchPack({
+    const gather = gatherResearchPack({
       ticker: quote.ticker,
       companyName: quote.companyName,
       country: quote.country,
     });
+    pack = skipFetch
+      ? await Promise.race([
+          gather,
+          new Promise<ResearchPack>((resolve) => setTimeout(() => resolve(emptyPack()), 2500)),
+        ])
+      : await gather;
   } catch {
-    pack = { profile: "", website: "", wiki: "", customers: [], techClaims: [], news: [] };
+    pack = emptyPack();
   }
 
   const fallback = heuristicDraft(quote, pack);
@@ -351,10 +368,9 @@ export async function executeResearch(input: {
 }
 
 export const researchTicker = createServerFn({ method: "POST" })
-  .validator((input: { ticker: string; useAi: boolean }) => input)
+  .validator((input: { ticker: string; useAi: boolean; overrides?: QuoteOverrides }) => input)
   .handler(async ({ data }): Promise<
-
     | { ok: true; draft: ResearchDraft }
-    | { ok: false; error: string }
+    | { ok: false; error: string; missing?: string[]; quote?: ResearchQuote | null }
   > => executeResearch(data));
 

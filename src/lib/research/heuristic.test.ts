@@ -78,3 +78,52 @@ describe("heuristicDraft IONQ-like filings", () => {
     assert.equal(d.tenxScenarios.length, 3);
   });
 });
+
+describe("heuristic honesty", () => {
+  it("F1 is N/A without TAM even for a quantum/AI sector", () => {
+    const d = heuristicDraft(ionqQuote(), { ...ionqPack, profile: "quantum AI semiconductor", wiki: "" });
+    assert.equal(d.factors.find((f) => f.code === "F1")?.score, null);
+  });
+
+  it("F6 is N/A without named customers even with revenue", () => {
+    const d = heuristicDraft(ionqQuote(), { ...ionqPack, customers: [], news: [] });
+    assert.equal(d.factors.find((f) => f.code === "F6")?.score, null);
+  });
+
+  it("F5 is N/A without a numeric market share", () => {
+    const d = heuristicDraft(ionqQuote(), ionqPack);
+    assert.equal(d.factors.find((f) => f.code === "F5")?.score, null);
+  });
+
+  it("F5 scores from an explicit share number, not a leader slogan", () => {
+    const d = heuristicDraft(ionqQuote(), {
+      ...ionqPack,
+      profile: "The company holds a 22% market share in trapped-ion systems.",
+    });
+    assert.equal(d.factors.find((f) => f.code === "F5")?.score, 6);
+  });
+
+  it("F3 does not treat a 40% GM with a deep operating loss as unit economics", () => {
+    const d = heuristicDraft(ionqQuote(), ionqPack);
+    const f3 = d.factors.find((f) => f.code === "F3")?.score;
+    assert.ok(f3 != null && f3 <= 2);
+  });
+
+  it("F8 is N/A without a sales multiple on a non-mega cap", () => {
+    const d = heuristicDraft(
+      {
+        ...ionqQuote(),
+        marketCap: 800_000_000,
+        financials: { ...ionqQuote().financials, revenueTtm: null, revenuePrior: null },
+      },
+      ionqPack,
+    );
+    assert.equal(d.factors.find((f) => f.code === "F8")?.score, null);
+    assert.equal(d.factors.find((f) => f.code === "F8")?.confidence, "Low");
+  });
+
+  it("F9 is N/A when there is no catalyst disclosure", () => {
+    const d = heuristicDraft(ionqQuote(), { ...ionqPack, news: [] });
+    assert.equal(d.factors.find((f) => f.code === "F9")?.score, null);
+  });
+});

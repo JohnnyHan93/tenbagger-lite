@@ -98,9 +98,9 @@ const fy = (period: string, extra: Omit<FinancialSeries["points"][number], "peri
 describe("criteria runtime", () => {
   it("is CRITERIA-v1", () => {
     assert.equal(CRITERIA_RUNTIME, "CRITERIA-v1");
-    assert.equal(DEFAULT_CRITERIA.engines.xbagger.version, "XBG-v2.1");
-    assert.equal(DEFAULT_CRITERIA.engines.oversold.version, "OSM-v2.2");
-    assert.equal(DEFAULT_CRITERIA.engines.quality70.version, "MFC70-v1.3");
+    assert.equal(DEFAULT_CRITERIA.engines.xbagger.version, "XBG-v2.2");
+    assert.equal(DEFAULT_CRITERIA.engines.oversold.version, "OSM-v2.3");
+    assert.equal(DEFAULT_CRITERIA.engines.quality70.version, "MFC70-v1.4");
   });
 
   it("hashes engine knobs and ignores overlayId", () => {
@@ -120,7 +120,7 @@ describe("criteria runtime", () => {
   });
 });
 
-describe("XBG-v2.1", () => {
+describe("XBG-v2.2", () => {
   it("does not invent marketCap/20 revenue when revenue is missing", () => {
     const s = defaultScenarios(1e9, fin({ revenueTtm: null, revenuePrior: null }));
     assert.equal(s, null);
@@ -261,7 +261,7 @@ describe("XBG-v2.1", () => {
   });
 });
 
-describe("OSM-v2.2", () => {
+describe("OSM-v2.3", () => {
   it("6.80 regression", () => {
     assert.equal(Number(opportunityScore(8, 7, 6, 5).toFixed(2)), 6.8);
   });
@@ -329,9 +329,35 @@ describe("OSM-v2.2", () => {
     assert.equal(o.caseStatus, "INCOMPLETE");
     assert.equal(o.fundamental, null);
   });
+
+  it("3Y CAGR lifts fundamental versus YoY-only", () => {
+    const withCagr = scoreOversold(metrics("saas", { revenueCagr3y: 0.22, revenueYoY: 0.1 }));
+    const noCagr = scoreOversold(metrics("saas", { revenueCagr3y: null, revenueYoY: 0.1 }));
+    assert.ok((withCagr.fundamental ?? 0) > (noCagr.fundamental ?? 0));
+  });
+
+  it("latest NI at a 3Y max raises peak earnings when revenue is falling", () => {
+    const base = {
+      revenueYoY: -0.05,
+      om: 0.1,
+      omChange: 0,
+      pe: 20,
+      cashConversion: 0.9,
+      accrual: 0.02,
+      fcf: 10,
+      niTtm: 12,
+    };
+    const none = scoreOversold(metrics("industrial", { ...base, series: null }));
+    assert.equal(none.peakEarningsLevel, "NONE");
+    const series: FinancialSeries = {
+      points: [fy("2023", { netIncome: 4 }), fy("2024", { netIncome: 8 }), fy("2025", { netIncome: 12 })],
+    };
+    const peak = scoreOversold(metrics("industrial", { ...base, series }));
+    assert.equal(peak.peakEarningsLevel, "POSSIBLE");
+  });
 });
 
-describe("MFC70-v1.3", () => {
+describe("MFC70-v1.4", () => {
   it("has exactly 70 factors", () => {
     assert.equal(QUALITY_FACTORS.length, 70);
   });
@@ -419,12 +445,26 @@ describe("MFC70-v1.3", () => {
     assert.notEqual(three.factors.find((f) => f.id === "Q54")?.score, null);
   });
 
-  it("splits core vs conditional coverage", () => {
-    const q = scoreQuality(metrics("saas"));
-    assert.ok(q.coreCoverage >= 0);
-    assert.ok(q.conditionalCoverage >= 0);
-    assert.ok(q.coreCoverage <= 1);
-    assert.ok(q.conditionalCoverage <= 1);
+  it("Q40 / Q38 / Q22 score from series, not 1Y proxies", () => {
+    const none = scoreQuality(metrics("industrial", { series: null, capex: null, investedCapital: null, cfo: 40 }));
+    assert.equal(none.factors.find((f) => f.id === "Q40")?.score, null);
+    assert.equal(none.factors.find((f) => f.id === "Q38")?.score, null);
+    assert.equal(none.factors.find((f) => f.id === "Q22")?.score, null);
+    assert.equal(none.factors.find((f) => f.id === "Q22")?.missingReason, "MISSING_SERIES");
+    assert.equal(none.factors.find((f) => f.id === "Q04")?.missingReason, "MISSING_SERIES");
+    const series: FinancialSeries = {
+      points: [
+        fy("2023", { ppe: 40, investedCapital: 80, operatingIncome: 8, cfo: 6, capex: -5, revenue: 70, epsDiluted: 0.4, debt: 20 }),
+        fy("2024", { ppe: 44, investedCapital: 90, operatingIncome: 12, cfo: 9, capex: -6, revenue: 85, epsDiluted: 0.55, debt: 22 }),
+        fy("2025", { ppe: 48, investedCapital: 100, operatingIncome: 18, cfo: 14, capex: -7, revenue: 100, epsDiluted: 0.8, debt: 24 }),
+      ],
+    };
+    const q = scoreQuality(metrics("industrial", { series, revenueTtm: 100, revenuePrior: 85, revenueYoY: 100 / 85 - 1, capex: 7 }));
+    assert.notEqual(q.factors.find((f) => f.id === "Q40")?.score, null);
+    assert.notEqual(q.factors.find((f) => f.id === "Q38")?.score, null);
+    assert.equal(q.factors.find((f) => f.id === "Q22")?.score, 10);
+    assert.notEqual(q.factors.find((f) => f.id === "Q04")?.score, null);
+    assert.notEqual(q.factors.find((f) => f.id === "Q45")?.score, null);
   });
 });
 
@@ -511,6 +551,6 @@ describe("integrity", () => {
     const manual = QUALITY_FACTORS.filter((f) => qualityImplStatus(f.id, f.kind) === "MANUAL_ONLY");
     assert.ok(manual.length >= 20);
     assert.ok(manual.length <= 32);
-    assert.ok(!manual.some((f) => ["Q07", "Q20", "Q21", "Q54", "Q37", "Q70"].includes(f.id)));
+    assert.ok(!manual.some((f) => ["Q07", "Q20", "Q21", "Q54", "Q37", "Q70", "Q04", "Q35", "Q38", "Q40", "Q42", "Q45"].includes(f.id)));
   });
 });

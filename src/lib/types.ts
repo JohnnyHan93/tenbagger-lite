@@ -151,6 +151,7 @@ export interface FinancialSeriesPoint {
   dilutedShares?: number | null;
   debt?: number | null;
   ppe?: number | null;
+  capex?: number | null;
   epsDiluted?: number | null;
   investedCapital?: number | null;
 }
