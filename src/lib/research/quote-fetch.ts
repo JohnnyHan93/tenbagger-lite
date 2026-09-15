@@ -16,6 +16,7 @@ import {
   type YahooResult,
 } from "./quote-parse";
 import { overlayIdentity } from "./identity";
+import { financialsFromSeries, mergeSeries, parseYahooTimeseries, yahooTimeseriesUrl } from "./yahoo-series";
 
 type YahooChart = {
   chart?: {
@@ -337,6 +338,22 @@ function mergeQuotes(parts: Array<ResearchQuote | null>): ResearchQuote | null {
   };
 }
 
+async function tryYahooTimeseries(ticker: string): Promise<{
+  series: ReturnType<typeof parseYahooTimeseries>;
+  financials: ReturnType<typeof financialsFromSeries>;
+} | null> {
+  try {
+    const payload = (await fetchJson(yahooTimeseriesUrl(ticker), 18000)) as Parameters<
+      typeof parseYahooTimeseries
+    >[0];
+    const series = parseYahooTimeseries(payload);
+    if (!series) return null;
+    return { series, financials: financialsFromSeries(series) };
+  } catch {
+    return null;
+  }
+}
+
 export async function resolveQuote(
   ticker: string,
 ): Promise<ResearchQuote | null> {
@@ -431,6 +448,44 @@ export async function resolveQuote(
         },
       };
     }
+  }
+
+  const ts = await tryYahooTimeseries(merged.ticker);
+  attempts.push(
+    stampAttempt(
+      "yahoo-timeseries",
+      Date.now(),
+      ts?.series ? "ok" : "empty",
+      ts?.series ? `FY ${ts.series.points.filter((p) => p.periodType === "FY").length}` : "no series",
+    ),
+  );
+  if (ts?.series) {
+    const fin = merged.financials;
+    const s = ts.financials;
+    merged = {
+      ...merged,
+      financials: {
+        ...fin,
+        revenueTtm: fin.revenueTtm ?? s.revenueTtm ?? null,
+        revenuePrior: fin.revenuePrior ?? s.revenuePrior ?? null,
+        operatingIncomeTtm: fin.operatingIncomeTtm ?? s.operatingIncomeTtm ?? null,
+        netIncomeTtm: fin.netIncomeTtm ?? s.netIncomeTtm ?? null,
+        cfo: fin.cfo ?? s.cfo ?? null,
+        fcf: fin.fcf ?? s.fcf ?? null,
+        fcfSource: fin.fcfSource ?? s.fcfSource ?? null,
+        totalDebt: fin.totalDebt ?? s.totalDebt ?? null,
+        sharesOutstanding: fin.sharesOutstanding ?? s.sharesOutstanding ?? null,
+      },
+      extras: {
+        ...merged.extras,
+        series: mergeSeries(merged.extras?.series, ts.series),
+        cfo: merged.extras?.cfo ?? s.cfo ?? fin.cfo ?? null,
+        investedCapital:
+          merged.extras?.investedCapital ??
+          ts.series.points.filter((p) => p.periodType === "FY").at(-1)?.investedCapital ??
+          null,
+      },
+    };
   }
 
   merged.sourceAttempts = attempts;

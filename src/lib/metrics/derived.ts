@@ -1,5 +1,6 @@
-import type { FinancialSnapshot } from "../types.ts";
+import type { FinancialSnapshot, FinancialSeries } from "../types.ts";
 import type { IndustryGroup } from "../engines/industry.ts";
+import { numericField, pointsOf, seriesTrusted } from "./series.ts";
 
 export interface DerivedMetrics {
   revenueTtm: number | null;
@@ -74,6 +75,21 @@ export function change(curr: number | null | undefined, prior: number | null | u
   return curr / prior - 1;
 }
 
+export function cagrFromSeries(
+  series: FinancialSeries | null | undefined,
+  field: "revenue" | "operatingIncome" | "netIncome" | "cfo" | "fcf",
+  nPoints = 4,
+): number | null {
+  if (!seriesTrusted(series)) return null;
+  const vals = numericField(pointsOf(series, "FY"), field);
+  if (vals.length < Math.max(2, nPoints - 1)) return null;
+  const span = Math.min(nPoints, vals.length);
+  const first = vals[vals.length - span];
+  const last = vals[vals.length - 1];
+  if (first == null || last == null || first <= 0 || last <= 0) return null;
+  return Math.pow(last / first, 1 / (span - 1)) - 1;
+}
+
 export function deriveMetrics(input: {
   price: number;
   marketCap: number;
@@ -85,6 +101,10 @@ export function deriveMetrics(input: {
   const f = input.financials;
   const x = input.extras ?? {};
   const revenueYoY = x.revenueYoY ?? change(f.revenueTtm, f.revenuePrior);
+  const series = x.series ?? null;
+  const revenueCagr3y = x.revenueCagr3y ?? cagrFromSeries(series, "revenue", 4);
+  const opPrior =
+    x.opPrior ?? (series ? numericField(pointsOf(series, "FY"), "operatingIncome").at(-2) ?? null : null);
   const om = x.om ?? f.operatingMargin ?? ratio(f.operatingIncomeTtm, f.revenueTtm);
   const nm = x.nm ?? ratio(f.netIncomeTtm, f.revenueTtm);
   const cfo = x.cfo ?? f.cfo ?? null;
@@ -108,10 +128,10 @@ export function deriveMetrics(input: {
     revenueTtm: f.revenueTtm,
     revenuePrior: f.revenuePrior,
     revenueYoY,
-    revenueCagr3y: x.revenueCagr3y ?? null,
+    revenueCagr3y,
     opTtm: f.operatingIncomeTtm,
-    opPrior: x.opPrior ?? null,
-    opGrowth: x.opGrowth ?? change(f.operatingIncomeTtm, x.opPrior ?? null),
+    opPrior,
+    opGrowth: x.opGrowth ?? change(f.operatingIncomeTtm, opPrior),
     niTtm: f.netIncomeTtm,
     gm: f.grossMargin,
     om,

@@ -1,4 +1,4 @@
-import type { Currency, FinancialSnapshot, ResearchQuote } from "../types";
+import type { Currency, FinancialSeries, FinancialSnapshot, ResearchQuote } from "../types";
 
 export type YahooRaw = { raw?: number };
 
@@ -608,6 +608,7 @@ export function extrasFromNaverAnnual(
   periodType: "Annual";
   fiscalYear: number | null;
   statementBasis: null;
+  series: FinancialSeries | null;
 } {
   const years = naverAnnualYears(payload, asOf);
   const latest = years.at(-1);
@@ -617,6 +618,33 @@ export function extrasFromNaverAnnual(
   const nm = latest ? naverRowValue(payload, "순이익률", latest.key) : null;
   const pb = latest ? naverRowValue(payload, "PBR", latest.key) : null;
   const opP = prior ? naverRowValue(payload, "영업이익", prior.key) : null;
+  const points = years.map((y) => {
+    const rev = naverRowValue(payload, "매출액", y.key);
+    const op = naverRowValue(payload, "영업이익", y.key);
+    const ni = naverRowValue(payload, "당기순이익", y.key);
+    const cfo = naverRowValue(payload, "영업활동현금흐름", y.key);
+    const fcf = naverRowValue(payload, "FCF", y.key);
+    return {
+      period: `${y.y}-12-31`,
+      periodType: "FY" as const,
+      revenue: rev == null ? null : rev * WISEREPORT_EOK,
+      operatingIncome: op == null ? null : op * WISEREPORT_EOK,
+      netIncome: ni == null ? null : ni * WISEREPORT_EOK,
+      cfo: cfo == null ? null : cfo * WISEREPORT_EOK,
+      fcf: fcf == null ? null : fcf * WISEREPORT_EOK,
+    };
+  });
+  const series: FinancialSeries | null = points.length
+    ? {
+        points,
+        provenance: points.map((p) => ({
+          period: p.period,
+          sourceTier: "TIER_2" as const,
+          sourceName: "Naver finance annual",
+          sourceUrl: "https://m.stock.naver.com/api/stock/",
+        })),
+      }
+    : null;
   return {
     opPrior: opP == null ? null : opP * WISEREPORT_EOK,
     omChange: omL != null && omP != null ? omL / 100 - omP / 100 : null,
@@ -625,6 +653,7 @@ export function extrasFromNaverAnnual(
     periodType: "Annual",
     fiscalYear: latest?.y ?? null,
     statementBasis: null,
+    series,
   };
 }
 

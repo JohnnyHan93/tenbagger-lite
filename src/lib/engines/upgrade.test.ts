@@ -503,8 +503,8 @@ describe("fixtures — three engines stay separate", () => {
 });
 
 describe("integrity", () => {
-  it("EXECUTE_FULL_100 is authorized for the current Neon batch", () => {
-    assert.equal(EXECUTE_FULL_100, true);
+  it("EXECUTE_FULL_100 stays locked after the Neon batch", () => {
+    assert.equal(EXECUTE_FULL_100, false);
   });
 
   it("manual-only count is honest", () => {

@@ -321,3 +321,15 @@ export const full100OneFn = createServerFn({ method: "POST" })
     const { full100ResearchOne } = await import("../research/full100.ts");
     return full100ResearchOne(data.ticker, { force: data.force, useAi: true });
   });
+
+export const gapfillStatusFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { gapfillStatus } = await import("../research/gapfill.ts");
+  return gapfillStatus();
+});
+
+export const gapfillOneFn = createServerFn({ method: "POST" })
+  .validator((input: { ticker: string }) => input)
+  .handler(async ({ data }) => {
+    const { gapfillResearchOne } = await import("../research/gapfill.ts");
+    return gapfillResearchOne(data.ticker);
+  });

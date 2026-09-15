@@ -1,3 +1,21 @@
+## v2.4.7 — Sample100 complete on Neon
+
+- Full 100 + gap fill finished on `idt.grok.me` Neon. `EXECUTE_FULL_100` stays locked.
+- Yahoo / Naver FY series fill Quality cash/growth factors. Remaining counts series, not RESEARCH_REQUIRED.
+- Queue exports Full 100 CSV/JSON. Dashboard sanitizes missing tickers. Three engine scores never summed.
+
+## Gap fill remaining no longer stuck at 100
+
+- Remaining is missing Yahoo/Naver FY series (or no timeseries attempt), not `RESEARCH_REQUIRED`.
+- Quality 27% / overall < 70% stays honest. After a series save, remaining drops. Already-filled names are skipped on resume.
+
+## Gap fill from Yahoo / Naver series
+
+- Yahoo fundamentals timeseries (FY 매출·영업이익·순이익·CFO·FCF·주식수 + 분기 매출) and Naver annual columns build `FinancialSeries` (TIER_2).
+- Quality Q02 / Q07 / Q20 / Q21 / Q54 and cash factors score from that series when present. Missing still N/A, not 0.
+- MANUAL_ONLY (Q04 / Q08 / Q32 / Q41 / …) stays N/A. Queue **공백 채우기** re-researches Sample100 names below Quality 55% or without 3 FY points. Neon only. New snapshot; history is not overwritten.
+- Full 100 stays locked.
+
 ## Full 100 complete — relock + report
 
 - Neon Sample100 batch is done. `EXECUTE_FULL_100` is **false** again so it cannot auto-run.

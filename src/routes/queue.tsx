@@ -15,6 +15,7 @@ import { latestSnapshot, useAppStore } from "@/lib/store";
 import type { LivePreflightResult } from "@/lib/research/preflight";
 import type { Smoke12OneResult, Smoke12Status } from "@/lib/research/smoke12";
 import type { Full100OneResult, Full100Status } from "@/lib/research/full100";
+import type { GapFillOneResult, GapFillStatus } from "@/lib/research/gapfill";
 
 type QueueRunDto = {
   id: string;
@@ -65,6 +66,12 @@ function Page() {
   const [fullLog, setFullLog] = useState<Full100OneResult[]>([]);
   const fullAuto = useRef(false);
   const fullStop = useRef(false);
+  const [gap, setGap] = useState<GapFillStatus | null>(null);
+  const [gapBusy, setGapBusy] = useState(false);
+  const [gapCurrent, setGapCurrent] = useState<string | null>(null);
+  const [gapLog, setGapLog] = useState<GapFillOneResult[]>([]);
+  const gapStop = useRef(false);
+  const gapAuto = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -145,15 +152,17 @@ function Page() {
     let cancelled = false;
     void (async () => {
       try {
-        const { smoke12StatusFn, full100StatusFn } = await import("@/lib/persist/actions");
-        const [s, f] = await Promise.all([smoke12StatusFn(), full100StatusFn()]);
+        const { smoke12StatusFn, full100StatusFn, gapfillStatusFn } = await import("@/lib/persist/actions");
+        const [s, f, g] = await Promise.all([smoke12StatusFn(), full100StatusFn(), gapfillStatusFn()]);
         if (cancelled) return;
         setSmoke(s);
         setFull(f);
+        setGap(g);
       } catch {
         if (!cancelled) {
           setSmoke(null);
           setFull(null);
+          setGap(null);
         }
       }
     })();
@@ -237,6 +246,45 @@ function Page() {
     fullAuto.current = true;
     void runFull100();
   }, [full, fullBusy]);
+
+  async function runGapFill() {
+    if (gapBusy) return;
+    const { gapfillStatusFn, gapfillOneFn, loadWorkspaceFn } = await import("@/lib/persist/actions");
+    gapStop.current = false;
+    setGapBusy(true);
+    try {
+      let status = await gapfillStatusFn();
+      setGap(status);
+      if (!status.durable) return;
+      const todo = status.remainingTickers.slice();
+      for (const ticker of todo) {
+        if (gapStop.current) break;
+        setGapCurrent(ticker);
+        const result = await gapfillOneFn({ data: { ticker } });
+        setGapLog((prev) => [...prev, result]);
+        status = await gapfillStatusFn();
+        setGap(status);
+        try {
+          const db = await loadWorkspaceFn();
+          useAppStore.getState().hydrateFromDb(db);
+        } catch {
+          /* keep local */
+        }
+      }
+    } finally {
+      setGapCurrent(null);
+      setGapBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (gapAuto.current) return;
+    if (!gap?.durable || gap.remaining === 0 || gapBusy) return;
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("run") !== "gapfill") return;
+    gapAuto.current = true;
+    void runGapFill();
+  }, [gap, gapBusy]);
 
   const researching = runJobs.filter((j) => j.status === "RESEARCHING");
   const failed = runJobs.filter((j) => j.status === "FAILED").length;
@@ -434,6 +482,61 @@ function Page() {
             전체 매트릭스 CSV
           </Button>
         </div>
+      </section>
+
+      <section className="mb-4 rounded-[var(--radius-lg)] bg-surface p-4 shadow-[var(--shadow-border)]">
+        <p className="font-mono text-[0.625rem] tracking-widest text-sage uppercase">공백 채우기</p>
+        <p className="mt-2 text-sm">
+          Quality 커버리지 55% 미만 · FY 시계열 3년 미만 · RESEARCH_REQUIRED. Yahoo 연간/분기 + Naver 연간으로 다시
+          조사해 <span className="font-medium">새 스냅샷</span>을 넣는다. 과거 행은 덮지 않는다. MANUAL_ONLY는 그대로 N/A.
+        </p>
+        <p className="mt-1 font-mono text-xs text-muted">
+          채움 {gap?.filled ?? 0} · 남은 {gap?.remaining ?? "…"} / 100
+          {gapCurrent ? ` · 진행 ${displayTicker(gapCurrent)}` : ""}
+          {gapBusy ? ` · 이번 ${gapLog.length}` : ""}
+        </p>
+        <p className="mt-1 text-xs text-muted">
+          {gap?.durable
+            ? "Neon에만 저장. 탭을 닫으면 멈춘다. 다시 누르면 남은 공백만 이어서 한다."
+            : "이 미리보기는 PGLite입니다. 게시된 idt.grok.me Neon에서만 실행합니다."}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            disabled={!gap?.durable || gapBusy || (gap?.remaining ?? 0) === 0}
+            onClick={() => void runGapFill()}
+          >
+            {gapBusy
+              ? `채우는 중 ${gapCurrent ?? ""}`
+              : !gap?.durable
+                ? "Neon에서만 실행"
+                : (gap?.remaining ?? 0) === 0
+                  ? "공백 없음"
+                  : `공백 채우기 (${gap?.remaining ?? "…"})`}
+          </Button>
+          {gapBusy ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                gapStop.current = true;
+              }}
+            >
+              일시정지
+            </Button>
+          ) : null}
+        </div>
+        {gapLog.length > 0 ? (
+          <ul className="mt-3 grid max-h-40 gap-1 overflow-y-auto font-mono text-[0.65rem] text-subtle">
+            {gapLog.slice(-24).map((row, i) => (
+              <li key={`${row.ticker}-${i}`}>
+                {displayTicker(row.ticker)} {row.ok ? (row.skipped ? "skip" : row.status) : row.error}
+                {row.fyPoints != null ? ` · FY${row.fyPoints}` : ""}
+                {row.qualityCoverage != null ? ` · Q ${Math.round(row.qualityCoverage * 100)}%` : ""}
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </section>
 
       <section className="mb-4 overflow-x-auto rounded-[var(--radius-lg)] bg-surface shadow-[var(--shadow-border)]">

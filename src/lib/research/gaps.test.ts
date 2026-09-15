@@ -170,7 +170,7 @@ describe("full 100 queue readiness", () => {
     assert.equal(jobs.length, 100);
     assert.ok(jobs.every((j) => j.status === "NOT_RESEARCHED"));
     const flight = preflight([], []);
-    assert.equal(flight.executeFull100, true);
+    assert.equal(flight.executeFull100, false);
     assert.equal(flight.remaining, 100);
   });
 });

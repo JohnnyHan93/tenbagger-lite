@@ -7,7 +7,7 @@ import { emptyFinancials } from "./quote-parse.ts";
 import { FACTOR_ORDER } from "../scoring/config.ts";
 import { defaultScenarios } from "../tenx/calculator.ts";
 import { SAMPLE_RESEARCH_100, SAMPLE_RESEARCH_100_UNIVERSE_ID } from "../sample-research-100.ts";
-import { remainingUniverseJobs, EXECUTE_FULL_100, FULL100_EPHEMERAL, PREFLIGHT_FAILED } from "./jobs.ts";
+import { remainingUniverseJobs, EXECUTE_FULL_100, FULL100_EPHEMERAL, FULL100_EXECUTION_DISABLED, PREFLIGHT_FAILED } from "./jobs.ts";
 import {
   createProductionDeps,
   processFull100Chunk,
@@ -172,8 +172,8 @@ function queueDownSql(inner: Sql): Sql {
 }
 
 describe("production Full100 start wiring", () => {
-  it("authorizes EXECUTE_FULL_100 and keeps the v2.4 queue operator locked", () => {
-    assert.equal(EXECUTE_FULL_100, true);
+  it("keeps EXECUTE_FULL_100 locked and the v2.4 queue operator locked", () => {
+    assert.equal(EXECUTE_FULL_100, false);
   });
 
   it("keeps v2.4 operator locked so Full100 cannot start again", async () => {
@@ -206,7 +206,7 @@ describe("production Full100 start wiring", () => {
       },
     });
     assert.equal(res.ok, false);
-    if (!res.ok) assert.equal(res.error, FULL100_EPHEMERAL);
+    if (!res.ok) assert.equal(res.error, FULL100_EXECUTION_DISABLED);
     assert.equal(loaded, false);
     assert.equal(probed, false);
     assert.equal((await listResearchRuns()).length, before);
@@ -485,7 +485,7 @@ describe("chunk pause / cancel / DB-authoritative status", () => {
       }),
     });
     assert.equal(chunk.ok, false);
-    assert.equal(chunk.skipped, FULL100_EPHEMERAL);
+    assert.equal(chunk.skipped, FULL100_EXECUTION_DISABLED);
     assert.equal(researched.length, 0);
   });
 });

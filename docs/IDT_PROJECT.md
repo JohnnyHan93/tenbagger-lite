@@ -21,17 +21,14 @@
 
 ---
 
-## 지금 상태 (2026-09-14)
+## 지금 상태 (2026-09-15)
 
 - 공개(게이트) 주소 `idt.grok.me`에서 분석하면 **Neon에 남는다.** 다시 열어도 유지 확인됨.
 - 로그인 없음 (`VITE_AUTH_ENABLED=false`). 혼자 쓰는 앱.
-- 게시 접근이 **나만**이면 밖에서는 `Continue with Grok`만 보인다. 홈화면에서 바로 열려면 **링크 있는 사람**으로 바꾼다.
-- 폰에 깔린 **IDT 2.4.6 APK**는 여전히 `tenbagger-lite.vercel.app`이다. 소스만 2.4.7(`idt.grok.me`)로 바꿔 두었고, 서명 APK는 이 환경에서 다시 빌드하지 않았다. 크롬 바로가기로 대체하는 쪽이 맞다.
-- GitHub에 코드를 올려도 `idt.grok.me`는 자동 배포되지 않는다. 이 주소는 **Grok 앱 빌더에서 다시 게시**해야 바뀐다.
-- Sample100 Full 100은 **이 Neon에서 1회 실행 후 잠금** (`EXECUTE_FULL_100 = false`). 이미 있는 스냅샷은 건너뛴다. 유니버스 밖 Smoke는 유지.
-- Queue → Full 100 결과에서 CSV/JSON 내보내기. 점수는 합치지 않는다.
-- Smoke 12는 Queue에서 따로 돈다. Neon일 때만 저장. PGLite 미리보기에서는 거부.
-- 기준 JSON 내보내기/적용은 설정 화면에 있다. **한 번 더 게시**해야 `idt.grok.me`에 그 화면이 나온다.
+- Sample100 Full 100 + 공백 채우기 **완료**. `EXECUTE_FULL_100 = false`. 유니버스 밖 Smoke는 유지.
+- Queue에서 Full 100 CSV/JSON, 공백 채우기(시계열 없는 종목만). 점수는 합치지 않는다.
+- GitHub: `JohnnyHan93/tenbagger-lite`. `idt.grok.me`는 **Grok 앱 빌더에서 게시**해야 바뀐다.
+- 기준 JSON 내보내기/적용은 설정 화면.
 
 ---
 

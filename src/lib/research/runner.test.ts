@@ -4,7 +4,7 @@ import type { Company } from "../types.ts";
 import type { Snapshot } from "../domain/snapshot.ts";
 import type { ResearchJobRow } from "../persist/queue.ts";
 import {
-  FULL100_EPHEMERAL,
+  FULL100_EXECUTION_DISABLED,
   __resetRunnerControl,
   processJobWithRetry,
   processRun,
@@ -82,8 +82,8 @@ function memoryJobs(rows: ResearchJobRow[]): JobStore & { map: Map<string, Resea
 }
 
 describe("Full 100 execution flag", () => {
-  it("refuses PGLite start so preview cannot enqueue 100 jobs", async () => {
-    assert.equal(EXECUTE_FULL_100, true);
+  it("refuses start while EXECUTE_FULL_100 is locked", async () => {
+    assert.equal(EXECUTE_FULL_100, false);
     const researched: string[] = [];
     const res = await startFull100Research({
       companies: [],
@@ -99,7 +99,7 @@ describe("Full 100 execution flag", () => {
       },
     });
     assert.equal(res.ok, false);
-    if (!res.ok) assert.equal(res.error, FULL100_EPHEMERAL);
+    if (!res.ok) assert.equal(res.error, FULL100_EXECUTION_DISABLED);
     assert.equal(researched.length, 0);
   });
 });
