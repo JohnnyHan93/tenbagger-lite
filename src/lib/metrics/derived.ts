@@ -61,6 +61,7 @@ export interface DerivedMetrics {
   goingConcernEvidence?: boolean;
   series?: import("../types.ts").FinancialSeries | null;
   liquidityStress?: boolean;
+  organicShare?: number | null;
 }
 
 export function ratio(a: number | null | undefined, b: number | null | undefined): number | null {
@@ -186,6 +187,7 @@ export function deriveMetrics(input: {
     investedCapital,
     goingConcernEvidence: Boolean(x.goingConcernEvidence),
     series: x.series ?? null,
+    organicShare: x.organicShare ?? null,
     liquidityStress: Boolean(
       (f.cash != null && f.cash < 0) ||
         ((fcf ?? 0) < 0 && f.cash != null && f.cash < Math.abs(fcf ?? 0)),

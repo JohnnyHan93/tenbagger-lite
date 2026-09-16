@@ -3,6 +3,7 @@ import { CompanyTicker, FREEZE_COL } from "@/components/company-ticker";
 import { PageTitle, SafetyNote } from "@/components/shell";
 import { FlagBadge, GradeBadge } from "@/components/ui/badge";
 import { ENGINE_TAB, formatQualityScore } from "@/lib/format";
+import { GapCountLink } from "@/components/data-gaps";
 import { rankCompanies } from "@/lib/selectors";
 import { useAppStore } from "@/lib/store";
 
@@ -29,12 +30,13 @@ function Page() {
               <th className="px-3 py-3">Grade</th>
               <th className="px-3 py-3">Flags</th>
               <th className="px-3 py-3 text-right">Covered</th>
+              <th className="px-3 py-3 text-right">공백</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {rows.length === 0 ? (
               <tr>
-                <td className="px-3 py-6 text-sm text-muted" colSpan={5}>
+                <td className="px-3 py-6 text-sm text-muted" colSpan={6}>
                   분석된 종목이 없습니다. Quality 70 점수는 시드하지 않습니다.
                 </td>
               </tr>
@@ -55,6 +57,9 @@ function Page() {
                 </td>
                 <td className="px-3 py-3 text-right font-mono text-xs">
                   {r.snapshot.quality.scoredCount}/{r.snapshot.quality.eligibleCount}
+                </td>
+                <td className="px-3 py-3 text-right">
+                  <GapCountLink snapshot={r.snapshot} ticker={r.company.ticker} engine="quality" />
                 </td>
               </tr>
             ))}

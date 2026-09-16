@@ -1,17 +1,20 @@
 import { buildResearchGaps, highestImpactGap } from "@/lib/research/gaps";
+import { engineGapCounts } from "@/lib/research/data-needs";
 import type { Snapshot } from "@/lib/domain/snapshot";
 import type { Company } from "@/lib/types";
+import { Button } from "@/components/ui/button";
 
 export function ResearchRequiredPanel({
   snapshot,
   company,
+  onOpenGaps,
 }: {
   snapshot: Snapshot;
   company: Company;
+  onOpenGaps?: () => void;
 }) {
   const gap = highestImpactGap(snapshot, company);
-  const missingX = snapshot.xbagger.factors.filter((f) => f.score == null).length;
-  const missingQ = snapshot.quality.factors.filter((f) => f.status === "NA" && f.kind === "Core").length;
+  const counts = engineGapCounts(snapshot);
   return (
     <section className="mt-4 rounded-[var(--radius-lg)] bg-surface p-4 shadow-[var(--shadow-border)]">
       <p className="font-mono text-[0.625rem] tracking-widest text-sage uppercase">Research Required</p>
@@ -21,7 +24,8 @@ export function ResearchRequiredPanel({
         {snapshot.fiscalYear ? ` · FY${snapshot.fiscalYear}` : ""}
       </p>
       <p className="mt-1 text-sm">
-        비어 있는 X-Bagger {missingX} · Quality Core N/A {missingQ}. 점수를 채우지 않고 다음 조사를 표시한다.
+        비어 있는 항목 X {counts.x} · Oversold {counts.o} · Quality {counts.q}
+        <span className="text-muted"> · 자동 {counts.auto} · 직접입력 {counts.manual}</span>
       </p>
       {gap ? (
         <p className="mt-3 text-sm">
@@ -31,6 +35,11 @@ export function ResearchRequiredPanel({
       ) : (
         <p className="mt-3 text-sm text-muted">우선 갭 없음.</p>
       )}
+      {onOpenGaps ? (
+        <Button className="mt-3" variant="secondary" onClick={onOpenGaps}>
+          엔진별 공백 보고 채우기
+        </Button>
+      ) : null}
       {snapshot.sourceAttempts && snapshot.sourceAttempts.length > 0 ? (
         <ul className="mt-3 space-y-1 font-mono text-[0.6875rem] text-muted">
           {snapshot.sourceAttempts.map((a, i) => (

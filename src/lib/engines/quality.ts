@@ -137,7 +137,10 @@ export const QUALITY_FACTORS: QualityFactorDef[] = [
     if (qoq == null) return { score: null, reason: "비교 가능한 분기 매출 2개 없음.", calc: "qoq", missingReason: "MISSING_SERIES" };
     return packedBand("Q07", qoq, [[0.15, 10], [0.05, 8], [0, 6], [-0.05, 4], [-9, 2]], "QoQ 매출", "qoq");
   } },
-  { id: "Q08", pillar: "Growth", name: "Organic vs M&A", kind: "Conditional", apply: A, score: () => ({ score: null, reason: "유기성장 공시 없음.", calc: "organic" }) },
+  { id: "Q08", pillar: "Growth", name: "Organic vs M&A", kind: "Conditional", apply: A, score: (m) => {
+    if (m.organicShare == null) return { score: null, reason: "유기성장 공시 없음.", calc: "organic", missingReason: "MANUAL_ONLY" };
+    return packedBand("Q08", m.organicShare, [[0.9, 10], [0.7, 8], [0.5, 6], [0, 4], [-9, 2]], "유기성장 비중", "organic");
+  } },
   { id: "Q09", pillar: "Profitability", name: "Gross Margin", kind: "Core", apply: (g) => (g === "financial" || g === "reit" ? "N" : "A"), score: (m) => packedBand("Q09", m.gm, [[0.7, 10], [0.5, 8], [0.35, 6], [0.2, 4], [0, 2], [-9, 0]], "GM", "gm") },
   { id: "Q10", pillar: "Profitability", name: "Operating Margin", kind: "Core", apply: A, score: (m) => packedBand("Q10", m.om, [[0.25, 10], [0.15, 8], [0.08, 6], [0.02, 4], [0, 2], [-9, 0]], "OM", "om") },
   { id: "Q11", pillar: "Profitability", name: "Net Margin", kind: "Core", apply: A, score: (m) => packedBand("Q11", m.nm, [[0.18, 10], [0.1, 8], [0.05, 6], [0, 4], [-0.05, 2], [-9, 0]], "NM", "nm") },
@@ -431,7 +434,7 @@ export function assertSeventyFactors(): number {
 export type QualityImplStatus = "IMPLEMENTED" | "MANUAL_ONLY" | "N/A_BY_DESIGN";
 
 const MANUAL = new Set([
-  "Q08", "Q28", "Q29", "Q32", "Q34",
+  "Q28", "Q29", "Q32", "Q34",
   "Q41", "Q49", "Q51", "Q55", "Q56",
   "Q58", "Q59", "Q60", "Q61", "Q62", "Q63", "Q64", "Q65", "Q66", "Q67", "Q68", "Q69",
 ]);

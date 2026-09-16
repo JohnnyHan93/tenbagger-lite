@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { CompanyTicker, FREEZE_NAME_AFTER_RANK, FREEZE_RANK } from "@/components/company-ticker";
 import { PageTitle, SafetyNote } from "@/components/shell";
 import { ENGINE_TAB, formatOppScore } from "@/lib/format";
+import { GapCountLink } from "@/components/data-gaps";
 import { oversoldRank } from "@/lib/selectors";
 import { useAppStore } from "@/lib/store";
 
@@ -22,12 +23,13 @@ function Table({ market }: { market: "KR" | "US" }) {
             <th className="px-3 py-3">Case</th>
             <th className="px-3 py-3 text-right">Value Trap 1–10</th>
             <th className="px-3 py-3">Peak</th>
+            <th className="px-3 py-3 text-right">공백</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
           {rows.length === 0 ? (
             <tr>
-              <td className="px-3 py-6 text-sm text-muted" colSpan={6}>
+              <td className="px-3 py-6 text-sm text-muted" colSpan={7}>
                 {market} 유니버스에 과매도 후보가 없습니다. Discover에서 티커를 넣으세요.
               </td>
             </tr>
@@ -44,6 +46,9 @@ function Table({ market }: { market: "KR" | "US" }) {
                 <td className="px-3 py-3 font-mono">{r.snapshot.oversold.case}</td>
                 <td className="px-3 py-3 text-right font-mono tabular-nums">{r.snapshot.oversold.valueTrap} / 10</td>
                 <td className="px-3 py-3 text-xs">{r.snapshot.oversold.peakEarnings ? "YES" : "—"}</td>
+                <td className="px-3 py-3 text-right">
+                  <GapCountLink snapshot={r.snapshot} ticker={r.company.ticker} engine="oversold" />
+                </td>
               </tr>
             ))
           )}

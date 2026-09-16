@@ -16,13 +16,19 @@ import { displayTicker, ENGINE_TAB, formatOppScore, formatQualityScore, formatXS
 import { FACTOR_ORDER } from "@/lib/scoring/config";
 import { latestSnapshot, snapshotsFor, useAppStore } from "@/lib/store";
 import type { FactorCode } from "@/lib/scoring/config";
-import { ResearchGapsList, ResearchRequiredPanel } from "@/components/research-gaps";
+import { ResearchRequiredPanel } from "@/components/research-gaps";
+import { DataGapsPanel } from "@/components/data-gaps";
 import { diffSnapshots } from "@/lib/engines/diff";
 
-export const Route = createFileRoute("/company/$ticker")({ component: CompanyPage });
+export const Route = createFileRoute("/company/$ticker")({
+  component: CompanyPage,
+  validateSearch: (s: Record<string, unknown>): { tab?: string } =>
+    typeof s.tab === "string" ? { tab: s.tab } : {},
+});
 
 function CompanyPage() {
   const { ticker } = Route.useParams();
+  const search = Route.useSearch();
   const decoded = decodeURIComponent(ticker);
   const companies = useAppStore((s) => s.companies);
   const snapshots = useAppStore((s) => s.snapshots);
@@ -30,7 +36,9 @@ function CompanyPage() {
   const toggleWatch = useAppStore((s) => s.toggleWatch);
   const overrideXFactor = useAppStore((s) => s.overrideXFactor);
   const refreshCompany = useAppStore((s) => s.refreshCompany);
-  const [tab, setTab] = useState<"x" | "o" | "q" | "l" | "h" | "e" | "g">("x");
+  const fillMissingData = useAppStore((s) => s.fillMissingData);
+  const initialTab = search.tab === "g" || search.tab === "x" || search.tab === "o" || search.tab === "q" || search.tab === "l" || search.tab === "h" || search.tab === "e" ? search.tab : "x";
+  const [tab, setTab] = useState<"x" | "o" | "q" | "l" | "h" | "e" | "g">(initialTab);
   const [busy, setBusy] = useState(false);
   const [ovCode, setOvCode] = useState<FactorCode>("F10");
   const [ovScore, setOvScore] = useState("6");
@@ -141,7 +149,7 @@ function CompanyPage() {
         ) : null}
       </div>
       <EngineTrio snapshot={snap} ticker={company.ticker} onPick={(id) => setTab(id)} />
-      <ResearchRequiredPanel snapshot={snap} company={company} />
+      <ResearchRequiredPanel snapshot={snap} company={company} onOpenGaps={() => setTab("g")} />
       <p className="mt-6 text-sm text-fg">{snap.oneSentenceThesis}</p>
       <div className="mt-6 grid grid-cols-3 gap-2">
         {(
@@ -350,7 +358,20 @@ function CompanyPage() {
             </p>
           </div>
         ) : null}
-        {tab === "g" ? <ResearchGapsList snapshot={snap} company={company} /> : null}
+        {tab === "g" ? (
+          <DataGapsPanel
+            snapshot={snap}
+            company={company}
+            scraping={busy}
+            onScrape={() => {
+              setBusy(true);
+              void Promise.resolve(refreshCompany(company.id)).finally(() => setBusy(false));
+            }}
+            onSaved={(patch) => {
+              fillMissingData(company.id, patch);
+            }}
+          />
+        ) : null}
         {tab === "e" ? (
           <div className="space-y-2">
             {snap.evidence.length === 0 ? <p className="text-sm text-muted">증거가 없습니다.</p> : null}

@@ -3,6 +3,7 @@ import { CompanyTicker, FREEZE_COL } from "@/components/company-ticker";
 import { PageTitle, SafetyNote } from "@/components/shell";
 import { GradeBadge, FeasibilityBadge } from "@/components/ui/badge";
 import { ENGINE_TAB, formatXScore } from "@/lib/format";
+import { GapCountLink } from "@/components/data-gaps";
 import { rankCompanies } from "@/lib/selectors";
 import { useAppStore } from "@/lib/store";
 
@@ -30,12 +31,13 @@ function Page() {
               <th className="px-3 py-3">10x</th>
               <th className="px-3 py-3">Gates</th>
               <th className="px-3 py-3 text-right">Cov</th>
+              <th className="px-3 py-3 text-right">공백</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {rows.length === 0 ? (
               <tr>
-                <td className="px-3 py-6 text-sm text-muted" colSpan={6}>
+                <td className="px-3 py-6 text-sm text-muted" colSpan={7}>
                   분석된 종목이 없습니다. 대시보드의 100 종목은 신원만 있고, Discover에서 ANALYZE 해야 점수가 생깁니다.
                 </td>
               </tr>
@@ -56,6 +58,9 @@ function Page() {
                   T {r.snapshot.xbagger.gates?.tenx ?? "—"} · S {r.snapshot.xbagger.gates?.survival ?? "—"}
                 </td>
                 <td className="px-3 py-3 text-right font-mono">{Math.round(r.snapshot.xbagger.coverage * 100)}%</td>
+                <td className="px-3 py-3 text-right">
+                  <GapCountLink snapshot={r.snapshot} ticker={r.company.ticker} engine="xbagger" />
+                </td>
               </tr>
             ))}
           </tbody>

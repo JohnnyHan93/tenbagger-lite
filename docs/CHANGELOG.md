@@ -1,3 +1,9 @@
+## Engine gap fill — per stock, per model
+
+- Company Gaps tab lists missing X / Oversold / Quality items as 자동 vs 직접입력.
+- 인터넷에서 채우기 re-fetches quote + filings. Remaining disclosure fields (TAM, share, customers, organic, going concern, R&D, backlog) have inline inputs on the same page.
+- Dashboard and engine lists show X·O·Q gap counts. New snapshot; history stays immutable.
+
 ## v2.4.8 — Scoring honesty XBG-v2.2 / OSM-v2.3 / MFC70-v1.4
 
 - X-Bagger: TAM·점유율·고객을 테마 키워드나 매출만으로 채점하지 않음. 3Y CAGR가 있으면 F2는 그걸 쓰고, 최근 YoY가 꺾이면 캡. 깊은 영업적자는 F3를 제한. 배수 없으면 F8은 N/A.

@@ -14,6 +14,7 @@ import { strategyTags, researchPriority } from "./engines/matrix.ts";
 import { scoreLenses } from "./engines/lenses.ts";
 import { criteriaProvenance, getCriteria, resetActiveCriteria, setActiveCriteria } from "./engines/criteria/index.ts";
 import type { CriteriaPack } from "./engines/criteria/types.ts";
+import { applyManualFill, type ManualFillPatch } from "./research/manual-fill.ts";
 
 export type PersistStatus = "IDLE" | "SAVING" | "SAVED" | "SAVE_FAILED";
 
@@ -46,6 +47,7 @@ export interface AppState {
     settings?: AppSettings | null;
   }) => void;
   overrideXFactor: (snapshotId: string, code: FactorCode, score: number, reason: string) => void;
+  fillMissingData: (companyId: string, patch: ManualFillPatch) => Snapshot | null;
   toggleWatch: (companyId: string) => void;
   importJson: (data: Partial<Pick<AppState, "companies" | "snapshots" | "universes" | "watchlist" | "settings">>) => void;
   updateSettings: (s: Partial<AppSettings>) => void;
@@ -311,6 +313,15 @@ export const useAppStore = create<AppState>()(
           },
           next,
         );
+      },
+      fillMissingData: (companyId, patch) => {
+        const company = get().companies.find((c) => c.id === companyId);
+        const prev = latestSnapshot(get().snapshots, companyId);
+        if (!company || !prev) return null;
+        const snap = applyManualFill(prev, company, patch);
+        set({ snapshots: [...get().snapshots, snap] });
+        void persistRecord(company, snap);
+        return snap;
       },
       toggleWatch: (companyId) => {
         const w = get().watchlist;

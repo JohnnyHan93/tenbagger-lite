@@ -269,6 +269,13 @@ export interface ResearchQuote {
     statementBasis?: "연결" | "별도" | string | null;
     periodType?: "Annual" | "Quarter" | "TTM" | "YTD" | string | null;
     fiscalYear?: number | null;
+    rdToRev?: number | null;
+    rdGrowth?: number | null;
+    backlogGrowth?: number | null;
+    bookToBill?: number | null;
+    customerConcentration?: number | null;
+    interestCoverage?: number | null;
+    organicShare?: number | null;
   };
   sourceAttempts?: SourceAttempt[];
 }

@@ -10,6 +10,7 @@ import { buildCoverageReport } from "@/lib/research/coverage-report";
 import { useAppStore } from "@/lib/store";
 import { APP_NAME } from "@/lib/brand";
 import { CompanyTicker, FREEZE_COL } from "@/components/company-ticker";
+import { GapCountLink } from "@/components/data-gaps";
 import { ENGINE_TAB, formatOppScore, formatPct, formatQualityScore, formatXScore } from "@/lib/format";
 
 export const Route = createFileRoute("/")({ component: Dashboard });
@@ -103,6 +104,10 @@ function Dashboard() {
                 {ENGINE_TAB.quality.name}
                 <span className="block font-normal tracking-normal text-subtle">0–100</span>
               </th>
+              <th className="px-3 py-3">
+                공백
+                <span className="block font-normal tracking-normal text-subtle">X · O · Q</span>
+              </th>
               <th className="px-3 py-3">Tags</th>
             </tr>
           </thead>
@@ -137,12 +142,15 @@ function Dashboard() {
                       <span className="ml-2 text-subtle">{r.snapshot.quality.grade}</span>
                     </td>
                     <td className="px-3 py-3">
+                      <GapCountLink snapshot={r.snapshot} ticker={r.company.ticker} />
+                    </td>
+                    <td className="px-3 py-3">
                       <TagRow tags={r.snapshot.tags.slice(0, 2)} />
                     </td>
                   </>
                 ) : (
                   <>
-                    <td colSpan={5} className="px-3 py-3 text-xs text-muted">
+                    <td colSpan={6} className="px-3 py-3 text-xs text-muted">
                       미분석 — 발굴에서 ANALYZE. 점수는 시드하지 않습니다.
                     </td>
                   </>
