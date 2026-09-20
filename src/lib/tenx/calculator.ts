@@ -92,10 +92,12 @@ export function defaultScenarios(
     financials.revenuePrior != null && financials.revenuePrior > 0
       ? currentRev / financials.revenuePrior - 1
       : null;
-  const observed = growth != null && Number.isFinite(growth) ? growth : 0;
-  const baseCagr = growth == null ? 0 : Math.min(0.35, Math.max(0.0, observed * 0.6));
-  const bullCagr = growth == null ? 0 : Math.min(0.5, Math.max(baseCagr, observed));
-  const bearCagr = growth == null ? 0 : Math.max(0, baseCagr * 0.4);
+  // No observed growth → no scenario pack. Required CAGR still lives on TenxMath.
+  if (growth == null || !Number.isFinite(growth)) return null;
+  const observed = growth;
+  const baseCagr = Math.min(0.35, Math.max(0.0, observed * 0.6));
+  const bullCagr = Math.min(0.5, Math.max(baseCagr, observed));
+  const bearCagr = Math.max(0, baseCagr * 0.4);
   const om = financials.operatingMargin;
   const nm = financials.netIncomeTtm != null && currentRev > 0 ? financials.netIncomeTtm / currentRev : null;
   return {
@@ -206,6 +208,12 @@ export function f10FromMath(
 ): { score: number | null; reason: string } {
   if (!tenxMath || tenxMath.currentRevenue == null || scenarios.length === 0) {
     return { score: null, reason: "매출 시계열 없음. synthetic 10x 경로를 만들지 않음. F10=N/A." };
+  }
+  if (tenxMath.assumedCagr == null) {
+    return {
+      score: null,
+      reason: "관측 성장률 없음. 0%·고정 EV/S로 F10을 만들지 않음. 필요 CAGR만 표시. F10=N/A.",
+    };
   }
   const bull = scenarios.find((s) => s.scenario === "BULL");
   const base = scenarios.find((s) => s.scenario === "BASE");
