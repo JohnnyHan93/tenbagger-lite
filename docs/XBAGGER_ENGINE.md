@@ -1,10 +1,16 @@
-# X-Bagger XBG-v2.2
+# X-Bagger XBG-v2.3
 
 Weights X01–X10 sum to 100. Score 0–10. N/A excluded from denominator.
 
 Coverage: ≥90 no penalty, 80–89 −3, 70–79 −7, <70 RESEARCH REQUIRED.
 
 Hard gates (not mixed into the average): Trust, 12m Survival, 10x feasibility, Customer watchlist.
+
+## v2.3 honesty
+
+- F10 needs observed growth (`revenuePrior`) as well as current revenue. TTM-only names stay F10=N/A. No 0% CAGR scenario pack and no fixed EV/S 12x path.
+- Trust gate: going concern / trustFail → FAIL. Management or disclosure evidence → PASS. Otherwise RESEARCH REQUIRED (not an implicit PASS).
+- Incomplete Oversold Case no longer tags TURNAROUND.
 
 ## v2.2 honesty
 
