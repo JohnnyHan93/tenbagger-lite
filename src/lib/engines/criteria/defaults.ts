@@ -9,7 +9,7 @@ export const DEFAULT_CRITERIA: CriteriaPack = {
   appliedAt: null,
   engines: {
     xbagger: {
-      version: "XBG-v2.2",
+      version: "XBG-v2.3",
       weights: { F1: 12, F2: 12, F3: 10, F4: 10, F5: 10, F6: 10, F7: 12, F8: 8, F9: 6, F10: 10 },
       gradeThresholds: { S: 85, A: 75, B: 65, C: 55, D: 45 },
       hardGates: { tenxMin: 6, survivalMin: 4, customerMin: 4 },
