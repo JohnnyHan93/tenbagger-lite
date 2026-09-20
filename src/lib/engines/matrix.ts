@@ -32,7 +32,7 @@ export function strategyTags(x: XBaggerResult, o: OversoldResult, q: QualityResu
   if (xHigh && qHigh) tags.push("GARP");
   if (xHigh && !qHigh) tags.push("EARLY PROOF");
   if (oHigh && !qHigh && vtHigh) tags.push("VALUE TRAP RISK");
-  if (o.case === "C" && oHigh) tags.push("TURNAROUND");
+  if (o.case === "C" && o.caseStatus === "COMPLETE" && oHigh) tags.push("TURNAROUND");
   if (vtHigh) tags.push("VALUE TRAP RISK");
   if (!tags.length) tags.push("NO EDGE");
   return [...new Set(tags)];
