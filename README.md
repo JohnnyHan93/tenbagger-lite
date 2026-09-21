@@ -25,7 +25,7 @@ Shared research pack (price, filings, evidence, derived metrics) feeds three ind
 |---|---|---|
 | X-Bagger / Wildcard | XBG-v2.3 | Can this market cap become 5–10x on a real path? |
 | Oversold Opportunity | OSM-v2.3 | Cheap, or broken? |
-| Quality 70 | MFC70-v1.4 | Is this a durable business on disclosure? |
+| Quality 70 | MFC70-v1.5 | Is this a durable business on disclosure? |
 
 Research Priority is optional and is **not** an investment grade.
 
@@ -75,7 +75,7 @@ Production note (2026-09-14): the live site can show Sample100 identities with *
 
 - XBG-v2.3 — F10 needs observed growth + assumedCAGR; no synthetic 0% CAGR / fixed EV/S pack; TAM/share/customers need numbers or names
 - OSM-v2.3 — `Opp = 0.40F + 0.25V + 0.10O + 0.25R`, N/A renormalized. 3Y CAGR/FCF and peak-NI hits. Value Trap 0–10 separate. TURNAROUND needs complete Case
-- MFC70-v1.4 canonical (series-backed Q04/Q22/Q35/Q38/Q40/Q42/Q45). MFC74-v3.0 listed as experimental, never mixed into 70.
+- MFC70-v1.5 canonical (Q57 cash runway; series-backed Q04/Q22/Q35/Q38/Q40/Q42/Q45). MFC74-v3.0 listed as experimental, never mixed into 70.
 - LENS-v1.0 overlay. Not added to Quality.
 - CRITERIA-v1 runtime pack on snapshots.
 

@@ -19,7 +19,8 @@ function Page() {
     <>
       <PageTitle kicker={ENGINE_TAB.quality.version} title={ENGINE_TAB.quality.name} />
       <p className="mb-4 max-w-2xl text-sm text-muted">
-        N/A는 0점이 아닙니다. Diagnostic은 기본 점수에 넣지 않습니다. 74 Factor는 실험 모델로 섞지 않습니다.
+        N/A는 0점이 아닙니다. Diagnostic은 기본 점수에 넣지 않습니다. 74 Factor는 실험 모델로 섞지 않습니다. Q57은 FCF
+        적자일 때 현금 런웨이를 씁니다.
       </p>
       <div className="overflow-x-auto rounded-[var(--radius-lg)] bg-surface shadow-[var(--shadow-border)]">
         <table className="idt-table w-full min-w-[640px] text-left text-sm">

@@ -6,6 +6,18 @@ Coverage: ≥90 no penalty, 80–89 −3, 70–79 −7, <70 RESEARCH REQUIRED.
 
 Hard gates (not mixed into the average): Trust, 12m Survival, 10x feasibility, Customer watchlist.
 
+## XBG-SCR-v1.0 screening overlay (Johnny-AI-OS news rules)
+
+Does **not** change F1–F10 weights. Overlay flags only:
+
+- Cash runway from cash / burn (FCF and OP if negative)
+- Dilution (share growth)
+- PoC / unnamed customers (customer gate WATCHLIST or RESEARCH REQUIRED)
+- Backlog N/A for semi/industrial (no invented conversion)
+- FCF burn
+
+Formula bump is deferred (Johnny-AI-OS NEWS_MONITORING_LOG). Past snapshots unchanged.
+
 ## v2.3 honesty
 
 - F10 needs observed growth (`revenuePrior`) as well as current revenue. TTM-only names stay F10=N/A. No 0% CAGR scenario pack and no fixed EV/S 12x path.

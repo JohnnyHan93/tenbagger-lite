@@ -19,6 +19,8 @@ import type { FactorCode } from "@/lib/scoring/config";
 import { ResearchRequiredPanel } from "@/components/research-gaps";
 import { DataGapsPanel } from "@/components/data-gaps";
 import { diffSnapshots } from "@/lib/engines/diff";
+import { formatMeg, marketExpectationGap, pricePathOf, capitalReturnOf, sectorOverlayOf } from "@/lib/engines/oversold-monitor";
+import { formatScreenFlags, xbaggerScreen } from "@/lib/engines/xbagger-screen";
 
 export const Route = createFileRoute("/company/$ticker")({
   component: CompanyPage,
@@ -231,6 +233,8 @@ function CompanyPage() {
             <p className="mb-3 font-mono text-[0.625rem] text-subtle">
               Trust {snap.xbagger.gates.trust} · Survival {snap.xbagger.gates.survival} · 10x {snap.xbagger.gates.tenx} ·
               Customer {snap.xbagger.gates.customer} · F10 math {snap.xbagger.f10MathComplete ? "complete" : "N/A"}
+              {" · 스크리닝 "}
+              {formatScreenFlags(xbaggerScreen({ xbagger: snap.xbagger, derived: snap.derived }))}
             </p>
             <TenxBlock snapshot={snap} />
             <div className="mt-4">
@@ -284,7 +288,18 @@ function CompanyPage() {
             <p className="mb-3 font-mono text-xs text-subtle">
               Opp = 0.40×Fundamental + 0.25×Valuation + 0.10×Oversold + 0.25×Risk Inverse. Value Trap은 별도 0–10.
               Peak {snap.oversold.peakEarningsLevel ?? (snap.oversold.peakEarnings ? "POSSIBLE" : "NONE")}.
+              MEG {formatMeg(marketExpectationGap(snap.oversold).meg)} · {pricePathOf(snap.oversold).label} — Opp에
+              합산하지 않음. 환원 {capitalReturnOf(snap.derived.shareGrowth).label}.
             </p>
+            {(() => {
+              const sector = sectorOverlayOf(snap.derived.industryGroup);
+              if (sector.id === "NONE") return null;
+              return (
+                <p className="mb-3 font-mono text-[0.625rem] text-subtle">
+                  {sector.title} 점검: {sector.checks.map((c) => c.label).join(" · ")} — 점수에 넣지 않음.
+                </p>
+              );
+            })()}
             {snap.oversold.valueTrap >= 7 ? (
               <p className="mb-3 text-xs text-grade-d">VALUE TRAP RISK — Opportunity 숫자는 바꾸지 않습니다.</p>
             ) : null}

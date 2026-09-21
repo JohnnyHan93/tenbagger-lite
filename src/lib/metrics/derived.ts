@@ -62,6 +62,7 @@ export interface DerivedMetrics {
   series?: import("../types.ts").FinancialSeries | null;
   liquidityStress?: boolean;
   organicShare?: number | null;
+  runwayYears?: number | null;
 }
 
 export function ratio(a: number | null | undefined, b: number | null | undefined): number | null {
@@ -74,6 +75,17 @@ export function change(curr: number | null | undefined, prior: number | null | u
     return null;
   }
   return curr / prior - 1;
+}
+
+export function cashRunwayYears(
+  cash: number | null | undefined,
+  fcf: number | null | undefined,
+  op?: number | null,
+): number | null {
+  if (cash == null || !Number.isFinite(cash) || cash <= 0) return null;
+  const burn = Math.max(0, -(fcf ?? 0), op != null && op < 0 ? -op : 0);
+  if (burn <= 0) return null;
+  return cash / burn;
 }
 
 export function cagrFromSeries(
@@ -188,6 +200,7 @@ export function deriveMetrics(input: {
     goingConcernEvidence: Boolean(x.goingConcernEvidence),
     series: x.series ?? null,
     organicShare: x.organicShare ?? null,
+    runwayYears: x.runwayYears ?? cashRunwayYears(f.cash, fcf, f.operatingIncomeTtm),
     liquidityStress: Boolean(
       (f.cash != null && f.cash < 0) ||
         ((fcf ?? 0) < 0 && f.cash != null && f.cash < Math.abs(fcf ?? 0)),

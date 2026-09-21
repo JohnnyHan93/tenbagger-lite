@@ -31,7 +31,7 @@ Identity universe: 100 names, US 50 / KR 50. Sample100 analyses = 100 (3 preserv
 |---|---|---|
 | X-Bagger Discovery | XBG-v2.3 | Observed-growth F10; honest trust gate |
 | Oversold Opportunity | OSM-v2.3 | 3Y CAGR/FCF; peak NI; Trap 0–10; incomplete Case |
-| Quality 70 | MFC70-v1.4 | Series-backed cash/capex/PPE/IC; Q22 needs 3FY |
+| Quality 70 | MFC70-v1.5 | Q57 cash runway; series-backed cash/capex/PPE/IC |
 | Investor Lenses | LENS-v1.0 | Overlay |
 
 ## v2.4 Full 100

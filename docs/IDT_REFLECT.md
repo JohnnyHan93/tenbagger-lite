@@ -32,3 +32,11 @@ When the investment room (투자실) finds engine / scoring / evidence / univers
 - Change Oversold weights F40/V25/O10/R25 without Human GO
 - Live buys / invent numbers / treat N/A as 0
 - Commit product code to `JohnnyHan93/idt`
+
+## Applied 2026-09-21 — OSM-MON + XBG-SCR + MFC70-v1.5
+
+Packet: Johnny-AI-OS ADR-0004 / MONITORING_SPEC / NEWS_MONITORING_RULES.
+
+- Oversold overlay: MEG, price path, drawdown alert, sector checklist, capital-return overlay. Opp weights **not** changed.
+- X-Bagger screening overlay XBG-SCR-v1.0 (runway / dilution / PoC / backlog). XBG-v2.3 formula **not** changed (OS news log: 수식 보류).
+- Quality Q57 cash runway → MFC70-v1.5. 70 factors. 74 not mixed.

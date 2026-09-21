@@ -1,4 +1,4 @@
-import type { DerivedMetrics } from "../metrics/derived.ts";
+import { cashRunwayYears, type DerivedMetrics } from "../metrics/derived.ts";
 import { fyCount, latestFy, numericField, pointsOf, qoqChange, seriesTrusted, spanChange, yoyFromFy } from "../metrics/series.ts";
 import { DEFAULT_CRITERIA } from "./criteria/defaults.ts";
 import { getCriteria } from "./criteria/active.ts";
@@ -6,7 +6,7 @@ import type { BandStep, QualityCriteria } from "./criteria/types.ts";
 import type { Applicability, IndustryGroup } from "./industry.ts";
 import { naForGroup } from "./industry.ts";
 
-export const MFC70_VERSION = "MFC70-v1.4";
+export const MFC70_VERSION = "MFC70-v1.5";
 export const MFC74_VERSION = "MFC74-v3.0";
 
 export type FactorClass = "Core" | "Conditional" | "Diagnostic";
@@ -279,8 +279,13 @@ export const QUALITY_FACTORS: QualityFactorDef[] = [
   { id: "Q55", pillar: "Shareholder", name: "Potential Dilution", kind: "Conditional", apply: A, score: () => ({ score: null, reason: "옵션/전환사채 없음.", calc: "potDil" }) },
   { id: "Q56", pillar: "Shareholder", name: "EPS vs NI Gap", kind: "Diagnostic", apply: A, score: () => ({ score: null, reason: "희석 EPS 공시 없음.", calc: "epsGap" }) },
   { id: "Q57", pillar: "Shareholder", name: "External Funding Dependence", kind: "Core", apply: A, score: (m) => {
-    if (m.fcf == null) return { score: null, reason: "FCF 없음.", calc: "fund" };
-    return { score: m.fcf > 0 ? 8 : 3, reason: m.fcf > 0 ? "자체 자금" : "외부 자금 의존 가능", calc: "fcfSign" };
+    if (m.fcf == null) return { score: null, reason: "FCF 없음.", calc: "fund", missingReason: "MISSING_FIELD" };
+    if (m.fcf > 0) return { score: 8, reason: "자체 자금 (FCF 흑자)", calc: "fcfSign" };
+    const rw = m.runwayYears ?? cashRunwayYears(m.cash, m.fcf, m.opTtm);
+    if (rw == null) return { score: 3, reason: "FCF 적자. 현금 런웨이 미확인 — 현금을 지어내지 않음.", calc: "fcfSign" };
+    if (rw >= 3) return { score: 5, reason: `FCF 적자 · 런웨이 ${rw.toFixed(1)}년`, calc: "runway" };
+    if (rw >= 1) return { score: 3, reason: `FCF 적자 · 런웨이 ${rw.toFixed(1)}년`, calc: "runway" };
+    return { score: 1, reason: `런웨이 ${rw.toFixed(1)}년. 반복 증자 위험.`, calc: "runway" };
   } },
   { id: "Q58", pillar: "Accounting", name: "Goodwill Change", kind: "Diagnostic", apply: A, score: () => ({ score: null, reason: "영업권 변동 없음.", calc: "gw" }) },
   { id: "Q59", pillar: "Accounting", name: "Intangible Growth Gap", kind: "Diagnostic", apply: A, score: () => ({ score: null, reason: "무형자산 없음.", calc: "intan" }) },
@@ -406,6 +411,9 @@ export function scoreQuality(m: DerivedMetrics, criteria?: QualityCriteria): Qua
 
   const operationalFlags: string[] = [];
   if (m.liquidityStress) operationalFlags.push("LIQUIDITY_STRESS");
+  const rw = m.runwayYears ?? cashRunwayYears(m.cash, m.fcf, m.opTtm);
+  if (rw != null && rw < 1) operationalFlags.push("CASH_RUNWAY_SHORT");
+  if (m.shareGrowth != null && m.shareGrowth > 0.1) operationalFlags.push("DILUTION_STRESS");
 
   return {
     version: spec.version,

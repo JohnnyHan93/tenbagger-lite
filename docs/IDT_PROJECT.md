@@ -30,7 +30,7 @@
 - 공개 주소 `idt.grok.me`에서 분석하면 **Neon에 남는다.** GitHub만 올리면 라이브는 안 바뀜 (Grok 앱 빌더 게시 필요).
 - 로그인 없음 (`VITE_AUTH_ENABLED=false`). 혼자 쓰는 앱.
 - Sample100 Full 100 + 공백 채우기 **완료**. `EXECUTE_FULL_100 = false`. 유니버스 밖 Smoke는 유지.
-- 점수 모델: **XBG-v2.3 / OSM-v2.3 / MFC70-v1.4** (관측 성장 F10 + 정직성 + Yahoo FY 시계열). 과거 스냅샷은 다시 계산하지 않음.
+- 점수 모델: **XBG-v2.3 / OSM-v2.3 / MFC70-v1.5** (관측 성장 F10 + 정직성 + Yahoo FY 시계열 + Q57 런웨이). 과거 스냅샷은 다시 계산하지 않음.
 - Queue에서 Full 100 CSV/JSON, 공백 채우기(시계열 없는 종목만). 점수는 합치지 않는다.
 - 기준 JSON 내보내기/적용은 설정 화면.
 
@@ -44,7 +44,7 @@
 |---|---|---|---|
 | X-Bagger (Tenbagger / Wildcard) | XBG-v2.3 | 시총이 실제 경로로 5–10배가 될 수 있는가 | 0–100, 등급 S–F, 하드게이트. F10은 관측 성장 필요 |
 | Oversold | OSM-v2.3 | 싼가, 망가진 것인가 | Opp 0–10 = 0.40F+0.25V+0.10O+0.25R, Value Trap 0–10은 별도 |
-| Quality 70 | MFC70-v1.4 | 공시 기준으로 지속 가능한 사업인가 | 0–100, 70 팩터. MFC74는 실험·혼합 금지 |
+| Quality 70 | MFC70-v1.5 | 공시 기준으로 지속 가능한 사업인가 | 0–100, 70 팩터. MFC74는 실험·혼합 금지 |
 
 부가:
 
@@ -240,7 +240,7 @@ GitHub만 pull → 수정 → push 해서는 `idt.grok.me`가 안 바뀐다.
 
 적용 경로: Settings JSON → `parseCriteriaPack` → `setActiveCriteria` + `app_kv` settings → `run.ts`가 `getCriteria()`를 세 엔진에 전달. 새 스냅샷에 `criteria: { schema, overlayId, versions, hash }`를 저장. 과거 스냅샷은 다시 계산하지 않는다.
 
-엔진 버전: XBG-v2.3 (F10은 관측 성장 필요, Trust는 근거 없으면 RESEARCH REQUIRED) · OSM-v2.3 (3Y CAGR·FCF·Peak NI) · MFC70-v1.4 (시계열 팩터 자동 채점, Q22는 3FY).
+엔진 버전: XBG-v2.3 (F10은 관측 성장 필요, Trust는 근거 없으면 RESEARCH REQUIRED, XBG-SCR 스크리닝은 점수 밖) · OSM-v2.3 (3Y CAGR·FCF·Peak NI, OSM-MON 오버레이) · MFC70-v1.5 (Q57 현금 런웨이, 시계열 팩터 자동 채점, Q22는 3FY).
 
 ---
 

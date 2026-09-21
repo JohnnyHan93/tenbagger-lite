@@ -3,7 +3,8 @@ import { CompanyTicker, FREEZE_NAME_AFTER_RANK, FREEZE_RANK } from "@/components
 import { PageTitle, SafetyNote } from "@/components/shell";
 import { ENGINE_TAB, formatOppScore } from "@/lib/format";
 import { GapCountLink } from "@/components/data-gaps";
-import { oversoldRank } from "@/lib/selectors";
+import { formatMeg, oversoldMonitorRank } from "@/lib/selectors";
+import { OSM_MON_VERSION } from "@/lib/engines/oversold-monitor";
 import { useAppStore } from "@/lib/store";
 
 export const Route = createFileRoute("/oversold")({ component: Page });
@@ -11,25 +12,29 @@ export const Route = createFileRoute("/oversold")({ component: Page });
 function Table({ market }: { market: "KR" | "US" }) {
   const companies = useAppStore((s) => s.companies);
   const snapshots = useAppStore((s) => s.snapshots);
-  const rows = oversoldRank(companies, snapshots, market);
+  const rows = oversoldMonitorRank(companies, snapshots, market);
   return (
     <div className="overflow-x-auto rounded-[var(--radius-lg)] bg-surface shadow-[var(--shadow-border)]">
-      <table className="idt-table w-full min-w-[560px] text-left text-sm">
+      <table className="idt-table w-full min-w-[760px] text-left text-sm">
         <thead className="border-b border-border font-mono text-[0.625rem] tracking-widest text-subtle uppercase">
           <tr>
             <th className={FREEZE_RANK}>#</th>
             <th className={FREEZE_NAME_AFTER_RANK}>종목</th>
             <th className="px-3 py-3 text-right">Opp 0–10</th>
+            <th className="px-3 py-3 text-right">Δ</th>
+            <th className="px-3 py-3 text-right">MEG</th>
+            <th className="px-3 py-3">경로</th>
             <th className="px-3 py-3">Case</th>
-            <th className="px-3 py-3 text-right">Value Trap 1–10</th>
+            <th className="px-3 py-3 text-right">Trap</th>
             <th className="px-3 py-3">Peak</th>
+            <th className="px-3 py-3">알림</th>
             <th className="px-3 py-3 text-right">공백</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
           {rows.length === 0 ? (
             <tr>
-              <td className="px-3 py-6 text-sm text-muted" colSpan={7}>
+              <td className="px-3 py-6 text-sm text-muted" colSpan={11}>
                 {market} 유니버스에 과매도 후보가 없습니다. Discover에서 티커를 넣으세요.
               </td>
             </tr>
@@ -43,9 +48,23 @@ function Table({ market }: { market: "KR" | "US" }) {
                 <td className="px-3 py-3 text-right font-mono tabular-nums">
                   {formatOppScore(r.snapshot.oversold.opportunity)}
                 </td>
-                <td className="px-3 py-3 font-mono">{r.snapshot.oversold.case}</td>
-                <td className="px-3 py-3 text-right font-mono tabular-nums">{r.snapshot.oversold.valueTrap} / 10</td>
+                <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-muted">
+                  {r.oppDelta == null
+                    ? "—"
+                    : `${r.oppDelta > 0 ? "+" : ""}${r.oppDelta.toFixed(2)}`}
+                </td>
+                <td className="px-3 py-3 text-right font-mono tabular-nums" title={r.meg.reason}>
+                  {formatMeg(r.meg.meg)}
+                </td>
+                <td className="px-3 py-3 text-xs" title={r.path.reason}>
+                  {r.path.label}
+                </td>
+                <td className="px-3 py-3 font-mono">{r.snapshot.oversold.case ?? "—"}</td>
+                <td className="px-3 py-3 text-right font-mono tabular-nums">{r.snapshot.oversold.valueTrap}</td>
                 <td className="px-3 py-3 text-xs">{r.snapshot.oversold.peakEarnings ? "YES" : "—"}</td>
+                <td className="px-3 py-3 text-xs text-flag-yellow">
+                  {r.alerts.length ? r.alerts.map((a) => a.message).join(" · ") : "—"}
+                </td>
                 <td className="px-3 py-3 text-right">
                   <GapCountLink snapshot={r.snapshot} ticker={r.company.ticker} engine="oversold" />
                 </td>
@@ -61,9 +80,10 @@ function Table({ market }: { market: "KR" | "US" }) {
 function Page() {
   return (
     <>
-      <PageTitle kicker={ENGINE_TAB.oversold.version} title={ENGINE_TAB.oversold.name} />
+      <PageTitle kicker={`${ENGINE_TAB.oversold.version} · ${OSM_MON_VERSION}`} title={ENGINE_TAB.oversold.name} />
       <p className="mb-6 max-w-2xl text-sm text-muted">
-        Opp = 0.40F + 0.25V + 0.10O + 0.25R. Value Trap은 별도입니다. 싸진 것과 망가진 것을 섞지 않습니다.
+        Opp = 0.40F + 0.25V + 0.10O + 0.25R. Value Trap과 MEG는 별도입니다. MEG는 Opp에 더하지 않습니다. Top 10은 고정
+        종목이 아닙니다. 52주 낙폭 ±10pp, 업종 오버레이, 환원 해석은 알림·점검용입니다.
       </p>
       <h2 className="mb-2 font-mono text-xs tracking-widest text-sage uppercase">Korea Top 10</h2>
       <Table market="KR" />

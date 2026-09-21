@@ -14,6 +14,8 @@ import {
 } from "@/lib/format";
 import type { Company } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { formatMeg, marketExpectationGap, pricePathOf, capitalReturnOf, sectorOverlayOf } from "@/lib/engines/oversold-monitor";
+import { formatScreenFlags, xbaggerScreen } from "@/lib/engines/xbagger-screen";
 
 export function SnapshotHeader({
   company,
@@ -103,6 +105,14 @@ export function EngineTrio({
         <p className="mt-1 font-mono text-[0.625rem] text-subtle">
           F10 math {x.f10MathComplete ? "complete" : "N/A"} · Coverage {Math.round(x.coverage * 100)}%
         </p>
+        {(() => {
+          const screen = xbaggerScreen({ xbagger: x, derived: snapshot.derived });
+          return (
+            <p className="mt-1 font-mono text-[0.625rem] text-subtle" title={screen.map((f) => f.reason).join(" ")}>
+              스크리닝 {formatScreenFlags(screen)} · 점수에 합산하지 않음
+            </p>
+          );
+        })()}
       </EngineCard>
       <EngineCard
         kicker={`${ENGINE_TAB.oversold.name} · ${o.version ?? ENGINE_TAB.oversold.version}`}
@@ -127,6 +137,25 @@ export function EngineTrio({
         <p className="mt-1 text-xs text-flag-yellow">
           Peak earnings {o.peakEarningsLevel ?? (o.peakEarnings ? "POSSIBLE" : "NONE")}
         </p>
+        {(() => {
+          const meg = marketExpectationGap(o);
+          const path = pricePathOf(o);
+          return (
+            <p className="mt-1 font-mono text-[0.625rem] text-subtle" title={`${meg.reason} ${path.reason}`}>
+              MEG {formatMeg(meg.meg)} · {path.label} · Opp에 합산하지 않음
+            </p>
+          );
+        })()}
+        {(() => {
+          const ret = capitalReturnOf(snapshot.derived.shareGrowth);
+          const sector = sectorOverlayOf(snapshot.derived.industryGroup);
+          return (
+            <p className="mt-1 font-mono text-[0.625rem] text-subtle">
+              환원 {ret.label}
+              {sector.id !== "NONE" ? ` · ${sector.title}` : ""}
+            </p>
+          );
+        })()}
       </EngineCard>
       <EngineCard
         kicker={`${ENGINE_TAB.quality.name} · ${q.version ?? ENGINE_TAB.quality.version}`}
@@ -146,6 +175,8 @@ export function EngineTrio({
         </p>
         <p className="mt-1 font-mono text-[0.625rem] text-subtle">
           Diagnostic 미합산 · {q.operationalFlags?.includes("LIQUIDITY_STRESS") ? "LIQUIDITY_STRESS · " : ""}
+          {q.operationalFlags?.includes("CASH_RUNWAY_SHORT") ? "CASH_RUNWAY_SHORT · " : ""}
+          {q.operationalFlags?.includes("DILUTION_STRESS") ? "DILUTION_STRESS · " : ""}
           Coverage {Math.round(q.coverage * 100)}%
         </p>
       </EngineCard>

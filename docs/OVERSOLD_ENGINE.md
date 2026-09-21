@@ -20,3 +20,17 @@ Peak earnings is `NONE | POSSIBLE | HIGH` (boolean `peakEarnings` kept for old U
 - Peak earnings: latest FY net income at a 3Y high, with falling revenue or compressing OM, adds a hit. Cheap multiple at peak earnings is still penalized.
 
 Weights stay 0.40 / 0.25 / 0.10 / 0.25 unless Criteria JSON changes them.
+
+## OSM-MON-v1.0 overlay (Johnny-AI-OS ADR-0004)
+
+Does **not** change Opp. Overlay only.
+
+- **MEG** (−2…+2): market pessimism vs scored F/O/VT. N/A if F or O missing. Never added to Opp.
+- **Price path**: 좋은 과매도 / 트랩 위험 / 재평가 / 가격만 반등. Separate from engine Case A–D (F vs O intensity).
+- **Dynamic Top 10**: KR/US lists replace #10 when a new name has a higher Opp. Not a fixed universe.
+- **Alerts** vs previous snapshot: Opp ±0.20, rank ±2, VT ±1, price ±5%, path change, Top 10 enter/exit, 52W drawdown ±10pp.
+- **Sector overlay** (증권 / AI·SW / 반도체): research checklist only. Never scored into Opp.
+- **Capital return**: share-count drop is 제한적 긍정. Buyback+cancel is never inferred.
+- Peak-earnings still lives in OSM-v2.3 valuation (cheap multiple at peak ≠ cheap).
+
+Core OSM formula change still requires Human GO + version bump.

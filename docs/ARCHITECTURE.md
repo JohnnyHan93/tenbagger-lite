@@ -9,7 +9,7 @@ Ticker → Identity → Quote + Filings pack
         ↓
 ┌────────────┬────────────┬────────────┐
 │ X-Bagger   │ Oversold   │ Quality 70 │
-│ XBG-v2.3   │ OSM-v2.3   │ MFC70-v1.4 │
+│ XBG-v2.3   │ OSM-v2.3   │ MFC70-v1.5 │
 └────────────┴────────────┴────────────┘
         ↓
  Validated draft → transactional save (company + analysis + evidence + job) → immutable analysis snapshot

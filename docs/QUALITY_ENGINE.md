@@ -1,8 +1,13 @@
-# Quality MFC70-v1.4
+# Quality MFC70-v1.5
 
 70 unique factor IDs. Classes Core / Conditional / Diagnostic.
 Diagnostic never enters the base score.
 Industry N/A is dropped from the denominator, not scored as 0.
+
+v1.5 cash runway (Johnny-AI-OS NEWS_MONITORING_RULES):
+
+- Q57 External Funding: FCF > 0 → 8. FCF < 0 uses cash / |FCF| (and operating burn if OP < 0). ≥3y → 5, ≥1y → 3, <1y → 1. Missing cash stays 3 (not invented).
+- Operational flags: `CASH_RUNWAY_SHORT`, `DILUTION_STRESS` (shareGrowth > 10%). Not mixed into the Quality number beyond Q53/Q54/Q57.
 
 v1.4 series auto-score (Yahoo/Naver FY, TIER_1/2 only):
 

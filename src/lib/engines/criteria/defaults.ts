@@ -94,7 +94,7 @@ export const DEFAULT_CRITERIA: CriteriaPack = {
       },
     },
     quality70: {
-      version: "MFC70-v1.4",
+      version: "MFC70-v1.5",
       gradeThresholds: { S: 85, A: 75, B: 65, C: 55, D: 45 },
       coverage: { researchBelow: 0.7, partialBelow: 0.9 },
       redFlag: { redScoreMax: 2, yellowHits: 1, redHits: 2 },

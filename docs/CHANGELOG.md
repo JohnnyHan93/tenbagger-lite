@@ -1,3 +1,20 @@
+## 2026-09-21 — Johnny-AI-OS engine overlay + Q57 runway
+
+From `JohnnyHan93/Johnny-AI-OS` ADR-0004, MONITORING_SPEC, NEWS_MONITORING_RULES. Scores stay unmerged. Opp weights 40/25/10/25 unchanged. XBG-v2.3 weights unchanged.
+
+- **Oversold OSM-MON-v1.0** (complete remaining spec): 52W drawdown ±10pp alert, sector overlay checklist (증권 / AI·SW / 반도체) not scored, capital-return overlay never claims buyback+cancel from share count alone.
+- **X-Bagger XBG-SCR-v1.0**: cash runway, dilution, PoC/customer, backlog N/A, FCF burn as screening flags. Not added to X score.
+- **Quality MFC70-v1.5**: Q57 External Funding uses cash/|FCF| runway when FCF is negative. Missing cash stays 3, not invented. Flags `CASH_RUNWAY_SHORT` / `DILUTION_STRESS`. Still 70 factors. MFC74 not mixed.
+- Past snapshots unchanged. `EXECUTE_FULL_100` locked.
+
+## OSM-MON-v1.0 overlay from Johnny-AI-OS
+
+- Oversold Top 10 shows MEG (−2…+2), price-vs-fundamental path, ΔOpp, and alert gates vs the previous snapshot.
+- MEG and Value Trap stay **out of** Opp. Weights remain 0.40 / 0.25 / 0.10 / 0.25.
+- Engine Case A–D is unchanged. OSM-MON path is a separate label (좋은 과매도 / 트랩 위험 / 재평가 / 가격만 반등).
+- X-Bagger / Quality 70 formulas not changed: Johnny-AI-OS news log says formula bump is deferred; IDT is already XBG-v2.3 / MFC70-v1.4 vs OS docs XBG-v2.0 / MFC70-v1.2.
+- Past snapshots unchanged. Scores unmerged. `EXECUTE_FULL_100` locked.
+
 ## 2026-09-21 — IDT + tenbagger-lite repo unification
 
 - One product: IDT 투자발견. One code SoT: `JohnnyHan93/tenbagger-lite`.

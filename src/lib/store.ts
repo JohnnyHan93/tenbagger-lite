@@ -578,6 +578,13 @@ export function latestSnapshot(snapshots: Snapshot[], companyId: string): Snapsh
     .sort((a, b) => b.asOf.localeCompare(a.asOf) || b.createdAt.localeCompare(a.createdAt))[0];
 }
 
+export function previousSnapshot(snapshots: Snapshot[], companyId: string): Snapshot | undefined {
+  const list = snapshots
+    .filter((s) => s.companyId === companyId)
+    .sort((a, b) => b.asOf.localeCompare(a.asOf) || b.createdAt.localeCompare(a.createdAt));
+  return list[1];
+}
+
 export function snapshotsFor(snapshots: Snapshot[], companyId: string): Snapshot[] {
   return snapshots
     .filter((s) => s.companyId === companyId)

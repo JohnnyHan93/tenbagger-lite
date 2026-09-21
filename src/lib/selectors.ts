@@ -1,8 +1,17 @@
 import { GRADE_THRESHOLDS } from "./scoring/config.ts";
-import { latestSnapshot } from "./store.ts";
+import { latestSnapshot, previousSnapshot } from "./store.ts";
 import type { Snapshot } from "./domain/snapshot.ts";
 import type { Company } from "./types.ts";
 import { isUsableCompany, isUsableSnapshot } from "./bootstrap.ts";
+import {
+  formatMeg,
+  marketExpectationGap,
+  oversoldAlerts,
+  pricePathOf,
+  type MegResult,
+  type OversoldAlert,
+  type PricePathResult,
+} from "./engines/oversold-monitor.ts";
 
 export interface RankRow {
   rank: number;
@@ -77,6 +86,77 @@ export function oversoldRank(companies: Company[], snapshots: Snapshot[], market
     .slice(0, 10)
     .map((r, i) => ({ ...r, rank: i + 1 }));
 }
+
+export interface OversoldMonitorRow {
+  rank: number;
+  prevRank: number | null;
+  company: Company;
+  snapshot: Snapshot;
+  prev: Snapshot | null;
+  meg: MegResult;
+  path: PricePathResult;
+  alerts: OversoldAlert[];
+  oppDelta: number | null;
+}
+
+export function oversoldMonitorRank(
+  companies: Company[],
+  snapshots: Snapshot[],
+  market: "KR" | "US",
+): OversoldMonitorRow[] {
+  const pool = companies.filter(isUsableCompany).filter((c) => c.country === market);
+  const current = pool
+    .map((company) => {
+      const snapshot = latestSnapshot(snapshots, company.id);
+      if (!isUsableSnapshot(snapshot) || snapshot.oversold.opportunity == null) return null;
+      return { company, snapshot };
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null)
+    .sort((a, b) => (b.snapshot.oversold.opportunity ?? 0) - (a.snapshot.oversold.opportunity ?? 0));
+
+  const previous = pool
+    .map((company) => {
+      const snapshot = previousSnapshot(snapshots, company.id);
+      if (!isUsableSnapshot(snapshot) || snapshot.oversold.opportunity == null) return null;
+      return { company, snapshot };
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null)
+    .sort((a, b) => (b.snapshot.oversold.opportunity ?? 0) - (a.snapshot.oversold.opportunity ?? 0));
+
+  const prevRankOf = new Map(previous.map((r, i) => [r.company.id, i + 1]));
+  const prevTop = new Set(previous.slice(0, 10).map((r) => r.company.id));
+  const currTop = current.slice(0, 10);
+
+  return currTop.map((r, i) => {
+    const rank = i + 1;
+    const prev = previousSnapshot(snapshots, r.company.id) ?? null;
+    const inPrevTop = prevTop.has(r.company.id);
+    const prevRank = inPrevTop ? (prevRankOf.get(r.company.id) ?? null) : null;
+    const alerts = oversoldAlerts({
+      prev,
+      curr: r.snapshot,
+      prevRank,
+      currRank: rank,
+    });
+    const oppDelta =
+      prev?.oversold.opportunity != null && r.snapshot.oversold.opportunity != null
+        ? r.snapshot.oversold.opportunity - prev.oversold.opportunity
+        : null;
+    return {
+      rank,
+      prevRank,
+      company: r.company,
+      snapshot: r.snapshot,
+      prev,
+      meg: marketExpectationGap(r.snapshot.oversold),
+      path: pricePathOf(r.snapshot.oversold),
+      alerts,
+      oppDelta,
+    };
+  });
+}
+
+export { formatMeg };
 
 export function gradeTone(grade: string): "a" | "b" | "c" | "d" {
   if (grade === "S" || grade === "A") return "a";

@@ -1,4 +1,4 @@
-# Quality 70 Factor Audit — MFC70-v1.4
+# Quality 70 Factor Audit — MFC70-v1.5
 
 Canonical count: **70**. Duplicate IDs: **none**. Wrong proxies: **0**. Missing: **0**.
 
@@ -114,7 +114,7 @@ Evidence: auto factors use derived-metric provenance; MANUAL_ONLY requires TIER_
 | Q54 | 3Y Dilution | Shareholder | Core | All | 3Y diluted shares | 3Y span | inv-band | FinancialSeries FY shares | IMPLEMENTED | **removed 1Y shares** | invalid | filings | suite |
 | Q55 | Potential Dilution | Shareholder | Conditional | All | options, convertibles | potential % | MANUAL | none | MANUAL_ONLY | No | — | notes | suite |
 | Q56 | EPS vs NI Gap | Shareholder | Diagnostic | All | EPS vs NI growth | gap | MANUAL | none | MANUAL_ONLY | No | — | P&L | diag |
-| Q57 | External Funding Dependence | Shareholder | Core | All | FCF sign | +FCF 8 / − 3 | derived.fcf | IMPLEMENTED | No | — | CFS | suite |
+| Q57 | External Funding Dependence | Shareholder | Core | All | FCF + cash runway | +FCF 8; −FCF uses cash/\|FCF\| | derived.fcf, cash | IMPLEMENTED | No | — | CFS | Q57 |
 | Q58 | Goodwill Change | Accounting | Diagnostic | All | goodwill | Δ | MANUAL | none | MANUAL_ONLY | No | — | BS | diag |
 | Q59 | Intangible Growth Gap | Accounting | Diagnostic | All | intangibles vs rev | gap | MANUAL | none | MANUAL_ONLY | No | — | BS | diag |
 | Q60 | Related Party Receivables | Accounting | Diagnostic | All | RP receivables | level | MANUAL | none | MANUAL_ONLY | No | — | notes | diag |

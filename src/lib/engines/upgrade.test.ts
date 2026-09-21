@@ -100,7 +100,7 @@ describe("criteria runtime", () => {
     assert.equal(CRITERIA_RUNTIME, "CRITERIA-v1");
     assert.equal(DEFAULT_CRITERIA.engines.xbagger.version, "XBG-v2.3");
     assert.equal(DEFAULT_CRITERIA.engines.oversold.version, "OSM-v2.3");
-    assert.equal(DEFAULT_CRITERIA.engines.quality70.version, "MFC70-v1.4");
+    assert.equal(DEFAULT_CRITERIA.engines.quality70.version, "MFC70-v1.5");
   });
 
   it("hashes engine knobs and ignores overlayId", () => {
@@ -354,6 +354,28 @@ describe("OSM-v2.3", () => {
     };
     const peak = scoreOversold(metrics("industrial", { ...base, series }));
     assert.equal(peak.peakEarningsLevel, "POSSIBLE");
+  });
+});
+
+describe("MFC70-v1.5 cash runway", () => {
+  it("Q57 uses cash runway when FCF is negative and does not invent cash", () => {
+    const self = scoreQuality(metrics("saas", { fcf: 12, cash: 40, opTtm: 20 }));
+    assert.equal(self.factors.find((f) => f.id === "Q57")?.score, 8);
+
+    const long = scoreQuality(metrics("saas", { fcf: -10, cash: 40, opTtm: -2, runwayYears: 4 }));
+    assert.equal(long.factors.find((f) => f.id === "Q57")?.score, 5);
+
+    const short = scoreQuality(metrics("saas", { fcf: -20, cash: 8, opTtm: -5, runwayYears: 0.4, liquidityStress: true }));
+    assert.equal(short.factors.find((f) => f.id === "Q57")?.score, 1);
+    assert.ok(short.operationalFlags.includes("CASH_RUNWAY_SHORT"));
+
+    const unknown = scoreQuality(metrics("saas", { fcf: -10, cash: null, opTtm: -2, runwayYears: null }));
+    assert.equal(unknown.factors.find((f) => f.id === "Q57")?.score, 3);
+  });
+
+  it("still has exactly 70 factors and does not mix 74", () => {
+    assert.equal(QUALITY_FACTORS.length, 70);
+    assert.equal(DEFAULT_CRITERIA.engines.quality70.version, "MFC70-v1.5");
   });
 });
 
