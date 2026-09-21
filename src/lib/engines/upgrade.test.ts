@@ -98,7 +98,7 @@ const fy = (period: string, extra: Omit<FinancialSeries["points"][number], "peri
 describe("criteria runtime", () => {
   it("is CRITERIA-v1", () => {
     assert.equal(CRITERIA_RUNTIME, "CRITERIA-v1");
-    assert.equal(DEFAULT_CRITERIA.engines.xbagger.version, "XBG-v2.2");
+    assert.equal(DEFAULT_CRITERIA.engines.xbagger.version, "XBG-v2.3");
     assert.equal(DEFAULT_CRITERIA.engines.oversold.version, "OSM-v2.3");
     assert.equal(DEFAULT_CRITERIA.engines.quality70.version, "MFC70-v1.4");
   });
