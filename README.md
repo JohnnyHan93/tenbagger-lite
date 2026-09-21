@@ -1,10 +1,21 @@
 # IDT 투자발견 (Tenbagger Lite)
 
-하나의 프로젝트다. 리포 slug `JohnnyHan93/tenbagger-lite`와 제품명 IDT 투자발견은 같은 앱이다. 배포: https://tenbagger-lite.vercel.app
+하나의 프로젝트다.
+
+| Role | Value |
+|---|---|
+| Product | IDT 투자발견 |
+| Code | [JohnnyHan93/tenbagger-lite](https://github.com/JohnnyHan93/tenbagger-lite) |
+| Live | **https://idt.grok.me/** |
+| Alias repo | [JohnnyHan93/idt](https://github.com/JohnnyHan93/idt) — frozen 2026-09-17 export, not the working tree |
+
+Map: [`docs/REPO.md`](docs/REPO.md). Deploy: [`docs/DEPLOY.md`](docs/DEPLOY.md). Johnny AI OS path: [`docs/IDT_REFLECT.md`](docs/IDT_REFLECT.md).
 
 예전에 따로 있던 Tenbagger / Oversold / Quality 70은 도구가 아니라 이 앱 안의 세 엔진이다. 점수는 합산하지 않는다.
 
 This system is a research and ranking tool. Scores are not automatic BUY/SELL signals.
+
+(Alternate host https://tenbagger-lite.vercel.app is not primary.)
 
 ## Three engines, never one composite
 
@@ -12,7 +23,7 @@ Shared research pack (price, filings, evidence, derived metrics) feeds three ind
 
 | Engine | Version | Question |
 |---|---|---|
-| X-Bagger / Wildcard | XBG-v2.2 | Can this market cap become 5–10x on a real path? |
+| X-Bagger / Wildcard | XBG-v2.3 | Can this market cap become 5–10x on a real path? |
 | Oversold Opportunity | OSM-v2.3 | Cheap, or broken? |
 | Quality 70 | MFC70-v1.4 | Is this a durable business on disclosure? |
 
@@ -62,10 +73,11 @@ Production note (2026-09-14): the live site can show Sample100 identities with *
 
 ## Models
 
-- XBG-v2.2 — TAM/share/customers need numbers or names; F10 from Tenx math only; no synthetic revenue
-- OSM-v2.3 — `Opp = 0.40F + 0.25V + 0.10O + 0.25R`, N/A renormalized. 3Y CAGR/FCF and peak-NI hits. Value Trap 0–10 separate
+- XBG-v2.3 — F10 needs observed growth + assumedCAGR; no synthetic 0% CAGR / fixed EV/S pack; TAM/share/customers need numbers or names
+- OSM-v2.3 — `Opp = 0.40F + 0.25V + 0.10O + 0.25R`, N/A renormalized. 3Y CAGR/FCF and peak-NI hits. Value Trap 0–10 separate. TURNAROUND needs complete Case
 - MFC70-v1.4 canonical (series-backed Q04/Q22/Q35/Q38/Q40/Q42/Q45). MFC74-v3.0 listed as experimental, never mixed into 70.
 - LENS-v1.0 overlay. Not added to Quality.
+- CRITERIA-v1 runtime pack on snapshots.
 
 ## Testing
 
